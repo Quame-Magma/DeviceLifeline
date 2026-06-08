@@ -7,7 +7,9 @@
 
 import { useCallback } from 'react';
 import {
+  acknowledgeAlert as apiAcknowledgeAlert,
   collectHealthSample as apiCollectHealthSample,
+  getHealthAlerts,
   getHealthSamples,
   getLatestHealthSample,
 } from '../api/tauri/health';
@@ -16,24 +18,39 @@ import { useHealthStore, type HealthStore } from '../store/health.store';
 export interface UseHealthReturn {
   latest: HealthStore['latest'];
   samples: HealthStore['samples'];
+  alerts: HealthStore['alerts'];
   sampling: HealthStore['sampling'];
   loading: HealthStore['loading'];
   error: HealthStore['error'];
-  /** Load (or reload) the latest sample and the recent-sample history. */
+  /** Load (or reload) the latest sample, recent history, and alerts. */
   loadHealth: () => Promise<void>;
-  /** Capture a new sample, then refresh the latest sample and history. */
+  /** Capture a new sample, then refresh the latest sample, history, and alerts. */
   collectSample: () => Promise<void>;
+  /** Acknowledge an alert by id, then reload the alert list. */
+  acknowledge: (alertId: string) => Promise<void>;
+}
+
+function toMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) {
+    return err.message;
+  }
+  if (typeof err === 'string') {
+    return err;
+  }
+  return fallback;
 }
 
 export function useHealth(): UseHealthReturn {
   const {
     latest,
     samples,
+    alerts,
     sampling,
     loading,
     error,
     setLatest,
     setSamples,
+    setAlerts,
     setSampling,
     setLoading,
     setError,
@@ -43,26 +60,23 @@ export function useHealth(): UseHealthReturn {
     setLoading(true);
     setError(null);
     try {
-      const [latestSample, history] = await Promise.all([
+      const [latestSample, history, alertList] = await Promise.all([
         getLatestHealthSample(),
         getHealthSamples(),
+        getHealthAlerts(),
       ]);
       setLatest(latestSample);
       setSamples(history);
+      setAlerts(alertList);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : typeof err === 'string'
-            ? err
-            : 'Failed to load health data.',
-      );
+      setError(toMessage(err, 'Failed to load health data.'));
       setLatest(null);
       setSamples([]);
+      setAlerts([]);
     } finally {
       setLoading(false);
     }
-  }, [setError, setLatest, setLoading, setSamples]);
+  }, [setAlerts, setError, setLatest, setLoading, setSamples]);
 
   const collectSample = useCallback(async () => {
     setSampling(true);
@@ -70,28 +84,42 @@ export function useHealth(): UseHealthReturn {
     try {
       const sample = await apiCollectHealthSample();
       setLatest(sample);
-      const history = await getHealthSamples();
+      const [history, alertList] = await Promise.all([
+        getHealthSamples(),
+        getHealthAlerts(),
+      ]);
       setSamples(history);
+      setAlerts(alertList);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : typeof err === 'string'
-            ? err
-            : 'Failed to collect a health sample.',
-      );
+      setError(toMessage(err, 'Failed to collect a health sample.'));
     } finally {
       setSampling(false);
     }
-  }, [setError, setLatest, setSampling, setSamples]);
+  }, [setAlerts, setError, setLatest, setSampling, setSamples]);
+
+  const acknowledge = useCallback(
+    async (alertId: string) => {
+      setError(null);
+      try {
+        await apiAcknowledgeAlert(alertId);
+        const alertList = await getHealthAlerts();
+        setAlerts(alertList);
+      } catch (err) {
+        setError(toMessage(err, 'Failed to acknowledge the alert.'));
+      }
+    },
+    [setAlerts, setError],
+  );
 
   return {
     latest,
     samples,
+    alerts,
     sampling,
     loading,
     error,
     loadHealth,
     collectSample,
+    acknowledge,
   };
 }

@@ -318,3 +318,30 @@ pub struct RawCrashEvent {
     /// Raw event message, if any.
     pub message: Option<String>,
 }
+
+/// A health alert raised when a [`HealthSample`] reading crosses a predefined
+/// threshold (e.g. memory critically high, disk low on space).
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct HealthAlert {
+    /// Stable unique identifier (UUID v4 string).
+    pub id: String,
+    /// Identifier of the [`Device`] this alert was raised on.
+    pub device_id: String,
+    /// Identifier of the [`HealthSample`] that produced this alert.
+    pub sample_id: String,
+    /// Creation timestamp, RFC3339 / UTC (the producing sample's time).
+    pub created_at: String,
+    /// Stable kind slug: `memory_critical`, `disk_low_space`, or `cpu_high`.
+    pub kind: String,
+    /// Severity slug: `critical` or `warning`.
+    pub severity: String,
+    /// Plain-English summary line.
+    pub title: String,
+    /// Plain-English detail line.
+    pub detail: String,
+    /// The breaching percentage value (`0.0..=100.0`).
+    pub value: f64,
+    /// Whether the user has acknowledged the alert.
+    pub acknowledged: bool,
+}

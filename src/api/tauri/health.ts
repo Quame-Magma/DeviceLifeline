@@ -8,7 +8,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
-import type { HealthSample } from '../../types/device.types';
+import type { HealthAlert, HealthSample } from '../../types/device.types';
 
 /** Capture a new health sample for the local device and persist it. */
 export const collectHealthSample = (): Promise<HealthSample> =>
@@ -21,3 +21,11 @@ export const getHealthSamples = (): Promise<HealthSample[]> =>
 /** Retrieve the most recent health sample, or null if none exist. */
 export const getLatestHealthSample = (): Promise<HealthSample | null> =>
   invoke<HealthSample | null>('get_latest_health_sample');
+
+/** Retrieve all health alerts, unacknowledged first then newest. */
+export const getHealthAlerts = (): Promise<HealthAlert[]> =>
+  invoke<HealthAlert[]>('get_health_alerts');
+
+/** Mark a health alert acknowledged. */
+export const acknowledgeAlert = (alertId: string): Promise<void> =>
+  invoke<void>('acknowledge_alert', { alertId });

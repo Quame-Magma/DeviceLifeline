@@ -8,8 +8,8 @@ use tauri::State;
 
 use crate::error::CoreError;
 use crate::health;
-use crate::models::HealthSample;
-use crate::storage::health_repo;
+use crate::models::{HealthAlert, HealthSample};
+use crate::storage::{alerts_repo, health_repo};
 use crate::AppState;
 
 /// Captures a new health sample for the local device, persists it, and returns
@@ -43,4 +43,25 @@ pub fn get_latest_health_sample(
         .lock()
         .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
     health_repo::latest_sample(&conn)
+}
+
+/// Returns all health alerts, unacknowledged first then newest.
+#[tauri::command]
+pub fn get_health_alerts(state: State<'_, AppState>) -> Result<Vec<HealthAlert>, CoreError> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    alerts_repo::list_alerts(&conn)
+}
+
+/// Marks a health alert acknowledged.
+#[tauri::command]
+pub fn acknowledge_alert(state: State<'_, AppState>, alert_id: String) -> Result<(), CoreError> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    alerts_repo::acknowledge(&conn, &alert_id)?;
+    Ok(())
 }

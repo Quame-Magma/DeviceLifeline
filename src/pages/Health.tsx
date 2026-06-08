@@ -8,6 +8,7 @@ import { Spinner } from '../components/common/Spinner';
 import { HealthScoreGauge } from '../components/health/HealthScoreGauge';
 import { ResourceUsageBars } from '../components/health/ResourceUsageBars';
 import { HealthSampleList } from '../components/health/HealthSampleList';
+import { HealthAlertList } from '../components/health/HealthAlertList';
 
 /**
  * Health Intelligence page — Increment 5.
@@ -19,11 +20,13 @@ export function Health() {
   const {
     latest,
     samples,
+    alerts,
     sampling,
     loading,
     error,
     loadHealth,
     collectSample,
+    acknowledge,
   } = useHealth();
 
   // Load the latest sample and history on mount.
@@ -77,6 +80,17 @@ export function Health() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto scrollbar-thin px-6 py-5">
+        {alerts.length > 0 && (
+          <section className="mb-6">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">
+              Alerts
+            </p>
+            <HealthAlertList
+              alerts={alerts}
+              onAcknowledge={(id) => void acknowledge(id)}
+            />
+          </section>
+        )}
         {loading && latest === null ? (
           <div className="flex items-center justify-center py-16">
             <Spinner label="Loading health…" />

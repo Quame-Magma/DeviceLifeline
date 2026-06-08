@@ -6,13 +6,15 @@
  */
 
 import { create } from 'zustand';
-import type { HealthSample } from '../types/device.types';
+import type { HealthAlert, HealthSample } from '../types/device.types';
 
 export interface HealthStore {
   /** The most recent health sample, or null if none captured yet. */
   latest: HealthSample | null;
   /** Recent health samples, newest first. */
   samples: HealthSample[];
+  /** Health alerts, unacknowledged first then newest. */
+  alerts: HealthAlert[];
   /** True while a new sample is being captured. */
   sampling: boolean;
   /** True while loading the latest sample and history. */
@@ -23,6 +25,7 @@ export interface HealthStore {
   // Actions
   setLatest: (sample: HealthSample | null) => void;
   setSamples: (samples: HealthSample[]) => void;
+  setAlerts: (alerts: HealthAlert[]) => void;
   setSampling: (sampling: boolean) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -31,12 +34,14 @@ export interface HealthStore {
 export const useHealthStore = create<HealthStore>((set) => ({
   latest: null,
   samples: [],
+  alerts: [],
   sampling: false,
   loading: false,
   error: null,
 
   setLatest: (latest) => set({ latest }),
   setSamples: (samples) => set({ samples }),
+  setAlerts: (alerts) => set({ alerts }),
   setSampling: (sampling) => set({ sampling }),
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),

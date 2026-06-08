@@ -170,3 +170,21 @@ export interface CrashEvent {
   detail: string | null;
   eventId: number | null;
 }
+
+/**
+ * A health alert raised when a `HealthSample` reading crosses a threshold.
+ * `kind` ∈ memory_critical | disk_low_space | cpu_high. `severity` ∈ critical |
+ * warning. `value` is the breaching percentage (0–100).
+ */
+export interface HealthAlert {
+  id: string;
+  deviceId: string;
+  sampleId: string;
+  createdAt: string;
+  kind: string;
+  severity: string;
+  title: string;
+  detail: string;
+  value: number;
+  acknowledged: boolean;
+}

@@ -41,6 +41,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0006_add_crash",
         include_str!("../../migrations/0006_add_crash.sql"),
     ),
+    (
+        "0007_add_alerts",
+        include_str!("../../migrations/0007_add_alerts.sql"),
+    ),
 ];
 
 /// Opens (creating if necessary) the SQLite database at `path`, enables
@@ -111,6 +115,7 @@ mod tests {
         assert!(table_exists(&conn, "restore_jobs"));
         assert!(table_exists(&conn, "health_samples"));
         assert!(table_exists(&conn, "crash_events"));
+        assert!(table_exists(&conn, "health_alerts"));
 
         let version: i64 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))

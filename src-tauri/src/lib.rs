@@ -65,6 +65,8 @@ pub fn run() {
             commands::health::collect_health_sample,
             commands::health::get_health_samples,
             commands::health::get_latest_health_sample,
+            commands::health::get_health_alerts,
+            commands::health::acknowledge_alert,
             commands::crash::scan_crash_events,
             commands::crash::get_crash_events
         ])

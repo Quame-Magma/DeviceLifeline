@@ -96,6 +96,18 @@
     "description": "Fetches the most recent health sample, or null if none have been recorded."
   },
   {
+    "name": "get_health_alerts",
+    "params": {},
+    "returns": "HealthAlert[]",
+    "description": "Lists all health alerts ordered unacknowledged-first then newest by created_at."
+  },
+  {
+    "name": "acknowledge_alert",
+    "params": { "alertId": "string" },
+    "returns": "null",
+    "description": "Marks a health alert acknowledged."
+  },
+  {
     "name": "scan_crash_events",
     "params": {},
     "returns": "CrashEvent[]",
