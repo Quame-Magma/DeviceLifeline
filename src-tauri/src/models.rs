@@ -134,6 +134,104 @@ pub struct TimelineEvent {
     pub occurred_at: String,
 }
 
+/// A generated plan for restoring a device's software from a snapshot's
+/// inventory. Each plan owns an ordered list of [`RestorePlanStep`]s.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RestorePlan {
+    /// Stable unique identifier (UUID v4 string).
+    pub id: String,
+    /// Identifier of the [`Device`] this plan targets.
+    pub device_id: String,
+    /// Identifier of the [`DeviceDnaSnapshot`] the plan was generated from.
+    pub snapshot_id: String,
+    /// Human-readable plan name.
+    pub name: String,
+    /// Creation timestamp, RFC3339 / UTC.
+    pub created_at: String,
+    /// Number of steps in the plan.
+    pub step_count: i64,
+}
+
+/// One installable step within a [`RestorePlan`], derived from a single
+/// [`SoftwareInventoryItem`].
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RestorePlanStep {
+    /// Stable unique identifier (UUID v4 string).
+    pub id: String,
+    /// Identifier of the owning [`RestorePlan`].
+    pub plan_id: String,
+    /// Zero-based position of the step within the plan.
+    pub order_index: i64,
+    /// Display name of the software to install.
+    pub software_name: String,
+    /// Target version to install, if known.
+    pub target_version: Option<String>,
+    /// WinGet package identifier, if resolved (always `None` this cut).
+    pub winget_id: Option<String>,
+    /// Installer source (currently `"winget"`).
+    pub source: String,
+}
+
+/// A single execution of a [`RestorePlan`]. Tracks status and per-status tallies
+/// across the plan's steps.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RestoreJob {
+    /// Stable unique identifier (UUID v4 string).
+    pub id: String,
+    /// Identifier of the [`RestorePlan`] being executed.
+    pub plan_id: String,
+    /// Identifier of the [`Device`] the job runs against.
+    pub device_id: String,
+    /// Execution status: `running`, `completed`, `completed_with_errors`, or
+    /// `failed`.
+    pub status: String,
+    /// Start timestamp, RFC3339 / UTC.
+    pub started_at: String,
+    /// Completion timestamp, RFC3339 / UTC, or `None` while running.
+    pub finished_at: Option<String>,
+    /// Total number of steps in the executed plan.
+    pub total_steps: i64,
+    /// Number of steps that succeeded.
+    pub succeeded_count: i64,
+    /// Number of steps that failed.
+    pub failed_count: i64,
+    /// Number of steps that were skipped.
+    pub skipped_count: i64,
+}
+
+/// The outcome of installing a single [`RestorePlanStep`] during a
+/// [`RestoreJob`].
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RestoreStepResult {
+    /// Stable unique identifier (UUID v4 string).
+    pub id: String,
+    /// Identifier of the owning [`RestoreJob`].
+    pub job_id: String,
+    /// Identifier of the [`RestorePlanStep`] this result is for.
+    pub step_id: String,
+    /// Display name of the software (denormalized for convenient listing).
+    pub software_name: String,
+    /// Result status: `succeeded`, `failed`, or `skipped`.
+    pub status: String,
+    /// Optional human-readable detail (e.g., an installer error line).
+    pub message: Option<String>,
+}
+
+/// Internal per-step install outcome returned by an
+/// [`Installer`](crate::installer::Installer). Not serialized to the UI; the
+/// executor maps it onto a persisted [`RestoreStepResult`].
+#[derive(Clone, Debug)]
+pub struct StepOutcome {
+    /// Result status: `succeeded`, `failed`, or `skipped`.
+    pub status: String,
+    /// Optional human-readable detail.
+    pub message: Option<String>,
+}
+
 /// Raw config collector output prior to persistence. Not exposed over IPC.
 #[derive(Clone, Debug)]
 pub struct RawConfig {

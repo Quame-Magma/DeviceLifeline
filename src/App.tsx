@@ -4,6 +4,7 @@ import type { View } from './components/layout/Sidebar';
 import { Dashboard } from './pages/Dashboard';
 import { DeviceDNA } from './pages/DeviceDNA';
 import { Timeline } from './pages/Timeline';
+import { RecoveryCenter } from './pages/RecoveryCenter';
 
 /**
  * Root application component.
@@ -18,6 +19,7 @@ export default function App() {
       {activeView === 'dashboard' && <Dashboard />}
       {activeView === 'device-dna' && <DeviceDNA />}
       {activeView === 'timeline' && <Timeline />}
+      {activeView === 'recovery-center' && <RecoveryCenter />}
     </AppShell>
   );
 }

@@ -8,7 +8,9 @@ pub mod collectors;
 pub mod commands;
 pub mod dna;
 pub mod error;
+pub mod installer;
 pub mod models;
+pub mod restore;
 pub mod storage;
 pub mod timeline;
 
@@ -51,7 +53,13 @@ pub fn run() {
             commands::device::get_snapshot,
             commands::device::get_software_inventory,
             commands::device::get_config_items,
-            commands::device::get_timeline_events
+            commands::device::get_timeline_events,
+            commands::restore::create_restore_plan,
+            commands::restore::get_restore_plans,
+            commands::restore::get_restore_plan_steps,
+            commands::restore::run_restore,
+            commands::restore::get_restore_jobs,
+            commands::restore::get_restore_step_results
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

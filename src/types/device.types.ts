@@ -75,3 +75,63 @@ export interface TimelineEvent {
   detail: string | null;
   occurredAt: string;
 }
+
+/**
+ * A restore plan generated from a snapshot's software inventory.
+ * `stepCount` is the number of install steps in this plan.
+ */
+export interface RestorePlan {
+  id: string;
+  deviceId: string;
+  snapshotId: string;
+  name: string;
+  createdAt: string;
+  stepCount: number;
+}
+
+/**
+ * A single step within a `RestorePlan`.
+ * `targetVersion` and `wingetId` are null when not available.
+ * `source` is the installer source (e.g. "winget").
+ */
+export interface RestorePlanStep {
+  id: string;
+  planId: string;
+  orderIndex: number;
+  softwareName: string;
+  targetVersion: string | null;
+  wingetId: string | null;
+  source: string;
+}
+
+/**
+ * A restore job that tracks execution of a `RestorePlan`.
+ * `status` ∈ running | completed | completed_with_errors | failed.
+ * `finishedAt` is null while the job is still running.
+ */
+export interface RestoreJob {
+  id: string;
+  planId: string;
+  deviceId: string;
+  status: string;
+  startedAt: string;
+  finishedAt: string | null;
+  totalSteps: number;
+  succeededCount: number;
+  failedCount: number;
+  skippedCount: number;
+}
+
+/**
+ * The result of a single step execution within a `RestoreJob`.
+ * `status` ∈ succeeded | failed | skipped.
+ * `message` is null for succeeded steps.
+ */
+export interface RestoreStepResult {
+  id: string;
+  jobId: string;
+  stepId: string;
+  softwareName: string;
+  status: string;
+  message: string | null;
+}

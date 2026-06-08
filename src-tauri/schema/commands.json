@@ -40,5 +40,41 @@
     "params": {},
     "returns": "TimelineEvent[]",
     "description": "Lists all Performance Timeline change events derived from diffing consecutive snapshots, ordered newest-first by occurred_at then category and title."
+  },
+  {
+    "name": "create_restore_plan",
+    "params": { "snapshotId": "string" },
+    "returns": "RestorePlan",
+    "description": "Generates a restore plan from a snapshot's software inventory (one step per item, ordered by name), persists it, and returns the new plan."
+  },
+  {
+    "name": "get_restore_plans",
+    "params": {},
+    "returns": "RestorePlan[]",
+    "description": "Lists all restore plans ordered newest-first by created_at."
+  },
+  {
+    "name": "get_restore_plan_steps",
+    "params": { "planId": "string" },
+    "returns": "RestorePlanStep[]",
+    "description": "Lists the steps of a restore plan, ordered by order_index ascending."
+  },
+  {
+    "name": "run_restore",
+    "params": { "planId": "string" },
+    "returns": "RestoreJob",
+    "description": "Executes a restore plan synchronously via the platform installer (real WinGet on Windows, mock elsewhere), persists the job and per-step results, and returns the finished job."
+  },
+  {
+    "name": "get_restore_jobs",
+    "params": {},
+    "returns": "RestoreJob[]",
+    "description": "Lists all restore jobs ordered newest-first by started_at."
+  },
+  {
+    "name": "get_restore_step_results",
+    "params": { "jobId": "string" },
+    "returns": "RestoreStepResult[]",
+    "description": "Lists the per-step results for a restore job."
   }
 ]
