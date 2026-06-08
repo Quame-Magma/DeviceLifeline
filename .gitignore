@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+dist-ssr/
+
+# Rust / Tauri
+target/
+src-tauri/target/
+src-tauri/gen/
+
+# Generated app icons (regenerated via scripts/generate-app-icon.py + `pnpm tauri icon`)
+/app-icon-source.png
+src-tauri/icons/
+
+# Env & secrets
+.env
+.env.local
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Test / coverage
+coverage/
+
+# Local SQLite dev artifacts
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
