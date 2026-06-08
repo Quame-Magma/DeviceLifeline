@@ -7,7 +7,7 @@
 
 use std::thread::sleep;
 
-use sysinfo::{Disks, MINIMUM_CPU_UPDATE_INTERVAL, System};
+use sysinfo::{Disks, System, MINIMUM_CPU_UPDATE_INTERVAL};
 
 /// A single raw resource reading, prior to scoring and persistence.
 #[derive(Clone, Debug)]
