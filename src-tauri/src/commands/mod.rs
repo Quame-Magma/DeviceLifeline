@@ -6,6 +6,7 @@
 
 pub mod crash;
 pub mod device;
+pub mod diagnosis;
 pub mod health;
 pub mod restore;
 pub mod setup;

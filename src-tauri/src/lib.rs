@@ -7,6 +7,7 @@
 pub mod collectors;
 pub mod commands;
 pub mod crash;
+pub mod diagnosis;
 pub mod dna;
 pub mod error;
 pub mod health;
@@ -89,7 +90,10 @@ pub fn run() {
             commands::crash::scan_crash_events,
             commands::crash::get_crash_events,
             commands::setup::export_setup,
-            commands::setup::import_setup
+            commands::setup::import_setup,
+            commands::diagnosis::run_diagnosis,
+            commands::diagnosis::get_diagnosis_sessions,
+            commands::diagnosis::get_diagnosis_findings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

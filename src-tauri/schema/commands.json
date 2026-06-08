@@ -130,5 +130,23 @@
     "params": { "bundleJson": "string" },
     "returns": "DeviceDnaSnapshot",
     "description": "Imports a setup bundle (verifying its checksum) as a new local snapshot, stamped with the local device and an 'import' source, and returns the created snapshot."
+  },
+  {
+    "name": "run_diagnosis",
+    "params": { "query": "string" },
+    "returns": "DiagnosisSession",
+    "description": "Runs a single-shot AI Detective diagnosis: assembles privacy-safe on-device context, runs the offline heuristic provider, persists the session + findings, and returns the session. Findings are fetched via get_diagnosis_findings."
+  },
+  {
+    "name": "get_diagnosis_sessions",
+    "params": {},
+    "returns": "DiagnosisSession[]",
+    "description": "Lists all diagnosis sessions ordered newest-first by created_at."
+  },
+  {
+    "name": "get_diagnosis_findings",
+    "params": { "sessionId": "string" },
+    "returns": "DiagnosisFinding[]",
+    "description": "Lists the findings for a diagnosis session, ordered by position."
   }
 ]

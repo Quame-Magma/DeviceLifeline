@@ -368,3 +368,72 @@ pub struct SetupBundle {
     /// SHA-256 (hex) of the serialized payload, for integrity verification.
     pub checksum: String,
 }
+
+/// The on-device context summary the AI Detective analyzes for a query. Holds
+/// only structured summaries (counts, scores, titles) — never raw file
+/// contents — and is shown verbatim to the user for transparency.
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DiagnosisContext {
+    /// Latest HealthScore (0–100), if a sample exists.
+    pub health_score: Option<i64>,
+    /// Latest CPU usage percentage, if a sample exists.
+    pub cpu_usage: Option<f64>,
+    /// Latest memory usage percentage, if a sample exists.
+    pub memory_pct: Option<f64>,
+    /// Latest primary-disk usage percentage, if a sample exists.
+    pub disk_pct: Option<f64>,
+    /// Kinds of currently-unacknowledged health alerts.
+    pub active_alert_kinds: Vec<String>,
+    /// Categories of recent crash events.
+    pub recent_crash_categories: Vec<String>,
+    /// Titles of recent timeline change events.
+    pub recent_change_titles: Vec<String>,
+    /// Software count from the most recent snapshot.
+    pub software_count: i64,
+}
+
+/// A single AI Detective finding: a likely cause with supporting evidence, a
+/// confidence score, and a suggested action.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DiagnosisFinding {
+    /// Stable unique identifier (UUID v4 string).
+    pub id: String,
+    /// Identifier of the owning [`DiagnosisSession`].
+    pub session_id: String,
+    /// Zero-based position of the finding within the session.
+    pub order_index: i64,
+    /// Plain-English summary of the finding.
+    pub title: String,
+    /// The likely cause.
+    pub cause: String,
+    /// Supporting evidence drawn from the device context.
+    pub evidence: String,
+    /// Confidence score in `0..=100`.
+    pub confidence: i64,
+    /// Recommended next step.
+    pub suggested_action: String,
+}
+
+/// A single-shot AI Detective diagnosis: the user's query, the analyzed
+/// [`DiagnosisContext`], a short summary, and the resulting findings (fetched
+/// separately by id).
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DiagnosisSession {
+    /// Stable unique identifier (UUID v4 string).
+    pub id: String,
+    /// Identifier of the [`Device`] the diagnosis was run on.
+    pub device_id: String,
+    /// The user's natural-language query.
+    pub query: String,
+    /// Creation timestamp, RFC3339 / UTC.
+    pub created_at: String,
+    /// Short plain-English summary of the outcome.
+    pub summary: String,
+    /// The on-device context that was analyzed.
+    pub context: DiagnosisContext,
+    /// Number of findings produced.
+    pub finding_count: i64,
+}

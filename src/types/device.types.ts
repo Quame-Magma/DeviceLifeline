@@ -203,3 +203,41 @@ export interface SetupBundle {
   config: ConfigItem[];
   checksum: string;
 }
+
+/**
+ * The on-device context the AI Detective analyzed for a query — structured
+ * summaries only (no raw file contents), shown to the user for transparency.
+ */
+export interface DiagnosisContext {
+  healthScore: number | null;
+  cpuUsage: number | null;
+  memoryPct: number | null;
+  diskPct: number | null;
+  activeAlertKinds: string[];
+  recentCrashCategories: string[];
+  recentChangeTitles: string[];
+  softwareCount: number;
+}
+
+/** A single AI Detective finding: a likely cause with evidence + action. */
+export interface DiagnosisFinding {
+  id: string;
+  sessionId: string;
+  orderIndex: number;
+  title: string;
+  cause: string;
+  evidence: string;
+  confidence: number;
+  suggestedAction: string;
+}
+
+/** A single-shot AI Detective diagnosis. Findings are fetched separately. */
+export interface DiagnosisSession {
+  id: string;
+  deviceId: string;
+  query: string;
+  createdAt: string;
+  summary: string;
+  context: DiagnosisContext;
+  findingCount: number;
+}

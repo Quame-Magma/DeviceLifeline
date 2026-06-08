@@ -7,6 +7,7 @@ pub mod alerts_repo;
 pub mod crash_repo;
 pub mod db;
 pub mod device_repo;
+pub mod diagnosis_repo;
 pub mod health_repo;
 pub mod restore_repo;
 pub mod timeline_repo;

@@ -7,6 +7,7 @@ import { Timeline } from './pages/Timeline';
 import { RecoveryCenter } from './pages/RecoveryCenter';
 import { Health } from './pages/Health';
 import { CrashIntelligence } from './pages/CrashIntelligence';
+import { AIDetective } from './pages/AIDetective';
 
 /**
  * Root application component.
@@ -24,6 +25,7 @@ export default function App() {
       {activeView === 'recovery-center' && <RecoveryCenter />}
       {activeView === 'health' && <Health />}
       {activeView === 'crash-intelligence' && <CrashIntelligence />}
+      {activeView === 'ai-detective' && <AIDetective />}
     </AppShell>
   );
 }

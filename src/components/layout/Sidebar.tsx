@@ -6,7 +6,8 @@ export type View =
   | 'timeline'
   | 'recovery-center'
   | 'health'
-  | 'crash-intelligence';
+  | 'crash-intelligence'
+  | 'ai-detective';
 
 interface NavItem {
   id: View;
@@ -21,6 +22,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'recovery-center', label: 'Recovery Center', icon: '↺' },
   { id: 'health', label: 'Health', icon: '♥' },
   { id: 'crash-intelligence', label: 'Crash Intelligence', icon: '⚠' },
+  { id: 'ai-detective', label: 'AI Detective', icon: '✦' },
 ];
 
 interface SidebarProps {
