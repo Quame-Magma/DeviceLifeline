@@ -5,7 +5,8 @@ export type View =
   | 'device-dna'
   | 'timeline'
   | 'recovery-center'
-  | 'health';
+  | 'health'
+  | 'crash-intelligence';
 
 interface NavItem {
   id: View;
@@ -19,6 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'timeline', label: 'Timeline', icon: '◷' },
   { id: 'recovery-center', label: 'Recovery Center', icon: '↺' },
   { id: 'health', label: 'Health', icon: '♥' },
+  { id: 'crash-intelligence', label: 'Crash Intelligence', icon: '⚠' },
 ];
 
 interface SidebarProps {

@@ -152,3 +152,21 @@ export interface HealthSample {
   diskUsed: number;
   healthScore: number;
 }
+
+/**
+ * A crash / stability event surfaced by Crash Intelligence, classified from an
+ * OS event-log entry. `category` ∈ bsod | app_crash | app_hang | kernel_power |
+ * unexpected_shutdown | unknown. `severity` ∈ critical | error | warning.
+ */
+export interface CrashEvent {
+  id: string;
+  deviceId: string;
+  occurredAt: string;
+  capturedAt: string;
+  category: string;
+  severity: string;
+  source: string;
+  title: string;
+  detail: string | null;
+  eventId: number | null;
+}

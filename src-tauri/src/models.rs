@@ -274,3 +274,47 @@ pub struct HealthSample {
     /// Derived health score in `0..=100`; higher is healthier.
     pub health_score: i64,
 }
+
+/// A crash / stability event surfaced by Crash Intelligence, classified from an
+/// OS event-log entry into a plain-English [`category`](Self::category),
+/// [`severity`](Self::severity), and [`title`](Self::title).
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct CrashEvent {
+    /// Stable unique identifier (UUID v4 string).
+    pub id: String,
+    /// Identifier of the [`Device`] this event was observed on.
+    pub device_id: String,
+    /// When the crash/event occurred, RFC3339 / UTC.
+    pub occurred_at: String,
+    /// When DeviceLifeline recorded the event, RFC3339 / UTC.
+    pub captured_at: String,
+    /// Classified category: `bsod`, `app_crash`, `app_hang`, `kernel_power`,
+    /// `unexpected_shutdown`, or `unknown`.
+    pub category: String,
+    /// Severity: `critical`, `error`, or `warning`.
+    pub severity: String,
+    /// Originating event provider name (e.g. `"Application Error"`), or
+    /// `"mock"` on non-Windows builds.
+    pub source: String,
+    /// Plain-English summary line.
+    pub title: String,
+    /// Plain-English detail / raw event message, if any.
+    pub detail: Option<String>,
+    /// Windows Event ID, when known.
+    pub event_id: Option<i64>,
+}
+
+/// Raw crash-collector output prior to classification and persistence. Not
+/// exposed over IPC.
+#[derive(Clone, Debug)]
+pub struct RawCrashEvent {
+    /// Event provider / source name (e.g. `"Application Error"`, `"BugCheck"`).
+    pub provider: String,
+    /// Windows Event ID, when known.
+    pub event_id: Option<i64>,
+    /// When the event occurred, RFC3339 / UTC.
+    pub occurred_at: String,
+    /// Raw event message, if any.
+    pub message: Option<String>,
+}

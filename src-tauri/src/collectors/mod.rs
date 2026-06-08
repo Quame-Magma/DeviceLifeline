@@ -6,10 +6,11 @@
 //! persistence and no business logic beyond normalization (see doc 48 §4.1).
 
 pub mod config;
+pub mod crash;
 pub mod software;
 
 use crate::error::CollectorError;
-use crate::models::{RawConfig, RawSoftware};
+use crate::models::{RawConfig, RawCrashEvent, RawSoftware};
 
 /// A source of installed-software inventory.
 pub trait SoftwareCollector: Send + Sync {
@@ -21,6 +22,12 @@ pub trait SoftwareCollector: Send + Sync {
 pub trait ConfigCollector: Send + Sync {
     /// Collects the current system-configuration items.
     fn collect(&self) -> Result<Vec<RawConfig>, CollectorError>;
+}
+
+/// A source of crash / stability events from the OS event log.
+pub trait CrashCollector: Send + Sync {
+    /// Collects recent crash / stability events.
+    fn collect(&self) -> Result<Vec<RawCrashEvent>, CollectorError>;
 }
 
 /// Returns the platform-appropriate [`SoftwareCollector`].
@@ -51,5 +58,21 @@ pub fn default_config_collector() -> Box<dyn ConfigCollector> {
     #[cfg(not(windows))]
     {
         Box::new(config::MockConfigCollector::new())
+    }
+}
+
+/// Returns the platform-appropriate [`CrashCollector`].
+///
+/// On Windows this reads the real Windows Event Log (BSOD, application crashes
+/// and hangs, unexpected shutdowns); on every other platform (and in unit
+/// tests) it returns deterministic mock data.
+pub fn default_crash_collector() -> Box<dyn CrashCollector> {
+    #[cfg(windows)]
+    {
+        Box::new(crash::WindowsCrashCollector::new())
+    }
+    #[cfg(not(windows))]
+    {
+        Box::new(crash::MockCrashCollector::new())
     }
 }

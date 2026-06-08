@@ -94,5 +94,17 @@
     "params": {},
     "returns": "HealthSample | null",
     "description": "Fetches the most recent health sample, or null if none have been recorded."
+  },
+  {
+    "name": "scan_crash_events",
+    "params": {},
+    "returns": "CrashEvent[]",
+    "description": "Scans the OS event log (Windows Event Viewer on Windows; mock elsewhere) for crash/stability events, classifies them into plain-English categories, persists any new ones idempotently, and returns the full list newest-first."
+  },
+  {
+    "name": "get_crash_events",
+    "params": {},
+    "returns": "CrashEvent[]",
+    "description": "Lists all recorded crash events ordered newest-first by occurred_at."
   }
 ]
