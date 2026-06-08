@@ -8,6 +8,7 @@ pub mod collectors;
 pub mod commands;
 pub mod dna;
 pub mod error;
+pub mod health;
 pub mod installer;
 pub mod models;
 pub mod restore;
@@ -59,7 +60,10 @@ pub fn run() {
             commands::restore::get_restore_plan_steps,
             commands::restore::run_restore,
             commands::restore::get_restore_jobs,
-            commands::restore::get_restore_step_results
+            commands::restore::get_restore_step_results,
+            commands::health::collect_health_sample,
+            commands::health::get_health_samples,
+            commands::health::get_latest_health_sample
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

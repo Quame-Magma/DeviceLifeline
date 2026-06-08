@@ -5,6 +5,7 @@ import { Dashboard } from './pages/Dashboard';
 import { DeviceDNA } from './pages/DeviceDNA';
 import { Timeline } from './pages/Timeline';
 import { RecoveryCenter } from './pages/RecoveryCenter';
+import { Health } from './pages/Health';
 
 /**
  * Root application component.
@@ -20,6 +21,7 @@ export default function App() {
       {activeView === 'device-dna' && <DeviceDNA />}
       {activeView === 'timeline' && <Timeline />}
       {activeView === 'recovery-center' && <RecoveryCenter />}
+      {activeView === 'health' && <Health />}
     </AppShell>
   );
 }

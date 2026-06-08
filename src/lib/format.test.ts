@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { shortId, formatTimestamp } from './format';
+import {
+  shortId,
+  formatTimestamp,
+  formatBytes,
+  formatPercent,
+} from './format';
 
 describe('shortId', () => {
   it('returns the first 8 characters of a UUID', () => {
@@ -37,5 +42,42 @@ describe('formatTimestamp', () => {
 
   it('handles a UTC-midnight timestamp without throwing', () => {
     expect(() => formatTimestamp('2026-01-01T00:00:00.000Z')).not.toThrow();
+  });
+});
+
+describe('formatBytes', () => {
+  it('returns "0 B" for zero', () => {
+    expect(formatBytes(0)).toBe('0 B');
+  });
+
+  it('returns "0 B" for negative or non-finite input', () => {
+    expect(formatBytes(-100)).toBe('0 B');
+    expect(formatBytes(Number.NaN)).toBe('0 B');
+  });
+
+  it('formats whole bytes without a decimal', () => {
+    expect(formatBytes(512)).toBe('512 B');
+  });
+
+  it('formats kilobytes with one decimal', () => {
+    expect(formatBytes(1024)).toBe('1.0 KB');
+    expect(formatBytes(1536)).toBe('1.5 KB');
+  });
+
+  it('formats megabytes and gigabytes', () => {
+    expect(formatBytes(1024 ** 2)).toBe('1.0 MB');
+    expect(formatBytes(16106127360)).toBe('15.0 GB');
+  });
+});
+
+describe('formatPercent', () => {
+  it('rounds to a whole percent', () => {
+    expect(formatPercent(42.7)).toBe('43%');
+    expect(formatPercent(0)).toBe('0%');
+  });
+
+  it('clamps out-of-range values to 0–100', () => {
+    expect(formatPercent(150)).toBe('100%');
+    expect(formatPercent(-10)).toBe('0%');
   });
 });

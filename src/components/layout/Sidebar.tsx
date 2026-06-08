@@ -1,6 +1,11 @@
 import { APP_NAME } from '../../lib/constants';
 
-export type View = 'dashboard' | 'device-dna' | 'timeline' | 'recovery-center';
+export type View =
+  | 'dashboard'
+  | 'device-dna'
+  | 'timeline'
+  | 'recovery-center'
+  | 'health';
 
 interface NavItem {
   id: View;
@@ -13,6 +18,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'device-dna', label: 'Device DNA', icon: '◉' },
   { id: 'timeline', label: 'Timeline', icon: '◷' },
   { id: 'recovery-center', label: 'Recovery Center', icon: '↺' },
+  { id: 'health', label: 'Health', icon: '♥' },
 ];
 
 interface SidebarProps {

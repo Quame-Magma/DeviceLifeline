@@ -76,5 +76,23 @@
     "params": { "jobId": "string" },
     "returns": "RestoreStepResult[]",
     "description": "Lists the per-step results for a restore job."
+  },
+  {
+    "name": "collect_health_sample",
+    "params": {},
+    "returns": "HealthSample",
+    "description": "Samples current CPU, memory, and disk usage for the local device, computes a 0-100 HealthScore, persists the sample to SQLite, and returns it."
+  },
+  {
+    "name": "get_health_samples",
+    "params": {},
+    "returns": "HealthSample[]",
+    "description": "Lists all health samples ordered newest-first by captured_at."
+  },
+  {
+    "name": "get_latest_health_sample",
+    "params": {},
+    "returns": "HealthSample | null",
+    "description": "Fetches the most recent health sample, or null if none have been recorded."
   }
 ]

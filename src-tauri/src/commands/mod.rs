@@ -5,4 +5,5 @@
 //! logic and no direct SQL (see doc 48 §4.1, AC-FS-03).
 
 pub mod device;
+pub mod health;
 pub mod restore;

@@ -31,3 +31,37 @@ export function formatTimestamp(iso: string): string {
     return iso;
   }
 }
+
+/**
+ * Formats a byte count into a human-readable string using binary units
+ * (powers of 1024). Whole bytes show no decimal; larger units show one decimal
+ * place. Returns '0 B' for zero, negative, or non-finite input.
+ *
+ * @example formatBytes(512) // '512 B'
+ * @example formatBytes(1024) // '1.0 KB'
+ * @example formatBytes(16106127360) // '15.0 GB'
+ */
+export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return '0 B';
+  }
+  const units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+  const exponent = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1,
+  );
+  const value = bytes / 1024 ** exponent;
+  const formatted = exponent === 0 ? String(value) : value.toFixed(1);
+  return `${formatted} ${units[exponent]}`;
+}
+
+/**
+ * Formats a percentage (0–100) with no decimal places, clamped to 0–100.
+ *
+ * @example formatPercent(42.7) // '43%'
+ * @example formatPercent(150) // '100%'
+ */
+export function formatPercent(pct: number): string {
+  const clamped = Math.min(Math.max(pct, 0), 100);
+  return `${Math.round(clamped)}%`;
+}

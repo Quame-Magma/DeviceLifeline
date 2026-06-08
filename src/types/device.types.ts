@@ -135,3 +135,20 @@ export interface RestoreStepResult {
   status: string;
   message: string | null;
 }
+
+/**
+ * A point-in-time on-device health reading: CPU, memory, and disk usage at
+ * `capturedAt`, plus a derived 0–100 `healthScore` (higher is healthier).
+ * `cpuUsage` is a percentage (0–100); memory/disk fields are byte counts.
+ */
+export interface HealthSample {
+  id: string;
+  deviceId: string;
+  capturedAt: string;
+  cpuUsage: number;
+  memoryTotal: number;
+  memoryUsed: number;
+  diskTotal: number;
+  diskUsed: number;
+  healthScore: number;
+}

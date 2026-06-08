@@ -248,3 +248,29 @@ pub struct RawConfig {
     /// Origin of the entry (`"registry"` or `"mock"`).
     pub source: String,
 }
+
+/// A point-in-time on-device health reading captured by the Health Intelligence
+/// sampler: CPU, memory, and disk usage at `captured_at`, plus a derived
+/// `0..=100` [`health_score`](Self::health_score) where higher is healthier.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct HealthSample {
+    /// Stable unique identifier (UUID v4 string).
+    pub id: String,
+    /// Identifier of the [`Device`] this sample was taken on.
+    pub device_id: String,
+    /// Capture timestamp, RFC3339 / UTC.
+    pub captured_at: String,
+    /// Overall CPU usage at capture time, as a percentage in `0.0..=100.0`.
+    pub cpu_usage: f64,
+    /// Total physical memory, in bytes.
+    pub memory_total: i64,
+    /// Used physical memory, in bytes.
+    pub memory_used: i64,
+    /// Total space of the primary disk, in bytes (`0` if none was found).
+    pub disk_total: i64,
+    /// Used space of the primary disk, in bytes.
+    pub disk_used: i64,
+    /// Derived health score in `0..=100`; higher is healthier.
+    pub health_score: i64,
+}
