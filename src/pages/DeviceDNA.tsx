@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDeviceDna } from '../hooks/use-device-dna';
 import { Button } from '../components/common/Button';
 import { Spinner } from '../components/common/Spinner';
@@ -6,11 +6,15 @@ import { EmptyState } from '../components/common/EmptyState';
 import { Card } from '../components/common/Card';
 import { SnapshotList } from '../components/device/SnapshotList';
 import { SoftwareInventoryTable } from '../components/device/SoftwareInventoryTable';
+import { ConfigItemsTable } from '../components/device/ConfigItemsTable';
+
+type DetailTab = 'software' | 'config';
 
 /**
- * Device DNA page — vertical slice for Increment 1.
+ * Device DNA page — vertical slice for Increment 2.
  *
- * Layout: header with Capture button | left snapshot list | right inventory table.
+ * Layout: header with Capture button | left snapshot list | right detail pane.
+ * The detail pane has a Software / System configuration tab toggle.
  * All data access goes through `useDeviceDna`; no direct `invoke` calls here.
  */
 export function DeviceDNA() {
@@ -20,12 +24,16 @@ export function DeviceDNA() {
     inventory,
     loadingSnapshots,
     loadingInventory,
+    configItems,
+    loadingConfig,
     capturing,
     error,
     loadSnapshots,
     capture,
     selectSnapshot,
   } = useDeviceDna();
+
+  const [activeTab, setActiveTab] = useState<DetailTab>('software');
 
   // Load snapshots on mount.
   useEffect(() => {
@@ -37,6 +45,14 @@ export function DeviceDNA() {
     void capture();
   };
 
+  // Resolve counts from the selected snapshot record (authoritative source).
+  const selectedSnapshot = snapshots.find((s) => s.id === selectedSnapshotId);
+  const softwareCount = selectedSnapshot?.softwareCount ?? inventory.length;
+  const configCount = selectedSnapshot?.configCount ?? configItems.length;
+
+  const isDetailLoading =
+    activeTab === 'software' ? loadingInventory : loadingConfig;
+
   return (
     <div className="flex flex-col h-full">
       {/* Page header */}
@@ -46,7 +62,8 @@ export function DeviceDNA() {
             Device DNA
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">
-            Point-in-time snapshots of your installed software.
+            Point-in-time snapshots of your installed software and system
+            configuration.
           </p>
         </div>
         <Button
@@ -113,25 +130,28 @@ export function DeviceDNA() {
           )}
         </aside>
 
-        {/* Right: Software inventory panel */}
+        {/* Right: Detail pane */}
         <section className="flex-1 flex flex-col overflow-hidden">
           {selectedSnapshotId === null && !loadingSnapshots ? (
             <div className="flex flex-1 items-center justify-center">
               <EmptyState
                 heading="No snapshot selected"
-                body="Select a snapshot from the list to view its software inventory."
+                body="Select a snapshot from the list to view its details."
               />
             </div>
-          ) : loadingInventory ? (
+          ) : isDetailLoading ? (
             <div className="flex flex-1 items-center justify-center gap-3">
-              <Spinner label="Loading inventory…" />
+              <Spinner label="Loading…" />
               <p className="text-sm text-text-secondary">
-                Loading software inventory…
+                {activeTab === 'software'
+                  ? 'Loading software inventory…'
+                  : 'Loading system configuration…'}
               </p>
             </div>
           ) : (
             <div className="flex flex-col flex-1 overflow-hidden pt-3">
-              <div className="px-4 pb-2 flex-shrink-0">
+              {/* Snapshot info + tab toggle */}
+              <div className="px-4 pb-2 flex-shrink-0 flex items-center gap-3 flex-wrap">
                 <Card padding="sm" className="inline-flex items-center gap-2">
                   <span className="text-xs text-text-secondary font-medium">
                     Snapshot
@@ -141,12 +161,60 @@ export function DeviceDNA() {
                   </span>
                   <span className="text-text-muted">·</span>
                   <span className="text-xs text-text-secondary">
-                    {inventory.length} items
+                    {softwareCount} apps
+                  </span>
+                  <span className="text-text-muted">·</span>
+                  <span className="text-xs text-text-secondary">
+                    {configCount} config
                   </span>
                 </Card>
+
+                {/* Tab toggle */}
+                <div
+                  className="inline-flex rounded border border-surface-border bg-surface overflow-hidden"
+                  role="tablist"
+                  aria-label="Detail view"
+                >
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'software'}
+                    onClick={() => setActiveTab('software')}
+                    className={[
+                      'px-3 py-1.5 text-xs font-medium transition-colors duration-100',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
+                      activeTab === 'software'
+                        ? 'bg-accent text-white'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-surface-border',
+                    ].join(' ')}
+                  >
+                    Software
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'config'}
+                    onClick={() => setActiveTab('config')}
+                    className={[
+                      'px-3 py-1.5 text-xs font-medium transition-colors duration-100 border-l border-surface-border',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent',
+                      activeTab === 'config'
+                        ? 'bg-accent text-white'
+                        : 'text-text-secondary hover:text-text-primary hover:bg-surface-border',
+                    ].join(' ')}
+                  >
+                    System configuration
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 overflow-hidden">
-                <SoftwareInventoryTable items={inventory} />
+
+              {/* Tab content */}
+              <div className="flex-1 overflow-hidden" role="tabpanel">
+                {activeTab === 'software' ? (
+                  <SoftwareInventoryTable items={inventory} />
+                ) : (
+                  <ConfigItemsTable items={configItems} />
+                )}
               </div>
             </div>
           )}

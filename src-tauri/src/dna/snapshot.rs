@@ -2,9 +2,11 @@
 
 use rusqlite::Connection;
 
-use crate::collectors::{default_software_collector, SoftwareCollector};
+use crate::collectors::{
+    default_config_collector, default_software_collector, ConfigCollector, SoftwareCollector,
+};
 use crate::error::CoreError;
-use crate::models::{DeviceDnaSnapshot, RawSoftware, SoftwareInventoryItem};
+use crate::models::{ConfigItem, DeviceDnaSnapshot, RawConfig, RawSoftware, SoftwareInventoryItem};
 use crate::storage::device_repo;
 
 /// Schema version stamped onto snapshots produced by this increment.
@@ -19,20 +21,27 @@ pub fn now_rfc3339() -> Result<String, CoreError> {
         .map_err(|err| CoreError::Internal(format!("timestamp formatting failed: {err}")))
 }
 
-/// Captures an installed-software snapshot using the platform default collector,
-/// persists it, and returns the new [`DeviceDnaSnapshot`].
-pub fn capture_software_snapshot(conn: &mut Connection) -> Result<DeviceDnaSnapshot, CoreError> {
-    capture_with_collector(conn, default_software_collector().as_ref())
+/// Captures a Device DNA snapshot (software AND system configuration) using the
+/// platform default collectors, persists it, and returns the new
+/// [`DeviceDnaSnapshot`].
+pub fn capture_snapshot(conn: &mut Connection) -> Result<DeviceDnaSnapshot, CoreError> {
+    capture_with_collectors(
+        conn,
+        default_software_collector().as_ref(),
+        default_config_collector().as_ref(),
+    )
 }
 
-/// Captures a snapshot using the supplied collector. Splitting this out lets
-/// tests inject the mock collector deterministically on any platform.
-fn capture_with_collector(
+/// Captures a snapshot using the supplied collectors. Splitting this out lets
+/// tests inject the mock collectors deterministically on any platform.
+fn capture_with_collectors(
     conn: &mut Connection,
-    collector: &dyn SoftwareCollector,
+    software: &dyn SoftwareCollector,
+    config: &dyn ConfigCollector,
 ) -> Result<DeviceDnaSnapshot, CoreError> {
     let device = device_repo::ensure_local_device(conn)?;
-    let raw = collector.collect()?;
+    let raw_software = software.collect()?;
+    let raw_config = config.collect()?;
 
     let snapshot = DeviceDnaSnapshot {
         id: uuid::Uuid::new_v4().to_string(),
@@ -40,15 +49,20 @@ fn capture_with_collector(
         captured_at: now_rfc3339()?,
         schema_version: SCHEMA_VERSION,
         source: SNAPSHOT_SOURCE.to_string(),
-        software_count: raw.len() as i64,
+        software_count: raw_software.len() as i64,
+        config_count: raw_config.len() as i64,
     };
 
-    let items: Vec<SoftwareInventoryItem> = raw
+    let software_items: Vec<SoftwareInventoryItem> = raw_software
         .into_iter()
         .map(|sw| raw_to_item(&snapshot.id, sw))
         .collect();
+    let config_items: Vec<ConfigItem> = raw_config
+        .into_iter()
+        .map(|cfg| raw_to_config(&snapshot.id, cfg))
+        .collect();
 
-    device_repo::insert_snapshot(conn, &snapshot, &items)?;
+    device_repo::insert_snapshot(conn, &snapshot, &software_items, &config_items)?;
     Ok(snapshot)
 }
 
@@ -67,10 +81,27 @@ fn raw_to_item(snapshot_id: &str, raw: RawSoftware) -> SoftwareInventoryItem {
     }
 }
 
+/// Converts a collector [`RawConfig`] into a persistable [`ConfigItem`] linked
+/// to `snapshot_id`.
+fn raw_to_config(snapshot_id: &str, raw: RawConfig) -> ConfigItem {
+    ConfigItem {
+        id: uuid::Uuid::new_v4().to_string(),
+        snapshot_id: snapshot_id.to_string(),
+        kind: raw.kind,
+        name: raw.name,
+        status: raw.status,
+        path: raw.path,
+        publisher: raw.publisher,
+        source: raw.source,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::collectors::config::MockConfigCollector;
     use crate::collectors::software::MockSoftwareCollector;
+    use crate::collectors::ConfigCollector as _;
     use crate::storage::{db, device_repo};
 
     fn memory_db() -> Connection {
@@ -84,11 +115,15 @@ mod tests {
     #[test]
     fn capture_persists_snapshot_and_items() {
         let mut conn = memory_db();
-        let collector = MockSoftwareCollector::new();
+        let software = MockSoftwareCollector::new();
+        let config = MockConfigCollector::new();
+        let expected_config = config.collect().expect("mock config").len() as i64;
 
-        let snapshot = capture_with_collector(&mut conn, &collector).expect("capture snapshot");
+        let snapshot =
+            capture_with_collectors(&mut conn, &software, &config).expect("capture snapshot");
 
         assert_eq!(snapshot.software_count, 6);
+        assert_eq!(snapshot.config_count, expected_config);
         assert_eq!(snapshot.schema_version, SCHEMA_VERSION);
         assert_eq!(snapshot.source, SNAPSHOT_SOURCE);
 
@@ -96,10 +131,16 @@ mod tests {
             .expect("get snapshot")
             .expect("snapshot exists");
         assert_eq!(persisted.software_count, 6);
+        assert_eq!(persisted.config_count, expected_config);
 
         let items = device_repo::list_software(&conn, &snapshot.id).expect("list software");
         assert_eq!(items.len(), 6);
         assert!(items.iter().all(|item| item.snapshot_id == snapshot.id));
         assert!(items.iter().all(|item| item.source == "mock"));
+
+        let config_rows = device_repo::list_config(&conn, &snapshot.id).expect("list config");
+        assert_eq!(config_rows.len() as i64, expected_config);
+        assert!(config_rows.iter().all(|item| item.snapshot_id == snapshot.id));
+        assert!(config_rows.iter().all(|item| item.source == "mock"));
     }
 }

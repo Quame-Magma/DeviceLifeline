@@ -9,18 +9,18 @@ use tauri::State;
 
 use crate::dna::snapshot;
 use crate::error::CoreError;
-use crate::models::{Device, DeviceDnaSnapshot, SoftwareInventoryItem};
+use crate::models::{ConfigItem, Device, DeviceDnaSnapshot, SoftwareInventoryItem};
 use crate::storage::device_repo;
 use crate::AppState;
 
-/// Captures a new software DNA snapshot, persists it, and returns it.
+/// Captures a new Device DNA snapshot, persists it, and returns it.
 #[tauri::command]
 pub fn collect_dna_snapshot(state: State<'_, AppState>) -> Result<DeviceDnaSnapshot, CoreError> {
     let mut conn = state
         .db
         .lock()
         .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
-    snapshot::capture_software_snapshot(&mut conn)
+    snapshot::capture_snapshot(&mut conn)
 }
 
 /// Returns all known devices.
@@ -67,4 +67,17 @@ pub fn get_software_inventory(
         .lock()
         .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
     device_repo::list_software(&conn, &snapshot_id)
+}
+
+/// Returns the system-configuration items for a snapshot, ordered by kind then name.
+#[tauri::command]
+pub fn get_config_items(
+    state: State<'_, AppState>,
+    snapshot_id: String,
+) -> Result<Vec<ConfigItem>, CoreError> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    device_repo::list_config(&conn, &snapshot_id)
 }

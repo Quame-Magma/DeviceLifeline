@@ -48,23 +48,12 @@ export function SnapshotList({
                 <span className="font-mono text-xs font-semibold text-text-primary">
                   #{shortId(snap.id)}
                 </span>
-                <span
-                  className={[
-                    'inline-flex items-center rounded-full px-1.5 py-0.5 text-2xs font-medium',
-                    isSelected
-                      ? 'bg-accent text-white'
-                      : 'bg-surface-border text-text-secondary',
-                  ].join(' ')}
-                  title={`${snap.softwareCount} software items`}
-                >
-                  {snap.softwareCount}
-                </span>
               </div>
               <p className="mt-1 text-xs text-text-muted leading-tight">
                 {formatTimestamp(snap.capturedAt)}
               </p>
               <p className="mt-0.5 text-2xs text-text-muted/70">
-                {snap.source}
+                {snap.softwareCount} apps · {snap.configCount} config
               </p>
             </button>
           </li>

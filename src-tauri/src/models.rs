@@ -1,10 +1,11 @@
 //! Domain model structs shared across the Rust Core and serialized to the UI.
 //!
-//! The three UI-exposed structs ([`Device`], [`DeviceDnaSnapshot`],
-//! [`SoftwareInventoryItem`]) use `#[serde(rename_all = "camelCase")]` so the
-//! JSON the React frontend receives matches the TypeScript interfaces in the
-//! implementation contract. [`RawSoftware`] is the collector's pre-persistence
-//! output and is never exposed to the UI.
+//! The UI-exposed structs ([`Device`], [`DeviceDnaSnapshot`],
+//! [`SoftwareInventoryItem`], [`ConfigItem`]) use
+//! `#[serde(rename_all = "camelCase")]` so the JSON the React frontend receives
+//! matches the TypeScript interfaces in the implementation contract.
+//! [`RawSoftware`] and [`RawConfig`] are the collectors' pre-persistence
+//! outputs and are never exposed to the UI.
 
 use serde::{Deserialize, Serialize};
 
@@ -41,6 +42,8 @@ pub struct DeviceDnaSnapshot {
     pub source: String,
     /// Number of software inventory items captured in this snapshot.
     pub software_count: i64,
+    /// Number of system-configuration items captured in this snapshot.
+    pub config_count: i64,
 }
 
 /// One installed-software entry belonging to a [`DeviceDnaSnapshot`].
@@ -78,6 +81,46 @@ pub struct RawSoftware {
     pub install_date: Option<String>,
     /// Filesystem install location, if known.
     pub install_location: Option<String>,
+    /// Origin of the entry (`"registry"` or `"mock"`).
+    pub source: String,
+}
+
+/// One system-configuration entry (startup item, service, or scheduled task)
+/// belonging to a [`DeviceDnaSnapshot`].
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfigItem {
+    /// Stable unique identifier (UUID v4 string).
+    pub id: String,
+    /// Identifier of the owning [`DeviceDnaSnapshot`].
+    pub snapshot_id: String,
+    /// Category of the entry: `"startup"`, `"service"`, or `"scheduled_task"`.
+    pub kind: String,
+    /// Display name of the entry.
+    pub name: String,
+    /// Status text, if applicable (e.g., service start mode).
+    pub status: Option<String>,
+    /// Filesystem or command path, if known.
+    pub path: Option<String>,
+    /// Publisher / vendor, if known.
+    pub publisher: Option<String>,
+    /// Origin of the entry (`"registry"` or `"mock"`).
+    pub source: String,
+}
+
+/// Raw config collector output prior to persistence. Not exposed over IPC.
+#[derive(Clone, Debug)]
+pub struct RawConfig {
+    /// Category of the entry: `"startup"`, `"service"`, or `"scheduled_task"`.
+    pub kind: String,
+    /// Display name of the entry.
+    pub name: String,
+    /// Status text, if applicable (e.g., service start mode).
+    pub status: Option<String>,
+    /// Filesystem or command path, if known.
+    pub path: Option<String>,
+    /// Publisher / vendor, if known.
+    pub publisher: Option<String>,
     /// Origin of the entry (`"registry"` or `"mock"`).
     pub source: String,
 }

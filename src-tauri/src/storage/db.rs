@@ -16,10 +16,16 @@ use crate::error::CoreError;
 ///
 /// The index of each entry is its version number; after applying entry `i`,
 /// `PRAGMA user_version` is set to `i + 1`.
-const MIGRATIONS: &[(&str, &str)] = &[(
-    "0001_init_device_dna",
-    include_str!("../../migrations/0001_init_device_dna.sql"),
-)];
+const MIGRATIONS: &[(&str, &str)] = &[
+    (
+        "0001_init_device_dna",
+        include_str!("../../migrations/0001_init_device_dna.sql"),
+    ),
+    (
+        "0002_add_system_config",
+        include_str!("../../migrations/0002_add_system_config.sql"),
+    ),
+];
 
 /// Opens (creating if necessary) the SQLite database at `path`, enables
 /// foreign-key enforcement, and runs all pending migrations.
@@ -83,6 +89,7 @@ mod tests {
         assert!(table_exists(&conn, "devices"));
         assert!(table_exists(&conn, "device_dna_snapshots"));
         assert!(table_exists(&conn, "software_inventory_items"));
+        assert!(table_exists(&conn, "config_items"));
 
         let version: i64 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))

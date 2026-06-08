@@ -10,6 +10,7 @@ import {
   collectDnaSnapshot,
   getSnapshots,
   getSoftwareInventory,
+  getConfigItems,
 } from '../api/tauri/device';
 import { useDeviceStore, type DeviceStore } from '../store/device.store';
 
@@ -19,13 +20,15 @@ export interface UseDeviceDnaReturn {
   inventory: DeviceStore['inventory'];
   loadingSnapshots: DeviceStore['loadingSnapshots'];
   loadingInventory: DeviceStore['loadingInventory'];
+  configItems: DeviceStore['configItems'];
+  loadingConfig: DeviceStore['loadingConfig'];
   capturing: DeviceStore['capturing'];
   error: DeviceStore['error'];
   /** Load (or reload) the list of snapshots. Auto-selects the first if none selected. */
   loadSnapshots: () => Promise<void>;
   /** Trigger a new snapshot capture, reload the list, and auto-select the newest. */
   capture: () => Promise<void>;
-  /** Select a snapshot by ID and load its software inventory. */
+  /** Select a snapshot by ID and load its software inventory and config items. */
   selectSnapshot: (id: string) => Promise<void>;
 }
 
@@ -36,6 +39,8 @@ export function useDeviceDna(): UseDeviceDnaReturn {
     inventory,
     loadingSnapshots,
     loadingInventory,
+    configItems,
+    loadingConfig,
     capturing,
     error,
     setSnapshots,
@@ -43,6 +48,8 @@ export function useDeviceDna(): UseDeviceDnaReturn {
     setInventory,
     setLoadingSnapshots,
     setLoadingInventory,
+    setConfigItems,
+    setLoadingConfig,
     setCapturing,
     setError,
   } = useDeviceStore();
@@ -70,6 +77,21 @@ export function useDeviceDna(): UseDeviceDnaReturn {
     [setError, setInventory, setLoadingInventory],
   );
 
+  const loadConfigForId = useCallback(
+    async (snapshotId: string) => {
+      setLoadingConfig(true);
+      try {
+        const items = await getConfigItems(snapshotId);
+        setConfigItems(items);
+      } catch {
+        setConfigItems([]);
+      } finally {
+        setLoadingConfig(false);
+      }
+    },
+    [setConfigItems, setLoadingConfig],
+  );
+
   const loadSnapshots = useCallback(async () => {
     setLoadingSnapshots(true);
     setError(null);
@@ -82,10 +104,14 @@ export function useDeviceDna(): UseDeviceDnaReturn {
       if (fetched.length > 0 && currentId === null) {
         const newestId = fetched[0].id;
         setSelectedSnapshotId(newestId);
-        await loadInventoryForId(newestId);
+        await Promise.all([
+          loadInventoryForId(newestId),
+          loadConfigForId(newestId),
+        ]);
       } else if (fetched.length === 0) {
         setSelectedSnapshotId(null);
         setInventory([]);
+        setConfigItems([]);
       }
     } catch (err) {
       setError(
@@ -101,8 +127,10 @@ export function useDeviceDna(): UseDeviceDnaReturn {
     }
   }, [
     loadInventoryForId,
+    loadConfigForId,
     setError,
     setInventory,
+    setConfigItems,
     setLoadingSnapshots,
     setSelectedSnapshotId,
     setSnapshots,
@@ -119,7 +147,10 @@ export function useDeviceDna(): UseDeviceDnaReturn {
       if (fetched.length > 0) {
         const newestId = fetched[0].id;
         setSelectedSnapshotId(newestId);
-        await loadInventoryForId(newestId);
+        await Promise.all([
+          loadInventoryForId(newestId),
+          loadConfigForId(newestId),
+        ]);
       }
     } catch (err) {
       setError(
@@ -134,6 +165,7 @@ export function useDeviceDna(): UseDeviceDnaReturn {
     }
   }, [
     loadInventoryForId,
+    loadConfigForId,
     setCapturing,
     setError,
     setSelectedSnapshotId,
@@ -143,9 +175,9 @@ export function useDeviceDna(): UseDeviceDnaReturn {
   const selectSnapshot = useCallback(
     async (id: string) => {
       setSelectedSnapshotId(id);
-      await loadInventoryForId(id);
+      await Promise.all([loadInventoryForId(id), loadConfigForId(id)]);
     },
-    [loadInventoryForId, setSelectedSnapshotId],
+    [loadInventoryForId, loadConfigForId, setSelectedSnapshotId],
   );
 
   return {
@@ -154,6 +186,8 @@ export function useDeviceDna(): UseDeviceDnaReturn {
     inventory,
     loadingSnapshots,
     loadingInventory,
+    configItems,
+    loadingConfig,
     capturing,
     error,
     loadSnapshots,

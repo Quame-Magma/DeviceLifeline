@@ -28,5 +28,11 @@
     "params": { "snapshotId": "string" },
     "returns": "SoftwareInventoryItem[]",
     "description": "Lists the software inventory items for a given snapshot, ordered by name."
+  },
+  {
+    "name": "get_config_items",
+    "params": { "snapshotId": "string" },
+    "returns": "ConfigItem[]",
+    "description": "Lists the system-configuration items (startup, services, scheduled tasks) for a given snapshot, ordered by kind then name."
   }
 ]

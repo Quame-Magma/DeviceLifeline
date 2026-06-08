@@ -48,7 +48,8 @@ pub fn run() {
             commands::device::get_devices,
             commands::device::get_snapshots,
             commands::device::get_snapshot,
-            commands::device::get_software_inventory
+            commands::device::get_software_inventory,
+            commands::device::get_config_items
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

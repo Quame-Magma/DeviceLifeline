@@ -9,6 +9,7 @@ import { create } from 'zustand';
 import type {
   DeviceDnaSnapshot,
   SoftwareInventoryItem,
+  ConfigItem,
 } from '../types/device.types';
 
 export interface DeviceStore {
@@ -22,6 +23,10 @@ export interface DeviceStore {
   loadingSnapshots: boolean;
   /** True while fetching the software inventory. */
   loadingInventory: boolean;
+  /** System-configuration items for the selected snapshot. */
+  configItems: ConfigItem[];
+  /** True while fetching the system-configuration items. */
+  loadingConfig: boolean;
   /** True while a capture operation is in progress. */
   capturing: boolean;
   /** Error message from the most recent failed operation, or null. */
@@ -33,6 +38,8 @@ export interface DeviceStore {
   setInventory: (inventory: SoftwareInventoryItem[]) => void;
   setLoadingSnapshots: (loading: boolean) => void;
   setLoadingInventory: (loading: boolean) => void;
+  setConfigItems: (configItems: ConfigItem[]) => void;
+  setLoadingConfig: (loading: boolean) => void;
   setCapturing: (capturing: boolean) => void;
   setError: (error: string | null) => void;
 }
@@ -43,6 +50,8 @@ export const useDeviceStore = create<DeviceStore>((set) => ({
   inventory: [],
   loadingSnapshots: false,
   loadingInventory: false,
+  configItems: [],
+  loadingConfig: false,
   capturing: false,
   error: null,
 
@@ -51,6 +60,8 @@ export const useDeviceStore = create<DeviceStore>((set) => ({
   setInventory: (inventory) => set({ inventory }),
   setLoadingSnapshots: (loading) => set({ loadingSnapshots: loading }),
   setLoadingInventory: (loading) => set({ loadingInventory: loading }),
+  setConfigItems: (configItems) => set({ configItems }),
+  setLoadingConfig: (loading) => set({ loadingConfig: loading }),
   setCapturing: (capturing) => set({ capturing }),
   setError: (error) => set({ error }),
 }));

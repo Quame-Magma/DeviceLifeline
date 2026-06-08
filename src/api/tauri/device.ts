@@ -13,6 +13,7 @@ import type {
   Device,
   DeviceDnaSnapshot,
   SoftwareInventoryItem,
+  ConfigItem,
 } from '../../types/device.types';
 
 /** Trigger a new software inventory capture and persist it as a snapshot. */
@@ -40,3 +41,9 @@ export const getSoftwareInventory = (
   snapshotId: string,
 ): Promise<SoftwareInventoryItem[]> =>
   invoke<SoftwareInventoryItem[]>('get_software_inventory', { snapshotId });
+
+/**
+ * Retrieve system-configuration items for a snapshot, ordered by kind then name.
+ */
+export const getConfigItems = (snapshotId: string): Promise<ConfigItem[]> =>
+  invoke<ConfigItem[]>('get_config_items', { snapshotId });

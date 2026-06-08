@@ -1,5 +1,5 @@
-//! Repository functions for [`Device`], [`DeviceDnaSnapshot`], and
-//! [`SoftwareInventoryItem`].
+//! Repository functions for [`Device`], [`DeviceDnaSnapshot`],
+//! [`SoftwareInventoryItem`], and [`ConfigItem`].
 //!
 //! All SQLite access for the Device DNA slice lives here. Functions accept a
 //! `&mut rusqlite::Connection` where a transaction is required and `&Connection`
@@ -8,7 +8,7 @@
 use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::error::CoreError;
-use crate::models::{Device, DeviceDnaSnapshot, SoftwareInventoryItem};
+use crate::models::{ConfigItem, Device, DeviceDnaSnapshot, SoftwareInventoryItem};
 
 /// Returns the single local [`Device`], inserting it on first use.
 ///
@@ -71,18 +71,19 @@ fn find_local_device(
     Ok(device)
 }
 
-/// Inserts a snapshot and all of its software items inside a single
+/// Inserts a snapshot and all of its software and config items inside a single
 /// transaction. Either everything commits or nothing does.
 pub fn insert_snapshot(
     conn: &mut Connection,
     snapshot: &DeviceDnaSnapshot,
-    items: &[SoftwareInventoryItem],
+    software: &[SoftwareInventoryItem],
+    config: &[ConfigItem],
 ) -> Result<(), CoreError> {
     let tx = conn.transaction()?;
     tx.execute(
         "INSERT INTO device_dna_snapshots
-            (id, device_id, captured_at, schema_version, source, software_count)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            (id, device_id, captured_at, schema_version, source, software_count, config_count)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
         params![
             snapshot.id,
             snapshot.device_id,
@@ -90,10 +91,11 @@ pub fn insert_snapshot(
             snapshot.schema_version,
             snapshot.source,
             snapshot.software_count,
+            snapshot.config_count,
         ],
     )?;
 
-    for item in items {
+    for item in software {
         tx.execute(
             "INSERT INTO software_inventory_items
                 (id, snapshot_id, name, version, publisher, install_date, source, install_location)
@@ -111,6 +113,24 @@ pub fn insert_snapshot(
         )?;
     }
 
+    for item in config {
+        tx.execute(
+            "INSERT INTO config_items
+                (id, snapshot_id, kind, name, status, path, publisher, source)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                item.id,
+                item.snapshot_id,
+                item.kind,
+                item.name,
+                item.status,
+                item.path,
+                item.publisher,
+                item.source,
+            ],
+        )?;
+    }
+
     tx.commit()?;
     Ok(())
 }
@@ -118,7 +138,7 @@ pub fn insert_snapshot(
 /// Lists all snapshots, newest first (`captured_at DESC`).
 pub fn list_snapshots(conn: &Connection) -> Result<Vec<DeviceDnaSnapshot>, CoreError> {
     let mut stmt = conn.prepare(
-        "SELECT id, device_id, captured_at, schema_version, source, software_count
+        "SELECT id, device_id, captured_at, schema_version, source, software_count, config_count
          FROM device_dna_snapshots
          ORDER BY captured_at DESC",
     )?;
@@ -134,7 +154,7 @@ pub fn list_snapshots(conn: &Connection) -> Result<Vec<DeviceDnaSnapshot>, CoreE
 pub fn get_snapshot(conn: &Connection, id: &str) -> Result<Option<DeviceDnaSnapshot>, CoreError> {
     let snapshot = conn
         .query_row(
-            "SELECT id, device_id, captured_at, schema_version, source, software_count
+            "SELECT id, device_id, captured_at, schema_version, source, software_count, config_count
              FROM device_dna_snapshots
              WHERE id = ?1",
             params![id],
@@ -156,6 +176,22 @@ pub fn list_software(
          ORDER BY name",
     )?;
     let rows = stmt.query_map(params![snapshot_id], row_to_software)?;
+    let mut items = Vec::new();
+    for row in rows {
+        items.push(row?);
+    }
+    Ok(items)
+}
+
+/// Lists the system-configuration items for a snapshot, ordered by kind then name.
+pub fn list_config(conn: &Connection, snapshot_id: &str) -> Result<Vec<ConfigItem>, CoreError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, snapshot_id, kind, name, status, path, publisher, source
+         FROM config_items
+         WHERE snapshot_id = ?1
+         ORDER BY kind, name",
+    )?;
+    let rows = stmt.query_map(params![snapshot_id], row_to_config)?;
     let mut items = Vec::new();
     for row in rows {
         items.push(row?);
@@ -198,6 +234,7 @@ fn row_to_snapshot(row: &rusqlite::Row<'_>) -> rusqlite::Result<DeviceDnaSnapsho
         schema_version: row.get(3)?,
         source: row.get(4)?,
         software_count: row.get(5)?,
+        config_count: row.get(6)?,
     })
 }
 
@@ -212,6 +249,20 @@ fn row_to_software(row: &rusqlite::Row<'_>) -> rusqlite::Result<SoftwareInventor
         install_date: row.get(5)?,
         source: row.get(6)?,
         install_location: row.get(7)?,
+    })
+}
+
+/// Maps a `config_items` row to a [`ConfigItem`].
+fn row_to_config(row: &rusqlite::Row<'_>) -> rusqlite::Result<ConfigItem> {
+    Ok(ConfigItem {
+        id: row.get(0)?,
+        snapshot_id: row.get(1)?,
+        kind: row.get(2)?,
+        name: row.get(3)?,
+        status: row.get(4)?,
+        path: row.get(5)?,
+        publisher: row.get(6)?,
+        source: row.get(7)?,
     })
 }
 
@@ -249,6 +300,7 @@ mod tests {
             schema_version: 1,
             source: "manual".to_string(),
             software_count: 2,
+            config_count: 2,
         };
         let items = vec![
             SoftwareInventoryItem {
@@ -272,12 +324,35 @@ mod tests {
                 install_location: None,
             },
         ];
+        let config = vec![
+            ConfigItem {
+                id: uuid::Uuid::new_v4().to_string(),
+                snapshot_id: snapshot.id.clone(),
+                kind: "service".to_string(),
+                name: "Beta Service".to_string(),
+                status: Some("automatic".to_string()),
+                path: None,
+                publisher: None,
+                source: "mock".to_string(),
+            },
+            ConfigItem {
+                id: uuid::Uuid::new_v4().to_string(),
+                snapshot_id: snapshot.id.clone(),
+                kind: "startup".to_string(),
+                name: "Acme Startup".to_string(),
+                status: Some("enabled".to_string()),
+                path: Some(r"C:\acme.exe".to_string()),
+                publisher: None,
+                source: "mock".to_string(),
+            },
+        ];
 
-        insert_snapshot(&mut conn, &snapshot, &items).expect("insert snapshot");
+        insert_snapshot(&mut conn, &snapshot, &items, &config).expect("insert snapshot");
 
         let snapshots = list_snapshots(&conn).expect("list snapshots");
         assert_eq!(snapshots.len(), 1);
         assert_eq!(snapshots[0].id, snapshot.id);
+        assert_eq!(snapshots[0].config_count, 2);
 
         let fetched = get_snapshot(&conn, &snapshot.id).expect("get snapshot");
         assert!(fetched.is_some());
@@ -290,5 +365,11 @@ mod tests {
         // Ordered by name: "Alpha Tool" precedes "Zeta App".
         assert_eq!(software[0].name, "Alpha Tool");
         assert_eq!(software[1].name, "Zeta App");
+
+        let config_rows = list_config(&conn, &snapshot.id).expect("list config");
+        assert_eq!(config_rows.len(), 2);
+        // Ordered by kind then name: "service" precedes "startup".
+        assert_eq!(config_rows[0].kind, "service");
+        assert_eq!(config_rows[1].kind, "startup");
     }
 }

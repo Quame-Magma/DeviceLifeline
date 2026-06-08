@@ -15,7 +15,8 @@ export interface Device {
 
 /**
  * A point-in-time snapshot of a device's installed software inventory.
- * `softwareCount` is the number of items captured in this snapshot.
+ * `softwareCount` is the number of software items captured in this snapshot.
+ * `configCount` is the number of system-configuration items captured.
  */
 export interface DeviceDnaSnapshot {
   id: string;
@@ -24,6 +25,23 @@ export interface DeviceDnaSnapshot {
   schemaVersion: number;
   source: string;
   softwareCount: number;
+  configCount: number;
+}
+
+/**
+ * A single system-configuration item captured in a `DeviceDnaSnapshot`.
+ * `kind` is one of "startup" | "service" | "scheduled_task".
+ * Optional fields are null when unavailable from the OS source.
+ */
+export interface ConfigItem {
+  id: string;
+  snapshotId: string;
+  kind: string;
+  name: string;
+  status: string | null;
+  path: string | null;
+  publisher: string | null;
+  source: string;
 }
 
 /**
