@@ -140,7 +140,9 @@ mod tests {
 
         let config_rows = device_repo::list_config(&conn, &snapshot.id).expect("list config");
         assert_eq!(config_rows.len() as i64, expected_config);
-        assert!(config_rows.iter().all(|item| item.snapshot_id == snapshot.id));
+        assert!(config_rows
+            .iter()
+            .all(|item| item.snapshot_id == snapshot.id));
         assert!(config_rows.iter().all(|item| item.source == "mock"));
     }
 }

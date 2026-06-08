@@ -151,8 +151,7 @@ fn collect_scheduled_tasks(items: &mut Vec<RawConfig>) {
     use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_READ};
     use winreg::RegKey;
 
-    const TASKS: &str =
-        r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tasks";
+    const TASKS: &str = r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tasks";
 
     let root = RegKey::predef(HKEY_LOCAL_MACHINE);
     let tasks = match root.open_subkey_with_flags(TASKS, KEY_READ) {
@@ -244,9 +243,15 @@ impl ConfigCollector for MockConfigCollector {
         };
 
         Ok(vec![
-            startup("OneDrive", r"C:\Program Files\Microsoft OneDrive\OneDrive.exe"),
+            startup(
+                "OneDrive",
+                r"C:\Program Files\Microsoft OneDrive\OneDrive.exe",
+            ),
             startup("Steam", r"C:\Program Files (x86)\Steam\steam.exe"),
-            startup("Spotify", r"C:\Users\dev\AppData\Roaming\Spotify\Spotify.exe"),
+            startup(
+                "Spotify",
+                r"C:\Users\dev\AppData\Roaming\Spotify\Spotify.exe",
+            ),
             service(
                 "Windows Update",
                 "automatic",
