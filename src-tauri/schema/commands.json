@@ -148,5 +148,17 @@
     "params": { "sessionId": "string" },
     "returns": "DiagnosisFinding[]",
     "description": "Lists the findings for a diagnosis session, ordered by position."
+  },
+  {
+    "name": "get_sync_status",
+    "params": {},
+    "returns": "SyncStatus",
+    "description": "Returns the local cloud-sync queue status (configured flag + pending/synced/failed counts)."
+  },
+  {
+    "name": "trigger_sync",
+    "params": {},
+    "returns": "SyncStatus",
+    "description": "Attempts to drain the cloud-sync queue via the configured client (a no-op until a Supabase backend is configured) and returns the updated status."
   }
 ]

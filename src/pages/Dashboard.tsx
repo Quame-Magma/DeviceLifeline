@@ -9,6 +9,7 @@ import { useHealth } from '../hooks/use-health';
 import { useCrash } from '../hooks/use-crash';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
+import { SyncStatusCard } from '../components/sync/SyncStatusCard';
 
 interface DashboardProps {
   /** Navigate to another view (wired to the sidebar in `App`). */
@@ -179,6 +180,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
           />
         </div>
       )}
+
+      <SyncStatusCard />
     </div>
   );
 }

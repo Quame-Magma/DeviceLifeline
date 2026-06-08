@@ -10,3 +10,4 @@ pub mod diagnosis;
 pub mod health;
 pub mod restore;
 pub mod setup;
+pub mod sync;

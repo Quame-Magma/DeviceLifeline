@@ -49,6 +49,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0008_add_diagnosis",
         include_str!("../../migrations/0008_add_diagnosis.sql"),
     ),
+    (
+        "0009_add_sync_queue",
+        include_str!("../../migrations/0009_add_sync_queue.sql"),
+    ),
 ];
 
 /// Opens (creating if necessary) the SQLite database at `path`, enables
@@ -122,6 +126,7 @@ mod tests {
         assert!(table_exists(&conn, "health_alerts"));
         assert!(table_exists(&conn, "diagnosis_sessions"));
         assert!(table_exists(&conn, "diagnosis_findings"));
+        assert!(table_exists(&conn, "sync_queue"));
 
         let version: i64 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))

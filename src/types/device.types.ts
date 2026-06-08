@@ -241,3 +241,14 @@ export interface DiagnosisSession {
   context: DiagnosisContext;
   findingCount: number;
 }
+
+/**
+ * Summary of the local cloud-sync queue. `configured` is false until a Supabase
+ * backend is wired up; counts reflect locally queued entities.
+ */
+export interface SyncStatus {
+  configured: boolean;
+  pending: number;
+  synced: number;
+  failed: number;
+}

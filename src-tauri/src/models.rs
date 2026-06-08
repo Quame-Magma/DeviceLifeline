@@ -416,6 +416,39 @@ pub struct DiagnosisFinding {
     pub suggested_action: String,
 }
 
+/// A queued entity awaiting upload to the cloud. Not exposed over IPC.
+#[derive(Clone, Debug)]
+pub struct SyncQueueItem {
+    /// Stable unique identifier (UUID v4 string).
+    pub id: String,
+    /// Entity kind: `"snapshot"` or `"health_sample"`.
+    pub entity_type: String,
+    /// Identifier of the queued entity.
+    pub entity_id: String,
+    /// When the item was enqueued, RFC3339 / UTC.
+    pub created_at: String,
+    /// Queue status: `pending`, `synced`, or `failed`.
+    pub status: String,
+    /// Number of upload attempts made.
+    pub attempts: i64,
+    /// When the item was synced, RFC3339 / UTC, or `None`.
+    pub synced_at: Option<String>,
+}
+
+/// A summary of the local cloud-sync queue, surfaced in the UI.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncStatus {
+    /// Whether a cloud sync backend is configured (false until Supabase exists).
+    pub configured: bool,
+    /// Number of items awaiting upload.
+    pub pending: i64,
+    /// Number of items already synced.
+    pub synced: i64,
+    /// Number of items that failed to upload.
+    pub failed: i64,
+}
+
 /// A single-shot AI Detective diagnosis: the user's query, the analyzed
 /// [`DiagnosisContext`], a short summary, and the resulting findings (fetched
 /// separately by id).

@@ -69,6 +69,11 @@ fn capture_with_collectors(
 
     device_repo::insert_snapshot(conn, &snapshot, &software_items, &config_items)?;
 
+    // Best-effort: queue the snapshot for cloud sync. A queue failure must
+    // never fail a capture, so the result is intentionally ignored.
+    let _ =
+        crate::storage::sync_repo::enqueue(conn, "snapshot", &snapshot.id, &snapshot.captured_at);
+
     if let Some(prev) = previous {
         let prev_software = device_repo::list_software(conn, &prev.id)?;
         let prev_config = device_repo::list_config(conn, &prev.id)?;

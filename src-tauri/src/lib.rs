@@ -16,6 +16,7 @@ pub mod models;
 pub mod restore;
 pub mod setup;
 pub mod storage;
+pub mod sync;
 pub mod timeline;
 
 use std::sync::Mutex;
@@ -93,7 +94,9 @@ pub fn run() {
             commands::setup::import_setup,
             commands::diagnosis::run_diagnosis,
             commands::diagnosis::get_diagnosis_sessions,
-            commands::diagnosis::get_diagnosis_findings
+            commands::diagnosis::get_diagnosis_findings,
+            commands::sync::get_sync_status,
+            commands::sync::trigger_sync
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

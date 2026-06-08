@@ -34,6 +34,10 @@ pub fn capture_sample(conn: &Connection) -> Result<HealthSample, CoreError> {
         alerts_repo::insert_alerts(conn, &new_alerts)?;
     }
 
+    // Best-effort: queue the sample for cloud sync (never fails a capture).
+    let _ =
+        crate::storage::sync_repo::enqueue(conn, "health_sample", &sample.id, &sample.captured_at);
+
     Ok(sample)
 }
 
