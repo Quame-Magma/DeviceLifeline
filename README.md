@@ -61,8 +61,20 @@ Basic Health Monitoring · Basic AI Diagnosis. *Everything else is post-MVP and 
 
 ## Repository status
 
-📝 **Planning / pre-implementation.** This repo is documentation-first by design — no application source code
-yet. The build sequence is defined in the [Final Implementation Roadmap](docs/60-final-implementation-roadmap.md).
+🚧 **Increment 1 — Foundation + first vertical slice.**
+The repo contains a runnable scaffold plus the first feature slice: **Device DNA snapshot capture
+for installed software → SQLite → Tauri IPC → a Snapshots UI.** See [CONTRIBUTING.md](CONTRIBUTING.md)
+to build and run it locally (Windows-first; non-Windows runs use a mock software collector). The full
+build sequence is in the [Final Implementation Roadmap](docs/60-final-implementation-roadmap.md).
+
+**What works in Increment 1:**
+- Capture a snapshot of installed software (real Windows registry collector; deterministic mock elsewhere)
+- Persist snapshots + inventory to a local SQLite database with versioned migrations
+- Browse snapshots and search the software inventory in the desktop UI
+- Tauri v2 IPC between the React UI and the Rust core; CI for the frontend and the Rust core (Linux + Windows)
+
+**Layout:** `src-tauri/` (Rust core + Tauri), `src/` (React UI), `supabase/` (cloud scaffold for later),
+`docs/` (the 60-document suite). See [48. Folder Structure](docs/48-folder-structure-specification.md).
 
 ## License
 

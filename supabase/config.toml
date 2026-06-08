@@ -1,0 +1,28 @@
+# Supabase CLI project configuration.
+# Scaffolded for later increments (cloud sync, auth, AI orchestration). Not used by the
+# Increment 1 local-first software-inventory slice.
+
+project_id = "devicelifeline"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:1420"
+
+[edge_runtime]
+enabled = true

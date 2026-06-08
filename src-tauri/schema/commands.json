@@ -1,0 +1,32 @@
+[
+  {
+    "name": "collect_dna_snapshot",
+    "params": {},
+    "returns": "DeviceDnaSnapshot",
+    "description": "Captures a Device DNA Snapshot of installed software, persists it to SQLite, and returns the newly created snapshot."
+  },
+  {
+    "name": "get_devices",
+    "params": {},
+    "returns": "Device[]",
+    "description": "Lists all known devices recorded in the local database."
+  },
+  {
+    "name": "get_snapshots",
+    "params": {},
+    "returns": "DeviceDnaSnapshot[]",
+    "description": "Lists all Device DNA Snapshots ordered newest-first by captured_at."
+  },
+  {
+    "name": "get_snapshot",
+    "params": { "snapshotId": "string" },
+    "returns": "DeviceDnaSnapshot | null",
+    "description": "Fetches a single snapshot by id, or null if no snapshot matches."
+  },
+  {
+    "name": "get_software_inventory",
+    "params": { "snapshotId": "string" },
+    "returns": "SoftwareInventoryItem[]",
+    "description": "Lists the software inventory items for a given snapshot, ordered by name."
+  }
+]
