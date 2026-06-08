@@ -48,7 +48,8 @@ export function Health() {
             Health Intelligence
           </h1>
           <p className="mt-0.5 text-sm text-text-secondary">
-            On-device CPU, memory, and disk health with a 0-100 score.
+            On-device CPU, memory, and disk health with a 0-100 score. Samples
+            automatically every 15 minutes while the app is open.
           </p>
         </div>
         <Button

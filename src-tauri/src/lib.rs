@@ -47,6 +47,24 @@ pub fn run() {
             app.manage(AppState {
                 db: Mutex::new(conn),
             });
+
+            // Background health sampler (M4-01): capture a sample on launch,
+            // then re-check every minute and sample once the interval elapses.
+            // Runs while the app is open; the on-device Windows service is the
+            // future always-on agent.
+            let handle = app.handle().clone();
+            std::thread::spawn(move || loop {
+                if let Some(state) = handle.try_state::<AppState>() {
+                    if let Ok(conn) = state.db.lock() {
+                        let _ = health::scheduler::maybe_sample(
+                            &conn,
+                            health::scheduler::DEFAULT_INTERVAL_SECS,
+                        );
+                    }
+                }
+                std::thread::sleep(std::time::Duration::from_secs(60));
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

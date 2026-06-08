@@ -8,6 +8,7 @@
 
 pub mod alerts;
 pub mod sampler;
+pub mod scheduler;
 pub mod score;
 
 use rusqlite::Connection;
