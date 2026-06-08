@@ -345,3 +345,26 @@ pub struct HealthAlert {
     /// Whether the user has acknowledged the alert.
     pub acknowledged: bool,
 }
+
+/// A portable export of a device setup — a [`DeviceDnaSnapshot`] plus its
+/// software inventory and system configuration — for recreating the setup on
+/// another machine. The [`checksum`](Self::checksum) is a SHA-256 (hex) over
+/// the serialized payload (snapshot + software + config), verified on import.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SetupBundle {
+    /// Bundle format version (currently `1`).
+    pub format_version: i64,
+    /// Export timestamp, RFC3339 / UTC.
+    pub exported_at: String,
+    /// Hostname of the device the setup was exported from.
+    pub source_hostname: String,
+    /// The exported snapshot.
+    pub snapshot: DeviceDnaSnapshot,
+    /// The snapshot's software inventory.
+    pub software: Vec<SoftwareInventoryItem>,
+    /// The snapshot's system-configuration items.
+    pub config: Vec<ConfigItem>,
+    /// SHA-256 (hex) of the serialized payload, for integrity verification.
+    pub checksum: String,
+}

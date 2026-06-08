@@ -13,6 +13,7 @@ pub mod health;
 pub mod installer;
 pub mod models;
 pub mod restore;
+pub mod setup;
 pub mod storage;
 pub mod timeline;
 
@@ -68,7 +69,9 @@ pub fn run() {
             commands::health::get_health_alerts,
             commands::health::acknowledge_alert,
             commands::crash::scan_crash_events,
-            commands::crash::get_crash_events
+            commands::crash::get_crash_events,
+            commands::setup::export_setup,
+            commands::setup::import_setup
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

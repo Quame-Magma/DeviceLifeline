@@ -8,3 +8,4 @@ pub mod crash;
 pub mod device;
 pub mod health;
 pub mod restore;
+pub mod setup;

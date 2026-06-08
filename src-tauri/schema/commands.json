@@ -118,5 +118,17 @@
     "params": {},
     "returns": "CrashEvent[]",
     "description": "Lists all recorded crash events ordered newest-first by occurred_at."
+  },
+  {
+    "name": "export_setup",
+    "params": { "snapshotId": "string" },
+    "returns": "SetupBundle",
+    "description": "Builds a portable, SHA-256-checksummed setup bundle (snapshot + software inventory + system configuration) from a stored snapshot."
+  },
+  {
+    "name": "import_setup",
+    "params": { "bundleJson": "string" },
+    "returns": "DeviceDnaSnapshot",
+    "description": "Imports a setup bundle (verifying its checksum) as a new local snapshot, stamped with the local device and an 'import' source, and returns the created snapshot."
   }
 ]

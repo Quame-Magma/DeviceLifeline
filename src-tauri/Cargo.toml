@@ -22,6 +22,7 @@ time = { version = "0.3", features = ["formatting", "macros", "serde"] }
 thiserror = "1"
 log = "0.4"
 sysinfo = "0.33"
+sha2 = "0.10"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"

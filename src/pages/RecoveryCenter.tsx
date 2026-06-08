@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useDeviceDna } from '../hooks/use-device-dna';
 import { useRecovery } from '../hooks/use-recovery';
+import { useSetup } from '../hooks/use-setup';
+import { bundleToJson, setupFilename } from '../lib/setup';
 import { Button } from '../components/common/Button';
 import { Spinner } from '../components/common/Spinner';
 import { EmptyState } from '../components/common/EmptyState';
@@ -36,7 +38,11 @@ export function RecoveryCenter() {
     runRestore,
   } = useRecovery();
 
+  const { exporting, importing, error: setupError, exportSetup, importSetup } =
+    useSetup();
+
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('');
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   // Load snapshots and plans on mount.
   useEffect(() => {
@@ -62,6 +68,43 @@ export function RecoveryCenter() {
     if (selectedPlanId) {
       void runRestore(selectedPlanId);
     }
+  };
+
+  // Export the selected snapshot as a downloadable .dlsetup bundle.
+  const handleExport = async () => {
+    if (!selectedSnapshotId) {
+      return;
+    }
+    const bundle = await exportSetup(selectedSnapshotId);
+    if (!bundle) {
+      return;
+    }
+    const blob = new Blob([bundleToJson(bundle)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = setupFilename(bundle);
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Import a .dlsetup bundle from disk; on success refresh the snapshot list.
+  const handleImportFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = typeof reader.result === 'string' ? reader.result : '';
+      void importSetup(text).then((snapshot) => {
+        if (snapshot) {
+          void loadSnapshots();
+        }
+      });
+    };
+    reader.readAsText(file);
   };
 
   const selectedPlan = plans.find((p) => p.id === selectedPlanId) ?? null;
@@ -138,6 +181,40 @@ export function RecoveryCenter() {
         >
           Create restore plan from selected snapshot
         </Button>
+
+        {/* Setup export / import */}
+        <div className="ml-auto flex items-center gap-2">
+          {setupError && (
+            <span className="max-w-[220px] truncate text-xs text-status-error">
+              {setupError}
+            </span>
+          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={exporting}
+            onClick={() => void handleExport()}
+            disabled={!selectedSnapshotId || exporting}
+          >
+            Export .dlsetup
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={importing}
+            onClick={() => importInputRef.current?.click()}
+            disabled={importing}
+          >
+            Import .dlsetup
+          </Button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".dlsetup,application/json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+        </div>
       </div>
 
       {/* Main content */}

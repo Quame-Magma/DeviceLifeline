@@ -188,3 +188,18 @@ export interface HealthAlert {
   value: number;
   acknowledged: boolean;
 }
+
+/**
+ * A portable export of a device setup — a snapshot plus its software inventory
+ * and system configuration. `checksum` is a SHA-256 (hex) over the payload,
+ * verified on import.
+ */
+export interface SetupBundle {
+  formatVersion: number;
+  exportedAt: string;
+  sourceHostname: string;
+  snapshot: DeviceDnaSnapshot;
+  software: SoftwareInventoryItem[];
+  config: ConfigItem[];
+  checksum: string;
+}
