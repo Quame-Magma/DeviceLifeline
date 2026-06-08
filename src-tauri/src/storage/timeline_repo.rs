@@ -129,7 +129,10 @@ mod tests {
         // Same occurred_at, so ordered by category: "config" before "software".
         assert_eq!(listed[0].category, "config");
         assert_eq!(listed[0].title, "Added service: Alpha");
-        assert_eq!(listed[0].previous_snapshot_id.as_deref(), Some(snapshot.id.as_str()));
+        assert_eq!(
+            listed[0].previous_snapshot_id.as_deref(),
+            Some(snapshot.id.as_str())
+        );
         assert_eq!(listed[1].category, "software");
         assert_eq!(listed[1].detail.as_deref(), Some("1.0"));
         assert_eq!(listed[1].previous_snapshot_id, None);

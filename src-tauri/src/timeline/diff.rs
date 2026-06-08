@@ -35,12 +35,8 @@ pub fn compute_events(
     );
     software_events.sort_by(|a, b| a.title.cmp(&b.title));
 
-    let mut config_events = config_change_events(
-        new_snapshot,
-        previous_snapshot,
-        previous_config,
-        new_config,
-    );
+    let mut config_events =
+        config_change_events(new_snapshot, previous_snapshot, previous_config, new_config);
     config_events.sort_by(|a, b| a.title.cmp(&b.title));
 
     let mut events = software_events;
@@ -247,8 +243,14 @@ mod tests {
         let new_snap = snapshot("snap-new");
         let prev_snap = snapshot("snap-prev");
 
-        let prev_software = vec![software("Chrome", Some("1.0")), software("OldApp", Some("3.0"))];
-        let new_software = vec![software("Chrome", Some("2.0")), software("NewApp", Some("9.0"))];
+        let prev_software = vec![
+            software("Chrome", Some("1.0")),
+            software("OldApp", Some("3.0")),
+        ];
+        let new_software = vec![
+            software("Chrome", Some("2.0")),
+            software("NewApp", Some("9.0")),
+        ];
 
         let events = compute_events(
             &new_snap,
@@ -312,7 +314,10 @@ mod tests {
 
         // Same version, and a missing-version pair: neither is an update.
         let prev_software = vec![software("Chrome", Some("1.0")), software("Tool", None)];
-        let new_software = vec![software("Chrome", Some("1.0")), software("Tool", Some("2.0"))];
+        let new_software = vec![
+            software("Chrome", Some("1.0")),
+            software("Tool", Some("2.0")),
+        ];
 
         let events = compute_events(
             &new_snap,
@@ -331,7 +336,10 @@ mod tests {
         let new_snap = snapshot("snap-new");
         let prev_snap = snapshot("snap-prev");
 
-        let software_items = vec![software("Chrome", Some("1.0")), software("Git", Some("2.0"))];
+        let software_items = vec![
+            software("Chrome", Some("1.0")),
+            software("Git", Some("2.0")),
+        ];
         let config_items = vec![
             config("service", "Svc", Some("auto")),
             config("startup", "App", None),
