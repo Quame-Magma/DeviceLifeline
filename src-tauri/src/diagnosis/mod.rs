@@ -155,11 +155,12 @@ mod tests {
     #[test]
     fn assemble_context_summarizes_snapshot_software() {
         let mut conn = memory_db();
-        capture_snapshot(&mut conn).expect("capture snapshot");
+        // The collector differs by platform (real registry on Windows, mock
+        // elsewhere), so compare to the captured snapshot's own count.
+        let snapshot = capture_snapshot(&mut conn).expect("capture snapshot");
 
         let context = assemble_context(&conn).expect("assemble context");
-        // Mock software collector returns six items.
-        assert_eq!(context.software_count, 6);
+        assert_eq!(context.software_count, snapshot.software_count);
         assert!(context.health_score.is_none());
         assert!(context.recent_crash_categories.is_empty());
     }
@@ -167,7 +168,7 @@ mod tests {
     #[test]
     fn run_diagnosis_persists_session_and_findings() {
         let mut conn = memory_db();
-        capture_snapshot(&mut conn).expect("capture snapshot");
+        let snapshot = capture_snapshot(&mut conn).expect("capture snapshot");
 
         let session = run_diagnosis(&mut conn, "why is my pc slow?").expect("run diagnosis");
         assert_eq!(session.query, "why is my pc slow?");
@@ -179,7 +180,8 @@ mod tests {
 
         let sessions = diagnosis_repo::list_sessions(&conn).expect("list sessions");
         assert_eq!(sessions.len(), 1);
-        // Context round-trips through JSON storage.
-        assert_eq!(sessions[0].context.software_count, 6);
+        // Context round-trips through JSON storage (count matches the snapshot,
+        // whatever the platform collector produced).
+        assert_eq!(sessions[0].context.software_count, snapshot.software_count);
     }
 }
