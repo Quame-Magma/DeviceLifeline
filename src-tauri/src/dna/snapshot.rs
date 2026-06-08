@@ -21,9 +21,7 @@ pub fn now_rfc3339() -> Result<String, CoreError> {
 
 /// Captures an installed-software snapshot using the platform default collector,
 /// persists it, and returns the new [`DeviceDnaSnapshot`].
-pub fn capture_software_snapshot(
-    conn: &mut Connection,
-) -> Result<DeviceDnaSnapshot, CoreError> {
+pub fn capture_software_snapshot(conn: &mut Connection) -> Result<DeviceDnaSnapshot, CoreError> {
     capture_with_collector(conn, default_software_collector().as_ref())
 }
 
@@ -88,8 +86,7 @@ mod tests {
         let mut conn = memory_db();
         let collector = MockSoftwareCollector::new();
 
-        let snapshot =
-            capture_with_collector(&mut conn, &collector).expect("capture snapshot");
+        let snapshot = capture_with_collector(&mut conn, &collector).expect("capture snapshot");
 
         assert_eq!(snapshot.software_count, 6);
         assert_eq!(snapshot.schema_version, SCHEMA_VERSION);

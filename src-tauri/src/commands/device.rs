@@ -15,9 +15,7 @@ use crate::AppState;
 
 /// Captures a new software DNA snapshot, persists it, and returns it.
 #[tauri::command]
-pub fn collect_dna_snapshot(
-    state: State<'_, AppState>,
-) -> Result<DeviceDnaSnapshot, CoreError> {
+pub fn collect_dna_snapshot(state: State<'_, AppState>) -> Result<DeviceDnaSnapshot, CoreError> {
     let mut conn = state
         .db
         .lock()
@@ -37,9 +35,7 @@ pub fn get_devices(state: State<'_, AppState>) -> Result<Vec<Device>, CoreError>
 
 /// Returns all snapshots, newest first.
 #[tauri::command]
-pub fn get_snapshots(
-    state: State<'_, AppState>,
-) -> Result<Vec<DeviceDnaSnapshot>, CoreError> {
+pub fn get_snapshots(state: State<'_, AppState>) -> Result<Vec<DeviceDnaSnapshot>, CoreError> {
     let conn = state
         .db
         .lock()

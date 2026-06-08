@@ -131,10 +131,7 @@ pub fn list_snapshots(conn: &Connection) -> Result<Vec<DeviceDnaSnapshot>, CoreE
 }
 
 /// Fetches a single snapshot by id, or `None` if it does not exist.
-pub fn get_snapshot(
-    conn: &Connection,
-    id: &str,
-) -> Result<Option<DeviceDnaSnapshot>, CoreError> {
+pub fn get_snapshot(conn: &Connection, id: &str) -> Result<Option<DeviceDnaSnapshot>, CoreError> {
     let snapshot = conn
         .query_row(
             "SELECT id, device_id, captured_at, schema_version, source, software_count
