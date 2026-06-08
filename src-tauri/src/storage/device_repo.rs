@@ -164,6 +164,26 @@ pub fn get_snapshot(conn: &Connection, id: &str) -> Result<Option<DeviceDnaSnaps
     Ok(snapshot)
 }
 
+/// Returns the most recent snapshot for `device_id` (`captured_at DESC`), or
+/// `None` if the device has no snapshots yet.
+pub fn latest_snapshot_for_device(
+    conn: &Connection,
+    device_id: &str,
+) -> Result<Option<DeviceDnaSnapshot>, CoreError> {
+    let snapshot = conn
+        .query_row(
+            "SELECT id, device_id, captured_at, schema_version, source, software_count, config_count
+             FROM device_dna_snapshots
+             WHERE device_id = ?1
+             ORDER BY captured_at DESC
+             LIMIT 1",
+            params![device_id],
+            row_to_snapshot,
+        )
+        .optional()?;
+    Ok(snapshot)
+}
+
 /// Lists the software inventory items for a snapshot, ordered by name.
 pub fn list_software(
     conn: &Connection,

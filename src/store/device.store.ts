@@ -10,6 +10,7 @@ import type {
   DeviceDnaSnapshot,
   SoftwareInventoryItem,
   ConfigItem,
+  TimelineEvent,
 } from '../types/device.types';
 
 export interface DeviceStore {
@@ -27,6 +28,10 @@ export interface DeviceStore {
   configItems: ConfigItem[];
   /** True while fetching the system-configuration items. */
   loadingConfig: boolean;
+  /** All timeline events, newest first. */
+  timelineEvents: TimelineEvent[];
+  /** True while fetching the timeline events. */
+  loadingTimeline: boolean;
   /** True while a capture operation is in progress. */
   capturing: boolean;
   /** Error message from the most recent failed operation, or null. */
@@ -40,6 +45,8 @@ export interface DeviceStore {
   setLoadingInventory: (loading: boolean) => void;
   setConfigItems: (configItems: ConfigItem[]) => void;
   setLoadingConfig: (loading: boolean) => void;
+  setTimelineEvents: (events: TimelineEvent[]) => void;
+  setLoadingTimeline: (loading: boolean) => void;
   setCapturing: (capturing: boolean) => void;
   setError: (error: string | null) => void;
 }
@@ -52,6 +59,8 @@ export const useDeviceStore = create<DeviceStore>((set) => ({
   loadingInventory: false,
   configItems: [],
   loadingConfig: false,
+  timelineEvents: [],
+  loadingTimeline: false,
   capturing: false,
   error: null,
 
@@ -62,6 +71,8 @@ export const useDeviceStore = create<DeviceStore>((set) => ({
   setLoadingInventory: (loading) => set({ loadingInventory: loading }),
   setConfigItems: (configItems) => set({ configItems }),
   setLoadingConfig: (loading) => set({ loadingConfig: loading }),
+  setTimelineEvents: (timelineEvents) => set({ timelineEvents }),
+  setLoadingTimeline: (loading) => set({ loadingTimeline: loading }),
   setCapturing: (capturing) => set({ capturing }),
   setError: (error) => set({ error }),
 }));

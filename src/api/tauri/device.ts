@@ -14,6 +14,7 @@ import type {
   DeviceDnaSnapshot,
   SoftwareInventoryItem,
   ConfigItem,
+  TimelineEvent,
 } from '../../types/device.types';
 
 /** Trigger a new software inventory capture and persist it as a snapshot. */
@@ -47,3 +48,7 @@ export const getSoftwareInventory = (
  */
 export const getConfigItems = (snapshotId: string): Promise<ConfigItem[]> =>
   invoke<ConfigItem[]>('get_config_items', { snapshotId });
+
+/** Retrieve all timeline events, ordered newest first. */
+export const getTimelineEvents = (): Promise<TimelineEvent[]> =>
+  invoke<TimelineEvent[]>('get_timeline_events');

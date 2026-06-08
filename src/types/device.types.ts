@@ -58,3 +58,20 @@ export interface SoftwareInventoryItem {
   source: string;
   installLocation: string | null;
 }
+
+/**
+ * A single timeline event recording a change between two consecutive snapshots.
+ * `eventType` ∈ software_install | software_removal | software_update | config_added | config_removed.
+ * `category` ∈ software | config.
+ */
+export interface TimelineEvent {
+  id: string;
+  deviceId: string;
+  snapshotId: string;
+  previousSnapshotId: string | null;
+  eventType: string;
+  category: string;
+  title: string;
+  detail: string | null;
+  occurredAt: string;
+}

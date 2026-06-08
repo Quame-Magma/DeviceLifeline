@@ -11,6 +11,7 @@ import {
   getSnapshots,
   getSoftwareInventory,
   getConfigItems,
+  getTimelineEvents,
 } from '../api/tauri/device';
 import { useDeviceStore, type DeviceStore } from '../store/device.store';
 
@@ -22,6 +23,8 @@ export interface UseDeviceDnaReturn {
   loadingInventory: DeviceStore['loadingInventory'];
   configItems: DeviceStore['configItems'];
   loadingConfig: DeviceStore['loadingConfig'];
+  timelineEvents: DeviceStore['timelineEvents'];
+  loadingTimeline: DeviceStore['loadingTimeline'];
   capturing: DeviceStore['capturing'];
   error: DeviceStore['error'];
   /** Load (or reload) the list of snapshots. Auto-selects the first if none selected. */
@@ -30,6 +33,8 @@ export interface UseDeviceDnaReturn {
   capture: () => Promise<void>;
   /** Select a snapshot by ID and load its software inventory and config items. */
   selectSnapshot: (id: string) => Promise<void>;
+  /** Load (or reload) all timeline events. */
+  loadTimeline: () => Promise<void>;
 }
 
 export function useDeviceDna(): UseDeviceDnaReturn {
@@ -41,6 +46,8 @@ export function useDeviceDna(): UseDeviceDnaReturn {
     loadingInventory,
     configItems,
     loadingConfig,
+    timelineEvents,
+    loadingTimeline,
     capturing,
     error,
     setSnapshots,
@@ -50,6 +57,8 @@ export function useDeviceDna(): UseDeviceDnaReturn {
     setLoadingInventory,
     setConfigItems,
     setLoadingConfig,
+    setTimelineEvents,
+    setLoadingTimeline,
     setCapturing,
     setError,
   } = useDeviceStore();
@@ -76,6 +85,18 @@ export function useDeviceDna(): UseDeviceDnaReturn {
     },
     [setError, setInventory, setLoadingInventory],
   );
+
+  const loadTimeline = useCallback(async () => {
+    setLoadingTimeline(true);
+    try {
+      const events = await getTimelineEvents();
+      setTimelineEvents(events);
+    } catch {
+      setTimelineEvents([]);
+    } finally {
+      setLoadingTimeline(false);
+    }
+  }, [setTimelineEvents, setLoadingTimeline]);
 
   const loadConfigForId = useCallback(
     async (snapshotId: string) => {
@@ -125,9 +146,11 @@ export function useDeviceDna(): UseDeviceDnaReturn {
     } finally {
       setLoadingSnapshots(false);
     }
+    await loadTimeline();
   }, [
     loadInventoryForId,
     loadConfigForId,
+    loadTimeline,
     setError,
     setInventory,
     setConfigItems,
@@ -152,6 +175,7 @@ export function useDeviceDna(): UseDeviceDnaReturn {
           loadConfigForId(newestId),
         ]);
       }
+      await loadTimeline();
     } catch (err) {
       setError(
         err instanceof Error
@@ -166,6 +190,7 @@ export function useDeviceDna(): UseDeviceDnaReturn {
   }, [
     loadInventoryForId,
     loadConfigForId,
+    loadTimeline,
     setCapturing,
     setError,
     setSelectedSnapshotId,
@@ -188,10 +213,13 @@ export function useDeviceDna(): UseDeviceDnaReturn {
     loadingInventory,
     configItems,
     loadingConfig,
+    timelineEvents,
+    loadingTimeline,
     capturing,
     error,
     loadSnapshots,
     capture,
     selectSnapshot,
+    loadTimeline,
   };
 }

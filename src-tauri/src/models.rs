@@ -108,6 +108,32 @@ pub struct ConfigItem {
     pub source: String,
 }
 
+/// A single change event derived from diffing two consecutive
+/// [`DeviceDnaSnapshot`]s, surfaced in the Performance Timeline.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct TimelineEvent {
+    /// Stable unique identifier (UUID v4 string).
+    pub id: String,
+    /// Identifier of the [`Device`] this event belongs to.
+    pub device_id: String,
+    /// Identifier of the newer [`DeviceDnaSnapshot`] that produced the event.
+    pub snapshot_id: String,
+    /// Identifier of the older snapshot diffed against, if any.
+    pub previous_snapshot_id: Option<String>,
+    /// Event discriminator: `software_install`, `software_removal`,
+    /// `software_update`, `config_added`, or `config_removed`.
+    pub event_type: String,
+    /// Broad grouping: `software` or `config`.
+    pub category: String,
+    /// Human-readable summary line.
+    pub title: String,
+    /// Optional supporting detail (e.g., version transition).
+    pub detail: Option<String>,
+    /// When the change was observed, RFC3339 / UTC (the newer snapshot's time).
+    pub occurred_at: String,
+}
+
 /// Raw config collector output prior to persistence. Not exposed over IPC.
 #[derive(Clone, Debug)]
 pub struct RawConfig {

@@ -5,3 +5,4 @@
 
 pub mod db;
 pub mod device_repo;
+pub mod timeline_repo;

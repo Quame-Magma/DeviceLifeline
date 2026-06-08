@@ -25,6 +25,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0002_add_system_config",
         include_str!("../../migrations/0002_add_system_config.sql"),
     ),
+    (
+        "0003_add_timeline",
+        include_str!("../../migrations/0003_add_timeline.sql"),
+    ),
 ];
 
 /// Opens (creating if necessary) the SQLite database at `path`, enables
@@ -90,6 +94,7 @@ mod tests {
         assert!(table_exists(&conn, "device_dna_snapshots"));
         assert!(table_exists(&conn, "software_inventory_items"));
         assert!(table_exists(&conn, "config_items"));
+        assert!(table_exists(&conn, "timeline_events"));
 
         let version: i64 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))

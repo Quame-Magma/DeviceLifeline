@@ -10,6 +10,7 @@ pub mod dna;
 pub mod error;
 pub mod models;
 pub mod storage;
+pub mod timeline;
 
 use std::sync::Mutex;
 
@@ -49,7 +50,8 @@ pub fn run() {
             commands::device::get_snapshots,
             commands::device::get_snapshot,
             commands::device::get_software_inventory,
-            commands::device::get_config_items
+            commands::device::get_config_items,
+            commands::device::get_timeline_events
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

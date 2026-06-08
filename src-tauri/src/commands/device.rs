@@ -9,8 +9,8 @@ use tauri::State;
 
 use crate::dna::snapshot;
 use crate::error::CoreError;
-use crate::models::{ConfigItem, Device, DeviceDnaSnapshot, SoftwareInventoryItem};
-use crate::storage::device_repo;
+use crate::models::{ConfigItem, Device, DeviceDnaSnapshot, SoftwareInventoryItem, TimelineEvent};
+use crate::storage::{device_repo, timeline_repo};
 use crate::AppState;
 
 /// Captures a new Device DNA snapshot, persists it, and returns it.
@@ -80,4 +80,14 @@ pub fn get_config_items(
         .lock()
         .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
     device_repo::list_config(&conn, &snapshot_id)
+}
+
+/// Returns all timeline events, newest first then by category and title.
+#[tauri::command]
+pub fn get_timeline_events(state: State<'_, AppState>) -> Result<Vec<TimelineEvent>, CoreError> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    timeline_repo::list_events(&conn)
 }

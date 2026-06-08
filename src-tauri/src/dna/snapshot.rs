@@ -7,7 +7,8 @@ use crate::collectors::{
 };
 use crate::error::CoreError;
 use crate::models::{ConfigItem, DeviceDnaSnapshot, RawConfig, RawSoftware, SoftwareInventoryItem};
-use crate::storage::device_repo;
+use crate::storage::{device_repo, timeline_repo};
+use crate::timeline::diff;
 
 /// Schema version stamped onto snapshots produced by this increment.
 const SCHEMA_VERSION: i64 = 1;
@@ -40,6 +41,10 @@ fn capture_with_collectors(
     config: &dyn ConfigCollector,
 ) -> Result<DeviceDnaSnapshot, CoreError> {
     let device = device_repo::ensure_local_device(conn)?;
+    // Capture the prior snapshot BEFORE inserting the new one so the diff has a
+    // baseline to compare against.
+    let previous = device_repo::latest_snapshot_for_device(conn, &device.id)?;
+
     let raw_software = software.collect()?;
     let raw_config = config.collect()?;
 
@@ -63,6 +68,23 @@ fn capture_with_collectors(
         .collect();
 
     device_repo::insert_snapshot(conn, &snapshot, &software_items, &config_items)?;
+
+    if let Some(prev) = previous {
+        let prev_software = device_repo::list_software(conn, &prev.id)?;
+        let prev_config = device_repo::list_config(conn, &prev.id)?;
+        let events = diff::compute_events(
+            &snapshot,
+            &prev,
+            &prev_software,
+            &software_items,
+            &prev_config,
+            &config_items,
+        );
+        if !events.is_empty() {
+            timeline_repo::insert_events(conn, &events)?;
+        }
+    }
+
     Ok(snapshot)
 }
 
@@ -101,7 +123,7 @@ mod tests {
     use super::*;
     use crate::collectors::config::MockConfigCollector;
     use crate::collectors::software::MockSoftwareCollector;
-    use crate::storage::{db, device_repo};
+    use crate::storage::{db, device_repo, timeline_repo};
 
     fn memory_db() -> Connection {
         let conn = Connection::open_in_memory().expect("open in-memory db");
@@ -143,5 +165,24 @@ mod tests {
             .iter()
             .all(|item| item.snapshot_id == snapshot.id));
         assert!(config_rows.iter().all(|item| item.source == "mock"));
+    }
+
+    #[test]
+    fn second_identical_capture_records_no_timeline_events() {
+        let mut conn = memory_db();
+        let software = MockSoftwareCollector::new();
+        let config = MockConfigCollector::new();
+
+        // First capture has no prior snapshot, so it produces no events.
+        capture_with_collectors(&mut conn, &software, &config).expect("first capture");
+        assert!(timeline_repo::list_events(&conn)
+            .expect("list after first")
+            .is_empty());
+
+        // Second capture with identical mock collectors: no changes, no events.
+        capture_with_collectors(&mut conn, &software, &config).expect("second capture");
+        assert!(timeline_repo::list_events(&conn)
+            .expect("list after second")
+            .is_empty());
     }
 }

@@ -3,6 +3,7 @@ import { AppShell } from './components/layout/AppShell';
 import type { View } from './components/layout/Sidebar';
 import { Dashboard } from './pages/Dashboard';
 import { DeviceDNA } from './pages/DeviceDNA';
+import { Timeline } from './pages/Timeline';
 
 /**
  * Root application component.
@@ -16,6 +17,7 @@ export default function App() {
     <AppShell activeView={activeView} onNavigate={setActiveView}>
       {activeView === 'dashboard' && <Dashboard />}
       {activeView === 'device-dna' && <DeviceDNA />}
+      {activeView === 'timeline' && <Timeline />}
     </AppShell>
   );
 }

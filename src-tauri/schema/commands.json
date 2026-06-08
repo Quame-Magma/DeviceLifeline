@@ -34,5 +34,11 @@
     "params": { "snapshotId": "string" },
     "returns": "ConfigItem[]",
     "description": "Lists the system-configuration items (startup, services, scheduled tasks) for a given snapshot, ordered by kind then name."
+  },
+  {
+    "name": "get_timeline_events",
+    "params": {},
+    "returns": "TimelineEvent[]",
+    "description": "Lists all Performance Timeline change events derived from diffing consecutive snapshots, ordered newest-first by occurred_at then category and title."
   }
 ]
