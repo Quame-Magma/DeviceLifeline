@@ -101,7 +101,6 @@ mod tests {
     use super::*;
     use crate::collectors::config::MockConfigCollector;
     use crate::collectors::software::MockSoftwareCollector;
-    use crate::collectors::ConfigCollector as _;
     use crate::storage::{db, device_repo};
 
     fn memory_db() -> Connection {
