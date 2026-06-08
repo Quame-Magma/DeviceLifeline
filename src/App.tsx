@@ -18,7 +18,7 @@ export default function App() {
 
   return (
     <AppShell activeView={activeView} onNavigate={setActiveView}>
-      {activeView === 'dashboard' && <Dashboard />}
+      {activeView === 'dashboard' && <Dashboard onNavigate={setActiveView} />}
       {activeView === 'device-dna' && <DeviceDNA />}
       {activeView === 'timeline' && <Timeline />}
       {activeView === 'recovery-center' && <RecoveryCenter />}
