@@ -9,6 +9,7 @@ import { HealthScoreGauge } from '../components/health/HealthScoreGauge';
 import { ResourceUsageBars } from '../components/health/ResourceUsageBars';
 import { HealthSampleList } from '../components/health/HealthSampleList';
 import { HealthAlertList } from '../components/health/HealthAlertList';
+import { buildHealthInsight } from '../components/health/insights';
 
 /**
  * Health Intelligence page — Increment 5.
@@ -48,8 +49,8 @@ export function Health() {
             Health Intelligence
           </h1>
           <p className="mt-0.5 text-sm text-text-secondary">
-            On-device CPU, memory, and disk health with a 0-100 score. Samples
-            automatically every 15 minutes while the app is open.
+            Plain-English device health from CPU, memory, and disk pressure.
+            Samples automatically every 15 minutes while the app is open.
           </p>
         </div>
         <Button
@@ -113,6 +114,46 @@ export function Health() {
           />
         ) : (
           <div className="flex flex-col gap-6">
+            <Card padding="lg">
+              {(() => {
+                const insight = buildHealthInsight(latest, alerts);
+                return (
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.15fr_1fr_1fr]">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                        Health readout
+                      </p>
+                      <p className="mt-2 text-base font-semibold text-text-primary">
+                        {insight.status}
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-text-secondary">
+                        {insight.summary}
+                      </p>
+                    </div>
+                    <div className="rounded border border-surface-border bg-surface px-3 py-2.5">
+                      <p className="text-2xs font-semibold uppercase tracking-wide text-text-muted">
+                        Main concern
+                      </p>
+                      <p className="mt-1 text-sm leading-5 text-text-secondary">
+                        {insight.primaryConcern}
+                      </p>
+                      <p className="mt-2 text-2xs leading-4 text-text-muted">
+                        {insight.evidence}
+                      </p>
+                    </div>
+                    <div className="rounded border border-accent/20 bg-accent-subtle px-3 py-2.5">
+                      <p className="text-2xs font-semibold uppercase tracking-wide text-accent">
+                        Recommended next step
+                      </p>
+                      <p className="mt-1 text-sm leading-5 text-text-secondary">
+                        {insight.recommendedAction}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </Card>
+
             <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[auto_1fr]">
               <HealthScoreGauge score={latest.healthScore} />
               <Card padding="lg" className="flex flex-col justify-center">

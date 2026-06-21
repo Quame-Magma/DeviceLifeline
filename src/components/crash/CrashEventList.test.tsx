@@ -50,11 +50,14 @@ describe('CrashEventList', () => {
     expect(screen.getByTestId('crash-severity-e2')).toHaveTextContent('Error');
   });
 
-  it('renders the plain-English title and category label', () => {
+  it('renders the plain-English explanation and category label', () => {
     render(<CrashEventList events={EVENTS} />);
-    expect(
-      screen.getByText('System crash (BSOD / bugcheck)'),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('crash-event-e1')).toHaveTextContent(
+      'Windows crashed and restarted',
+    );
+    expect(screen.getByTestId('crash-event-e1')).toHaveTextContent(
+      'Recorded as: System crash (BSOD / bugcheck)',
+    );
     expect(screen.getByText('Blue screen (BSOD)')).toBeInTheDocument();
   });
 

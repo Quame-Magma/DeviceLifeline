@@ -35,8 +35,8 @@ export function CrashIntelligence() {
             Crash Intelligence
           </h1>
           <p className="mt-0.5 text-sm text-text-secondary">
-            Crashes, hangs, and unexpected shutdowns from the device event log,
-            in plain English.
+            Crashes, hangs, and unexpected shutdowns translated into likely
+            causes and next steps.
           </p>
         </div>
         <Button

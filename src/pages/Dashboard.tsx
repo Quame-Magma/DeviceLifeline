@@ -13,7 +13,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { View } from '../components/layout/Sidebar';
-import { APP_NAME, APP_TAGLINE } from '../lib/constants';
+import { APP_TAGLINE } from '../lib/constants';
 import {
   summarize,
   type DashboardAttentionItem,
@@ -29,7 +29,6 @@ import { useRecovery } from '../hooks/use-recovery';
 import { useSync } from '../hooks/use-sync';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import iconAsset from '../assets/icon.png';
 
 interface DashboardProps {
   /** Navigate to another view (wired to the sidebar in `App`). */
@@ -336,33 +335,17 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   return (
     <div className="flex min-h-full flex-col bg-surface">
-      <header className="flex flex-shrink-0 items-center justify-between gap-5 border-b border-surface-border bg-surface-card px-6 py-4">
-        <div className="flex min-w-0 items-center gap-4">
-          <div
-            className="hidden flex-shrink-0 items-center gap-2.5 sm:flex"
-            aria-label={APP_NAME}
-          >
-            <img
-              src={iconAsset}
-              alt=""
-              aria-hidden="true"
-              className="h-10 w-10 object-contain"
-            />
-            <span className="text-base font-semibold tracking-normal text-text-primary">
-              Device<span className="text-accent">Lifeline</span>
-            </span>
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-lg font-semibold text-text-primary">
-              Recovery Overview
-            </h1>
-            <p className="mt-0.5 text-sm text-text-secondary">
-              {APP_TAGLINE} Local baseline, health, stability, and restore
-              readiness in one place.
-            </p>
-          </div>
+      <header className="flex flex-shrink-0 flex-col gap-3 border-b border-surface-border bg-surface-card px-6 py-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-lg font-semibold text-text-primary">
+            Recovery Overview
+          </h1>
+          <p className="mt-0.5 max-w-3xl text-sm text-text-secondary">
+            {APP_TAGLINE} Local baseline, health, stability, and restore
+            readiness in one place.
+          </p>
         </div>
-        <div className="flex flex-shrink-0 items-center gap-2">
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
           <CommandButton
             icon={ScanLine}
             variant="primary"

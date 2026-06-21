@@ -1,21 +1,10 @@
 import { EmptyState } from '../common/EmptyState';
 import { formatPercent, formatTimestamp } from '../../lib/format';
 import type { HealthSample } from '../../types/device.types';
+import { diskPct, memoryPct } from './insights';
 
 interface HealthSampleListProps {
   samples: HealthSample[];
-}
-
-/** Returns memory usage percentage for a sample (0 when total is unknown). */
-function memoryPct(sample: HealthSample): number {
-  return sample.memoryTotal > 0
-    ? (sample.memoryUsed / sample.memoryTotal) * 100
-    : 0;
-}
-
-/** Returns disk usage percentage for a sample (0 when total is unknown). */
-function diskPct(sample: HealthSample): number {
-  return sample.diskTotal > 0 ? (sample.diskUsed / sample.diskTotal) * 100 : 0;
 }
 
 /**

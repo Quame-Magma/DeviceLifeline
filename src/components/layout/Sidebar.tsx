@@ -66,15 +66,15 @@ interface SidebarProps {
 export function Sidebar({ activeView, onNavigate }: SidebarProps) {
   return (
     <aside className="flex h-full w-[248px] flex-shrink-0 flex-col bg-sidebar">
-      <div className="flex h-16 items-center border-b border-sidebar-border px-4">
-        <div className="flex min-w-0 items-center gap-2.5" aria-label={APP_NAME}>
+      <div className="flex h-20 items-center border-b border-sidebar-border px-4">
+        <div className="flex min-w-0 items-center gap-3" aria-label={APP_NAME}>
           <img
             src={iconAsset}
             alt=""
             aria-hidden="true"
-            className="h-9 w-9 flex-shrink-0 object-contain"
+            className="h-12 w-12 flex-shrink-0 object-contain"
           />
-          <span className="min-w-0 text-base font-semibold tracking-normal text-text-inverse">
+          <span className="min-w-0 text-lg font-semibold tracking-normal text-text-inverse">
             Device<span className="text-accent-muted">Lifeline</span>
           </span>
         </div>
