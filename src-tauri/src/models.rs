@@ -271,10 +271,14 @@ pub struct HealthSample {
     pub memory_total: i64,
     /// Used physical memory, in bytes.
     pub memory_used: i64,
-    /// Total space of the primary disk, in bytes (`0` if none was found).
+    /// Total space of the most saturated detected disk, in bytes (`0` if none was found).
     pub disk_total: i64,
-    /// Used space of the primary disk, in bytes.
+    /// Used space of the most saturated detected disk, in bytes.
     pub disk_used: i64,
+    /// Display name / mount point for the disk that drove disk-pressure scoring.
+    pub disk_name: Option<String>,
+    /// Number of disks considered for the disk-pressure reading.
+    pub disk_count: i64,
     /// Derived health score in `0..=100`; higher is healthier.
     pub health_score: i64,
 }
@@ -385,7 +389,7 @@ pub struct DiagnosisContext {
     pub cpu_usage: Option<f64>,
     /// Latest memory usage percentage, if a sample exists.
     pub memory_pct: Option<f64>,
-    /// Latest primary-disk usage percentage, if a sample exists.
+    /// Latest most-saturated-disk usage percentage, if a sample exists.
     pub disk_pct: Option<f64>,
     /// Kinds of currently-unacknowledged health alerts.
     pub active_alert_kinds: Vec<String>,

@@ -14,8 +14,8 @@ pub fn insert_sample(conn: &Connection, sample: &HealthSample) -> Result<(), Cor
     conn.execute(
         "INSERT INTO health_samples
             (id, device_id, captured_at, cpu_usage, memory_total, memory_used,
-             disk_total, disk_used, health_score)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+             disk_total, disk_used, disk_name, disk_count, health_score)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
         params![
             sample.id,
             sample.device_id,
@@ -25,6 +25,8 @@ pub fn insert_sample(conn: &Connection, sample: &HealthSample) -> Result<(), Cor
             sample.memory_used,
             sample.disk_total,
             sample.disk_used,
+            sample.disk_name,
+            sample.disk_count,
             sample.health_score,
         ],
     )?;
@@ -35,7 +37,7 @@ pub fn insert_sample(conn: &Connection, sample: &HealthSample) -> Result<(), Cor
 pub fn list_samples(conn: &Connection) -> Result<Vec<HealthSample>, CoreError> {
     let mut stmt = conn.prepare(
         "SELECT id, device_id, captured_at, cpu_usage, memory_total, memory_used,
-                disk_total, disk_used, health_score
+                disk_total, disk_used, disk_name, disk_count, health_score
          FROM health_samples
          ORDER BY captured_at DESC",
     )?;
@@ -52,7 +54,7 @@ pub fn latest_sample(conn: &Connection) -> Result<Option<HealthSample>, CoreErro
     let sample = conn
         .query_row(
             "SELECT id, device_id, captured_at, cpu_usage, memory_total, memory_used,
-                    disk_total, disk_used, health_score
+                    disk_total, disk_used, disk_name, disk_count, health_score
              FROM health_samples
              ORDER BY captured_at DESC
              LIMIT 1",
@@ -74,7 +76,9 @@ fn row_to_sample(row: &rusqlite::Row<'_>) -> rusqlite::Result<HealthSample> {
         memory_used: row.get(5)?,
         disk_total: row.get(6)?,
         disk_used: row.get(7)?,
-        health_score: row.get(8)?,
+        disk_name: row.get(8)?,
+        disk_count: row.get(9)?,
+        health_score: row.get(10)?,
     })
 }
 
@@ -101,6 +105,8 @@ mod tests {
             memory_used: 40,
             disk_total: 200,
             disk_used: 50,
+            disk_name: Some("C:\\".to_string()),
+            disk_count: 2,
             health_score: score,
         }
     }
@@ -127,6 +133,8 @@ mod tests {
             .expect("a row exists");
         assert_eq!(latest.id, "s2");
         assert_eq!(latest.health_score, 70);
+        assert_eq!(latest.disk_name.as_deref(), Some("C:\\"));
+        assert_eq!(latest.disk_count, 2);
     }
 
     #[test]

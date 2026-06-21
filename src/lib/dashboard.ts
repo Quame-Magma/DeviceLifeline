@@ -210,7 +210,7 @@ function buildAttentionItems(input: AttentionInput): DashboardAttentionItem[] {
       id: 'clear',
       severity: 'info',
       title: 'No blocking attention items',
-      detail: 'The local MVP has enough signal for a recovery rehearsal.',
+      detail: 'The local data has enough signal for a recovery rehearsal.',
       action: 'Review plan',
     });
   }
@@ -233,7 +233,7 @@ function deriveReadiness(input: ReadinessInput): DashboardReadiness {
     return {
       state: 'setup',
       label: 'Baseline required',
-      detail: 'Capture the first filtered Device DNA snapshot to start MVP testing.',
+      detail: 'Capture the first filtered Device DNA snapshot to start recovery testing.',
       readyChecks: input.readyChecks,
       totalChecks: input.totalChecks,
     };
@@ -253,7 +253,7 @@ function deriveReadiness(input: ReadinessInput): DashboardReadiness {
     return {
       state: 'attention',
       label: 'Almost ready',
-      detail: 'Add health signal and a dry-run restore plan to complete the MVP loop.',
+      detail: 'Add health signal and a dry-run restore plan to complete the recovery loop.',
       readyChecks: input.readyChecks,
       totalChecks: input.totalChecks,
     };

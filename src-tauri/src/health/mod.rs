@@ -86,6 +86,8 @@ fn build_sample(
         memory_used: metrics.memory_used as i64,
         disk_total: metrics.disk_total as i64,
         disk_used: metrics.disk_used as i64,
+        disk_name: metrics.disk_name.clone(),
+        disk_count: metrics.disk_count as i64,
         health_score,
     })
 }
@@ -111,6 +113,8 @@ mod tests {
             memory_used: 60,
             disk_total: 100,
             disk_used: 80,
+            disk_name: Some("D:\\".to_string()),
+            disk_count: 2,
         };
 
         let sample = build_sample("device-1", &metrics).expect("build sample");
@@ -120,6 +124,8 @@ mod tests {
         assert_eq!(sample.memory_used, 60);
         assert_eq!(sample.disk_total, 100);
         assert_eq!(sample.disk_used, 80);
+        assert_eq!(sample.disk_name.as_deref(), Some("D:\\"));
+        assert_eq!(sample.disk_count, 2);
         // compute_score(20, 60, 80) = 100 - (5 + 21 + 32) = 42.
         assert_eq!(sample.health_score, 42);
         assert!(!sample.id.is_empty());
@@ -141,6 +147,8 @@ mod tests {
             memory_used: 95,
             disk_total: 100,
             disk_used: 20,
+            disk_name: Some("C:\\".to_string()),
+            disk_count: 1,
         };
         let sample = build_sample("device-1", &metrics).expect("build sample");
 

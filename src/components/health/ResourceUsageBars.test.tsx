@@ -12,6 +12,8 @@ const SAMPLE: HealthSample = {
   memoryUsed: 8 * 1024 ** 3, // 8 GB
   diskTotal: 500 * 1024 ** 3,
   diskUsed: 250 * 1024 ** 3,
+  diskName: 'D:\\',
+  diskCount: 2,
   healthScore: 70,
 };
 
@@ -29,6 +31,14 @@ describe('ResourceUsageBars', () => {
   it('renders the disk percentage from used/total', () => {
     render(<ResourceUsageBars sample={SAMPLE} />);
     expect(screen.getByTestId('usage-pct-disk')).toHaveTextContent('50%');
+  });
+
+  it('explains when the disk row is the highest usage across multiple disks', () => {
+    render(<ResourceUsageBars sample={SAMPLE} />);
+    expect(screen.getByText('Most constrained disk')).toBeInTheDocument();
+    expect(screen.getByTestId('usage-detail-disk')).toHaveTextContent(
+      'highest usage across 2 disks',
+    );
   });
 
   it('renders the memory detail with human-readable bytes', () => {

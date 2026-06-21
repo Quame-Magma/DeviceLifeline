@@ -53,6 +53,10 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0009_add_sync_queue",
         include_str!("../../migrations/0009_add_sync_queue.sql"),
     ),
+    (
+        "0010_add_health_disk_scope",
+        include_str!("../../migrations/0010_add_health_disk_scope.sql"),
+    ),
 ];
 
 /// Opens (creating if necessary) the SQLite database at `path`, enables

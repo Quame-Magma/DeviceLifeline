@@ -13,6 +13,8 @@ const SAMPLES: HealthSample[] = [
     memoryUsed: 30,
     diskTotal: 200,
     diskUsed: 100,
+    diskName: 'C:\\',
+    diskCount: 1,
     healthScore: 82,
   },
   {
@@ -24,6 +26,8 @@ const SAMPLES: HealthSample[] = [
     memoryUsed: 95,
     diskTotal: 200,
     diskUsed: 180,
+    diskName: 'D:\\',
+    diskCount: 2,
     healthScore: 24,
   },
 ];

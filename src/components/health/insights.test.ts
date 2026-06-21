@@ -11,6 +11,8 @@ const SAMPLE: HealthSample = {
   memoryUsed: 13.5,
   diskTotal: 500,
   diskUsed: 435,
+  diskName: 'D:\\',
+  diskCount: 2,
   healthScore: 29,
 };
 
@@ -38,8 +40,9 @@ describe('health insights', () => {
   it('identifies the highest pressure resource and next action', () => {
     const insight = buildHealthInsight(SAMPLE, ALERTS);
     expect(insight.status).toBe('At risk');
-    expect(insight.primaryConcern).toContain('Disk');
+    expect(insight.primaryConcern).toContain('Most constrained disk');
     expect(insight.recommendedAction).toContain('Free disk space');
     expect(insight.evidence).toContain('1 active alert');
+    expect(insight.evidence).toContain('after checking 2 disks');
   });
 });

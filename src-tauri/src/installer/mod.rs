@@ -24,7 +24,7 @@ pub trait Installer: Send + Sync {
 }
 
 /// Returns an installer that never mutates the OS and records the command that
-/// a real restore would attempt. This is the default path for MVP testing.
+/// a real restore would attempt. This is the default path for safe testing.
 pub fn dry_run_installer() -> Box<dyn Installer> {
     Box::new(DryRunInstaller::new())
 }

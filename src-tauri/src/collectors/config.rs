@@ -763,7 +763,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn mock_collector_returns_items_across_all_local_mvp_kinds() {
+    fn mock_collector_returns_items_across_all_local_config_kinds() {
         let collector = MockConfigCollector::new();
         let items = collector.collect().expect("mock collect");
         assert!(items.iter().all(|item| item.source == "mock"));

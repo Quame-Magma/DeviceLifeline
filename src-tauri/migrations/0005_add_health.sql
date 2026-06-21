@@ -10,8 +10,8 @@ CREATE TABLE IF NOT EXISTS health_samples (
   cpu_usage    REAL NOT NULL,    -- overall CPU usage, percent 0..100
   memory_total INTEGER NOT NULL, -- total physical memory, bytes
   memory_used  INTEGER NOT NULL, -- used physical memory, bytes
-  disk_total   INTEGER NOT NULL, -- primary disk total space, bytes
-  disk_used    INTEGER NOT NULL, -- primary disk used space, bytes
+  disk_total   INTEGER NOT NULL, -- disk total space, bytes
+  disk_used    INTEGER NOT NULL, -- disk used space, bytes
   health_score INTEGER NOT NULL  -- derived score, 0..100 (higher is healthier)
 );
 CREATE INDEX IF NOT EXISTS idx_health_samples_device ON health_samples(device_id);

@@ -33,6 +33,25 @@ function barColor(pct: number): string {
   return 'bg-status-success';
 }
 
+function diskDetail(sample: HealthSample): string {
+  const usage = `${formatBytes(sample.diskUsed)} / ${formatBytes(sample.diskTotal)}`;
+  const diskName = sample.diskName?.trim();
+
+  if (diskName && sample.diskCount > 1) {
+    return `${diskName} - ${usage} - highest usage across ${sample.diskCount} disks`;
+  }
+
+  if (diskName) {
+    return `${diskName} - ${usage}`;
+  }
+
+  if (sample.diskCount > 1) {
+    return `${usage} - highest usage across ${sample.diskCount} disks`;
+  }
+
+  return usage;
+}
+
 /**
  * Renders CPU, memory, and disk usage as labeled horizontal bars with a
  * percentage and a used/total detail line.
@@ -53,9 +72,9 @@ export function ResourceUsageBars({ sample }: ResourceUsageBarsProps) {
     },
     {
       key: 'disk',
-      label: 'Disk',
+      label: sample.diskCount > 1 ? 'Most constrained disk' : 'Disk',
       pct: ratioPct(sample.diskUsed, sample.diskTotal),
-      detail: `${formatBytes(sample.diskUsed)} / ${formatBytes(sample.diskTotal)}`,
+      detail: diskDetail(sample),
     },
   ];
 

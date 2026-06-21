@@ -45,7 +45,10 @@ pub fn evaluate(cpu_pct: f64, memory_pct: f64, disk_pct: f64) -> Vec<AlertDraft>
             kind: "disk_low_space".to_string(),
             severity: "warning".to_string(),
             title: "Disk space low".to_string(),
-            detail: format!("The primary disk is {}% full.", disk_pct.round() as i64),
+            detail: format!(
+                "The most constrained detected disk is {}% full.",
+                disk_pct.round() as i64
+            ),
             value: disk_pct,
         });
     }

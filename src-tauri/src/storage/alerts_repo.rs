@@ -101,6 +101,8 @@ mod tests {
             memory_used: 95,
             disk_total: 100,
             disk_used: 95,
+            disk_name: Some("C:\\".to_string()),
+            disk_count: 1,
             health_score: 10,
         };
         health_repo::insert_sample(conn, &sample).expect("insert sample");

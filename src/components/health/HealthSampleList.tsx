@@ -7,6 +7,24 @@ interface HealthSampleListProps {
   samples: HealthSample[];
 }
 
+function diskTitle(sample: HealthSample): string {
+  const diskName = sample.diskName?.trim();
+
+  if (diskName && sample.diskCount > 1) {
+    return `${diskName}, highest usage across ${sample.diskCount} disks`;
+  }
+
+  if (diskName) {
+    return diskName;
+  }
+
+  if (sample.diskCount > 1) {
+    return `Highest usage across ${sample.diskCount} disks`;
+  }
+
+  return 'Disk usage';
+}
+
 /**
  * Tabular history of recent health samples. Shows an empty state when there is
  * no history yet.
@@ -51,7 +69,7 @@ export function HealthSampleList({ samples }: HealthSampleListProps) {
             <td className="py-2 pr-4 text-text-secondary">
               {formatPercent(memoryPct(sample))}
             </td>
-            <td className="py-2 text-text-secondary">
+            <td className="py-2 text-text-secondary" title={diskTitle(sample)}>
               {formatPercent(diskPct(sample))}
             </td>
           </tr>

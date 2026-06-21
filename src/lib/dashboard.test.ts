@@ -54,6 +54,8 @@ const latestHealth: HealthSample = {
   memoryUsed: 50,
   diskTotal: 100,
   diskUsed: 50,
+  diskName: 'C:\\',
+  diskCount: 1,
   healthScore: 72,
 };
 
@@ -120,7 +122,7 @@ describe('summarize', () => {
     expect(stats.attentionItems[0]?.id).toBe('baseline-missing');
   });
 
-  it('marks a complete local MVP loop as ready', () => {
+  it('marks a complete recovery loop as ready', () => {
     const stats = summarize({
       snapshots: [snapshot('s2')],
       latestHealth: { ...latestHealth, healthScore: 91 },

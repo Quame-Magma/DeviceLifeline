@@ -141,10 +141,12 @@ impl DiagnosisProvider for HeuristicProvider {
         if disk_pct >= 85.0 || has(&context.active_alert_kinds, "disk_low_space") {
             findings.push(FindingDraft {
                 title: "Low disk space".to_string(),
-                cause:
-                    "The primary disk is nearly full, which can degrade performance and updates."
-                        .to_string(),
-                evidence: format!("Primary disk {}% full.", disk_pct.round() as i64),
+                cause: "At least one detected disk is nearly full, which can degrade performance and updates."
+                    .to_string(),
+                evidence: format!(
+                    "Most constrained detected disk {}% full.",
+                    disk_pct.round() as i64
+                ),
                 confidence: 75,
                 suggested_action: "Free up space (temp files, downloads) or extend storage."
                     .to_string(),

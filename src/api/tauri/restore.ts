@@ -34,7 +34,7 @@ export const getRestorePlanSteps = (
 
 /**
  * Execute a restore plan synchronously and return the finished job.
- * Defaults to dry-run mode so MVP testing cannot accidentally install apps.
+ * Defaults to dry-run mode so testing cannot accidentally install apps.
  */
 export const runRestore = (
   planId: string,

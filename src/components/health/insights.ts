@@ -73,6 +73,29 @@ function concernFor(resource: ResourcePressure | undefined): string {
   return `${resource.label} is the main pressure point at ${formatPercent(resource.pct)}.`;
 }
 
+function diskLabel(sample: HealthSample): string {
+  return sample.diskCount > 1 ? 'Most constrained disk' : 'Disk';
+}
+
+function diskEvidence(sample: HealthSample): string {
+  const usage = `${formatBytes(sample.diskUsed)} of ${formatBytes(sample.diskTotal)}`;
+  const diskName = sample.diskName?.trim();
+
+  if (diskName && sample.diskCount > 1) {
+    return `Most constrained disk ${diskName}: ${usage} after checking ${sample.diskCount} disks.`;
+  }
+
+  if (diskName) {
+    return `Disk ${diskName}: ${usage}.`;
+  }
+
+  if (sample.diskCount > 1) {
+    return `Most constrained disk: ${usage} after checking ${sample.diskCount} disks.`;
+  }
+
+  return `Disk: ${usage}.`;
+}
+
 export function buildHealthInsight(
   sample: HealthSample,
   alerts: HealthAlert[],
@@ -80,7 +103,7 @@ export function buildHealthInsight(
   const pressure = [
     pressureFor('cpu', 'CPU', sample.cpuUsage),
     pressureFor('memory', 'Memory', memoryPct(sample)),
-    pressureFor('disk', 'Disk', diskPct(sample)),
+    pressureFor('disk', diskLabel(sample), diskPct(sample)),
   ].sort(sortPressure);
   const top = pressure[0];
   const activeAlerts = alerts.filter((alert) => !alert.acknowledged);
@@ -108,6 +131,6 @@ export function buildHealthInsight(
     recommendedAction: actionFor(top),
     evidence: `${alertText} Memory: ${formatBytes(sample.memoryUsed)} of ${formatBytes(
       sample.memoryTotal,
-    )}. Disk: ${formatBytes(sample.diskUsed)} of ${formatBytes(sample.diskTotal)}.`,
+    )}. ${diskEvidence(sample)}`,
   };
 }

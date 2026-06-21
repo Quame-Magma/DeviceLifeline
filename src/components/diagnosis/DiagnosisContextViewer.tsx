@@ -15,7 +15,7 @@ function listText(values: string[]): string {
 }
 
 /**
- * Transparency panel (MVP cap 29): a collapsible view of exactly the on-device
+ * Transparency panel: a collapsible view of exactly the on-device
  * summaries the AI Detective analyzed. No raw file data is ever included.
  */
 export function DiagnosisContextViewer({

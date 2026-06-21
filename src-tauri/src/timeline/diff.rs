@@ -313,7 +313,7 @@ mod tests {
     }
 
     #[test]
-    fn labels_local_mvp_config_kinds() {
+    fn labels_local_config_kinds() {
         let new_snap = snapshot("snap-new");
         let prev_snap = snapshot("snap-prev");
 

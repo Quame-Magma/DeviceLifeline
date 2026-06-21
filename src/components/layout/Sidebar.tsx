@@ -130,7 +130,7 @@ export function Sidebar({ activeView, onNavigate }: SidebarProps) {
       <div className="border-t border-sidebar-border px-4 py-3">
         <div className="flex items-center gap-2 text-2xs text-text-inverse-muted">
           <Activity aria-hidden="true" className="h-3.5 w-3.5 text-accent-muted" />
-          <span>Local MVP · v0.1.2</span>
+          <span>Local mode · v0.1.2</span>
         </div>
       </div>
     </aside>

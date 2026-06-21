@@ -398,7 +398,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                    MVP recovery readiness
+                    Recovery readiness
                   </p>
                   <div className="mt-2 flex items-center gap-3">
                     <span

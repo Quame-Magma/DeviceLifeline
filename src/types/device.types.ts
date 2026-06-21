@@ -30,7 +30,7 @@ export interface DeviceDnaSnapshot {
 
 /**
  * A single system-configuration item captured in a `DeviceDnaSnapshot`.
- * `kind` includes local MVP environment categories such as "startup",
+ * `kind` includes local environment categories such as "startup",
  * "service", "scheduled_task", "browser_extension", "dev_tool", "hardware",
  * "power", and "network".
  * Optional fields are null when unavailable from the OS source.
@@ -142,6 +142,8 @@ export interface RestoreStepResult {
  * A point-in-time on-device health reading: CPU, memory, and disk usage at
  * `capturedAt`, plus a derived 0–100 `healthScore` (higher is healthier).
  * `cpuUsage` is a percentage (0–100); memory/disk fields are byte counts.
+ * Disk fields represent the most saturated detected disk, after all reported
+ * disks are scanned.
  */
 export interface HealthSample {
   id: string;
@@ -152,6 +154,8 @@ export interface HealthSample {
   memoryUsed: number;
   diskTotal: number;
   diskUsed: number;
+  diskName: string | null;
+  diskCount: number;
   healthScore: number;
 }
 
