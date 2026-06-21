@@ -29,7 +29,7 @@ import { useRecovery } from '../hooks/use-recovery';
 import { useSync } from '../hooks/use-sync';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import logoAsset from '../assets/logo.png';
+import iconAsset from '../assets/icon.png';
 
 interface DashboardProps {
   /** Navigate to another view (wired to the sidebar in `App`). */
@@ -338,11 +338,20 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     <div className="flex min-h-full flex-col bg-surface">
       <header className="flex flex-shrink-0 items-center justify-between gap-5 border-b border-surface-border bg-surface-card px-6 py-4">
         <div className="flex min-w-0 items-center gap-4">
-          <img
-            src={logoAsset}
-            alt={APP_NAME}
-            className="hidden h-10 w-[190px] flex-shrink-0 rounded bg-white object-contain object-left sm:block"
-          />
+          <div
+            className="hidden flex-shrink-0 items-center gap-2.5 sm:flex"
+            aria-label={APP_NAME}
+          >
+            <img
+              src={iconAsset}
+              alt=""
+              aria-hidden="true"
+              className="h-10 w-10 object-contain"
+            />
+            <span className="text-base font-semibold tracking-normal text-text-primary">
+              Device<span className="text-accent">Lifeline</span>
+            </span>
+          </div>
           <div className="min-w-0">
             <h1 className="text-lg font-semibold text-text-primary">
               Recovery Overview
