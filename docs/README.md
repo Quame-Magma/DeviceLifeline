@@ -5,11 +5,11 @@
 > hardware health, and system events to create a living digital history of the device, then helps users
 > **understand, restore, optimize, and manage** the complete lifecycle of their computers.
 
-This folder contains the complete pre-implementation documentation suite: **60 documents** spanning product,
-architecture, design, security, operations, and delivery — detailed enough for a senior engineering team to
-begin implementation without further product discovery.
+This folder contains the original pre-implementation documentation suite plus implementation alignment notes.
+Documents 01-60 span product, architecture, design, security, operations, and delivery; document 61 records the
+current local-first MVP test target for this repository.
 
-**Last updated:** 2026-06-08 · **Status:** Draft v1 (pre-implementation) · **Documents:** 60
+**Last updated:** 2026-06-20 · **Status:** Draft v1 + local MVP implementation overlay · **Documents:** 61
 
 ---
 
@@ -153,13 +153,15 @@ Every document follows a shared template: *Purpose & Scope · Assumptions · bod
 | 58 | [Future AI Agent Strategy](58-future-ai-agent-strategy.md) | Future: agentic, action-taking assistant |
 | 59 | [Future Mobile App Strategy](59-future-mobile-app-strategy.md) | Future: companion mobile app |
 | 60 | [Final Implementation Roadmap](60-final-implementation-roadmap.md) | **Capstone:** phased build sequence and critical path |
+| 61 | [Local-First MVP Plan](61-local-first-mvp-plan.md) | Current local MVP target with cloud/auth/payment deferred |
 
 ---
 
 ## Suite at a glance
 
-- **60 documents**, ~217,000 words, ~180 Mermaid diagrams.
+- **61 documents**, including the original 60-document planning suite and the local MVP implementation overlay.
 - Consistent canonical vocabulary (Device DNA Snapshot, Performance Timeline, AI Detective, Recovery Center, Technician/Business Editions) and stable requirement IDs (`FR-`, `NFR-`, `SEC-`, `PRIV-`, `RISK-`, `US-`, `A11Y-`).
 - **MVP boundary** is respected throughout: post-MVP capabilities are explicitly labeled.
 
-> _This is planning and architecture documentation. No application source code is included by design._
+> _Documents 01-60 are the original planning and architecture suite. Document 61 aligns that plan with the
+> current local-first application build._

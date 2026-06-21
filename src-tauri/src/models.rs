@@ -94,7 +94,9 @@ pub struct ConfigItem {
     pub id: String,
     /// Identifier of the owning [`DeviceDnaSnapshot`].
     pub snapshot_id: String,
-    /// Category of the entry: `"startup"`, `"service"`, or `"scheduled_task"`.
+    /// Category of the entry, such as `"startup"`, `"service"`,
+    /// `"scheduled_task"`, `"browser_extension"`, `"dev_tool"`, `"hardware"`,
+    /// `"power"`, or `"network"`.
     pub kind: String,
     /// Display name of the entry.
     pub name: String,
@@ -235,7 +237,9 @@ pub struct StepOutcome {
 /// Raw config collector output prior to persistence. Not exposed over IPC.
 #[derive(Clone, Debug)]
 pub struct RawConfig {
-    /// Category of the entry: `"startup"`, `"service"`, or `"scheduled_task"`.
+    /// Category of the entry, such as `"startup"`, `"service"`,
+    /// `"scheduled_task"`, `"browser_extension"`, `"dev_tool"`, `"hardware"`,
+    /// `"power"`, or `"network"`.
     pub kind: String,
     /// Display name of the entry.
     pub name: String,

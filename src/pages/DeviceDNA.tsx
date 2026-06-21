@@ -62,8 +62,8 @@ export function DeviceDNA() {
             Device DNA
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">
-            Point-in-time snapshots of your installed software and system
-            configuration.
+            Filtered snapshots of restore-relevant apps, browser extensions,
+            developer tools, scheduled tasks, and device environment.
           </p>
         </div>
         <Button
@@ -161,7 +161,7 @@ export function DeviceDNA() {
                   </span>
                   <span className="text-text-muted">·</span>
                   <span className="text-xs text-text-secondary">
-                    {softwareCount} apps
+                    {softwareCount} filtered apps
                   </span>
                   <span className="text-text-muted">·</span>
                   <span className="text-xs text-text-secondary">

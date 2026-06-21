@@ -89,6 +89,21 @@ impl SoftwareCollector for WindowsSoftwareCollector {
                 let publisher = read_optional(&entry, "Publisher");
                 let install_date = read_optional(&entry, "InstallDate");
                 let install_location = read_optional(&entry, "InstallLocation");
+                let release_type = read_optional(&entry, "ReleaseType");
+                let parent_key_name = read_optional(&entry, "ParentKeyName");
+                let system_component = read_optional_dword(&entry, "SystemComponent") == Some(1);
+
+                if should_skip_registry_software(
+                    &subkey_name,
+                    &name,
+                    publisher.as_deref(),
+                    install_location.as_deref(),
+                    system_component,
+                    release_type.as_deref(),
+                    parent_key_name.as_deref(),
+                ) {
+                    continue;
+                }
 
                 let dedupe_key = (name.clone(), version.clone());
                 if !seen.insert(dedupe_key) {
@@ -106,8 +121,313 @@ impl SoftwareCollector for WindowsSoftwareCollector {
             }
         }
 
+        collect_store_apps(&mut seen, &mut items);
+
         Ok(items)
     }
+}
+
+#[cfg(windows)]
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct AppxPackage {
+    name: Option<String>,
+    version: Option<String>,
+    publisher: Option<String>,
+    install_location: Option<String>,
+}
+
+/// Appends Microsoft Store / Appx packages visible to the current user.
+#[cfg(windows)]
+fn collect_store_apps(
+    seen: &mut std::collections::HashSet<(String, Option<String>)>,
+    items: &mut Vec<RawSoftware>,
+) {
+    use std::process::Command;
+
+    let output = match Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            "Get-AppxPackage | Select-Object Name,Version,Publisher,InstallLocation | ConvertTo-Json -Compress -Depth 2",
+        ])
+        .output()
+    {
+        Ok(output) if output.status.success() => output,
+        _ => return,
+    };
+
+    let json = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if json.is_empty() {
+        return;
+    }
+
+    for package in parse_appx_packages(&json) {
+        let name = match package.name.map(|name| name.trim().to_string()) {
+            Some(name) if !name.is_empty() => name,
+            _ => continue,
+        };
+        let version = package.version.and_then(non_empty);
+        let publisher = package.publisher.and_then(non_empty);
+        let install_location = package.install_location.and_then(non_empty);
+        if should_skip_appx_package(&name, publisher.as_deref(), install_location.as_deref()) {
+            continue;
+        }
+
+        let dedupe_key = (name.clone(), version.clone());
+        if !seen.insert(dedupe_key) {
+            continue;
+        }
+
+        items.push(RawSoftware {
+            name,
+            version,
+            publisher,
+            install_date: None,
+            install_location,
+            source: "microsoft_store".to_string(),
+        });
+    }
+}
+
+#[cfg(windows)]
+fn parse_appx_packages(json: &str) -> Vec<AppxPackage> {
+    let value = match serde_json::from_str::<serde_json::Value>(json) {
+        Ok(value) => value,
+        Err(_) => return Vec::new(),
+    };
+
+    if value.is_array() {
+        serde_json::from_value::<Vec<AppxPackage>>(value).unwrap_or_default()
+    } else {
+        serde_json::from_value::<AppxPackage>(value)
+            .map(|package| vec![package])
+            .unwrap_or_default()
+    }
+}
+
+#[cfg(windows)]
+fn non_empty(value: String) -> Option<String> {
+    let trimmed = value.trim().to_string();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed)
+    }
+}
+
+#[cfg(any(windows, test))]
+fn should_skip_registry_software(
+    subkey_name: &str,
+    name: &str,
+    publisher: Option<&str>,
+    install_location: Option<&str>,
+    system_component: bool,
+    release_type: Option<&str>,
+    parent_key_name: Option<&str>,
+) -> bool {
+    let name_l = normalized(name);
+    if name_l.is_empty() {
+        return true;
+    }
+
+    if is_runtime_or_servicing_component(&name_l) {
+        return true;
+    }
+
+    if is_registry_support_component(&name_l) {
+        return true;
+    }
+
+    if is_user_facing_microsoft_app(&name_l) {
+        return false;
+    }
+
+    if system_component || parent_key_name.map(has_text).unwrap_or(false) {
+        return true;
+    }
+
+    let release_l = release_type.map(normalized).unwrap_or_default();
+    if matches!(
+        release_l.as_str(),
+        "hotfix" | "security update" | "update" | "update rollup" | "service pack"
+    ) {
+        return true;
+    }
+
+    let subkey_l = normalized(subkey_name);
+    if subkey_l.starts_with("kb")
+        || name_l.starts_with("kb")
+        || name_l.starts_with("update for ")
+        || name_l.starts_with("security update")
+        || name_l.contains("(kb")
+    {
+        return true;
+    }
+
+    let publisher_l = publisher.map(normalized).unwrap_or_default();
+    if publisher_l.contains("microsoft")
+        && (name_l.contains(" redistributable") || name_l.contains(" runtime"))
+    {
+        return true;
+    }
+
+    let location_l = install_location.map(normalized).unwrap_or_default();
+    location_l.contains(r"\windows\servicing") || location_l.contains(r"\windows\winsxs")
+}
+
+#[cfg(any(windows, test))]
+fn should_skip_appx_package(
+    name: &str,
+    publisher: Option<&str>,
+    install_location: Option<&str>,
+) -> bool {
+    let name_l = normalized(name);
+    if name_l.is_empty() {
+        return true;
+    }
+
+    if is_guid_like(&name_l) {
+        return true;
+    }
+
+    if is_allowed_microsoft_appx(&name_l) {
+        return false;
+    }
+
+    if name_l.contains("vclibs")
+        || name_l.contains("net.native")
+        || name_l.contains("shellextension")
+        || name_l.ends_with("driver")
+        || name_l.contains("printerdriver")
+        || name_l.starts_with("windows.")
+        || name_l.starts_with("microsoft.ui.xaml")
+        || name_l.starts_with("microsoft.services.store.engagement")
+        || name_l.starts_with("microsoft.windows.")
+        || name_l.starts_with("microsoftwindows.")
+        || name_l.starts_with("microsoft.aad.")
+        || name_l.starts_with("microsoft.accountscontrol")
+        || name_l.starts_with("microsoft.async")
+        || name_l.starts_with("microsoft.bioenrollment")
+        || name_l.starts_with("microsoft.creddialoghost")
+        || name_l.starts_with("microsoft.lockapp")
+        || name_l.starts_with("microsoft.sechealthui")
+        || name_l.starts_with("microsoft.win32webviewhost")
+        || name_l.starts_with("microsoft.xbox")
+        || name_l.starts_with("microsoft.zune")
+        || name_l.starts_with("microsoft.bing")
+        || name_l.starts_with("microsoft.gethelp")
+        || name_l.starts_with("microsoft.getstarted")
+        || name_l.starts_with("microsoft.people")
+        || name_l.starts_with("microsoft.yourphone")
+    {
+        return true;
+    }
+
+    let publisher_l = publisher.map(normalized).unwrap_or_default();
+    let location_l = install_location.map(normalized).unwrap_or_default();
+    publisher_l.contains("cn=microsoft windows")
+        || (publisher_l.contains("cn=microsoft corporation") && !is_allowed_microsoft_appx(&name_l))
+        || location_l.contains(r"\windows\systemapps")
+}
+
+#[cfg(any(windows, test))]
+fn is_user_facing_microsoft_app(name_l: &str) -> bool {
+    [
+        "microsoft 365",
+        "microsoft office",
+        "microsoft onedrive",
+        "microsoft teams",
+        "microsoft visual studio",
+        "visual studio",
+        "visual studio code",
+        "microsoft edge",
+        "microsoft powertoys",
+        "power bi desktop",
+        "windows terminal",
+    ]
+    .iter()
+    .any(|needle| name_l.contains(needle))
+}
+
+#[cfg(any(windows, test))]
+fn is_allowed_microsoft_appx(name_l: &str) -> bool {
+    [
+        "msteams",
+        "microsoft.windowsterminal",
+        "microsoft.powershell",
+        "microsoft.powertoys",
+        "microsoft.teams",
+        "microsoftcorporationii.windowssubsystemforlinux",
+    ]
+    .iter()
+    .any(|prefix| name_l.starts_with(prefix))
+}
+
+#[cfg(any(windows, test))]
+fn is_runtime_or_servicing_component(name_l: &str) -> bool {
+    [
+        "microsoft visual c++",
+        "microsoft .net",
+        "microsoft asp.net",
+        "microsoft windows desktop runtime",
+        "microsoft edge webview2 runtime",
+        "microsoft edge update",
+        "microsoft update health tools",
+        "microsoft windows sdk",
+        "windows software development kit",
+        "windows sdk addon",
+        "windows driver package",
+    ]
+    .iter()
+    .any(|prefix| name_l.starts_with(prefix))
+}
+
+#[cfg(any(windows, test))]
+fn is_registry_support_component(name_l: &str) -> bool {
+    [
+        "adobe genuine service",
+        "apple mobile device support",
+        "microsoft visual studio setup configuration",
+        "microsoft visual studio setup wmi provider",
+        "uxp webview support",
+        "vs_coreeditorfonts",
+    ]
+    .iter()
+    .any(|prefix| name_l.starts_with(prefix))
+        || name_l.contains(" driver")
+        || name_l.ends_with(" driver")
+}
+
+#[cfg(any(windows, test))]
+fn is_guid_like(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    if bytes.len() != 36 {
+        return false;
+    }
+
+    for (index, byte) in bytes.iter().enumerate() {
+        if matches!(index, 8 | 13 | 18 | 23) {
+            if *byte != b'-' {
+                return false;
+            }
+        } else if !byte.is_ascii_hexdigit() {
+            return false;
+        }
+    }
+    true
+}
+
+#[cfg(any(windows, test))]
+fn normalized(value: &str) -> String {
+    value.trim().to_ascii_lowercase()
+}
+
+#[cfg(any(windows, test))]
+fn has_text(value: &str) -> bool {
+    !value.trim().is_empty()
 }
 
 /// Reads a string registry value, returning `None` when missing or blank.
@@ -124,6 +444,12 @@ fn read_optional(key: &winreg::RegKey, name: &str) -> Option<String> {
         }
         Err(_) => None,
     }
+}
+
+/// Reads a DWORD registry value, returning `None` when missing or non-DWORD.
+#[cfg(windows)]
+fn read_optional_dword(key: &winreg::RegKey, name: &str) -> Option<u32> {
+    key.get_value::<u32, _>(name).ok()
 }
 
 /// A deterministic, cross-platform collector used on non-Windows builds and in
@@ -211,5 +537,137 @@ mod tests {
         let first_names: Vec<&str> = first.iter().map(|item| item.name.as_str()).collect();
         let second_names: Vec<&str> = second.iter().map(|item| item.name.as_str()).collect();
         assert_eq!(first_names, second_names);
+    }
+
+    #[test]
+    fn registry_filter_skips_windows_servicing_noise() {
+        assert!(should_skip_registry_software(
+            "{KB5034441}",
+            "Security Update for Microsoft Windows (KB5034441)",
+            Some("Microsoft Corporation"),
+            None,
+            false,
+            Some("Security Update"),
+            None,
+        ));
+        assert!(should_skip_registry_software(
+            "{runtime}",
+            "Microsoft Visual C++ 2015-2022 Redistributable (x64)",
+            Some("Microsoft Corporation"),
+            None,
+            false,
+            None,
+            None,
+        ));
+        assert!(should_skip_registry_software(
+            "{hidden}",
+            "Hidden Windows Component",
+            Some("Microsoft Corporation"),
+            None,
+            true,
+            None,
+            None,
+        ));
+    }
+
+    #[test]
+    fn registry_filter_keeps_user_facing_apps() {
+        assert!(!should_skip_registry_software(
+            "{vscode}",
+            "Microsoft Visual Studio Code",
+            Some("Microsoft Corporation"),
+            Some(r"C:\Program Files\Microsoft VS Code"),
+            false,
+            None,
+            None,
+        ));
+        assert!(!should_skip_registry_software(
+            "{chrome}",
+            "Google Chrome",
+            Some("Google LLC"),
+            Some(r"C:\Program Files\Google\Chrome"),
+            false,
+            None,
+            None,
+        ));
+    }
+
+    #[test]
+    fn appx_filter_skips_frameworks_and_keeps_user_packages() {
+        assert!(should_skip_appx_package(
+            "Microsoft.UI.Xaml.2.8",
+            Some("CN=Microsoft Corporation"),
+            Some(r"C:\Program Files\WindowsApps\Microsoft.UI.Xaml.2.8"),
+        ));
+        assert!(should_skip_appx_package(
+            "Microsoft.Windows.ShellExperienceHost",
+            Some("CN=Microsoft Windows"),
+            Some(r"C:\Program Files\WindowsApps\Microsoft.Windows.ShellExperienceHost"),
+        ));
+        assert!(!should_skip_appx_package(
+            "SpotifyAB.SpotifyMusic",
+            Some("CN=Spotify AB"),
+            Some(r"C:\Program Files\WindowsApps\SpotifyAB.SpotifyMusic"),
+        ));
+    }
+
+    #[test]
+    fn appx_filter_skips_inbox_microsoft_packages_from_real_snapshots() {
+        assert!(should_skip_appx_package(
+            "1527c705-839a-4832-9118-54d4Bd6a0c89",
+            Some("CN=Microsoft Windows, O=Microsoft Corporation"),
+            None,
+        ));
+        assert!(should_skip_appx_package(
+            "Microsoft.WindowsAppRuntime.1.8",
+            Some("CN=Microsoft Corporation, O=Microsoft Corporation"),
+            Some(r"C:\Program Files\WindowsApps\Microsoft.WindowsAppRuntime.1.8"),
+        ));
+        assert!(should_skip_appx_package(
+            "Microsoft.DesktopAppInstaller",
+            Some("CN=Microsoft Corporation, O=Microsoft Corporation"),
+            Some(r"C:\Program Files\WindowsApps\Microsoft.DesktopAppInstaller"),
+        ));
+        assert!(should_skip_appx_package(
+            "Windows.CBSPreview",
+            Some("CN=Microsoft Windows, O=Microsoft Corporation"),
+            None,
+        ));
+        assert!(!should_skip_appx_package(
+            "Microsoft.PowerShell",
+            Some("CN=Microsoft Corporation, O=Microsoft Corporation"),
+            Some(r"C:\Program Files\WindowsApps\Microsoft.PowerShell"),
+        ));
+    }
+
+    #[test]
+    fn registry_filter_skips_support_components_from_real_snapshots() {
+        assert!(should_skip_registry_software(
+            "{vsconfig}",
+            "Microsoft Visual Studio Setup Configuration",
+            Some("Microsoft Corporation"),
+            None,
+            false,
+            None,
+            None,
+        ));
+        assert!(should_skip_registry_software(
+            "{driver}",
+            "Realtek High Definition Audio Driver",
+            Some("Realtek Semiconductor Corp."),
+            None,
+            false,
+            None,
+            None,
+        ));
+        assert!(should_skip_registry_software(
+            "{sdk}",
+            "Windows SDK AddOn",
+            Some("Microsoft Corporation"),
+            None,
+            false,
+            None,
+            None,
+        ));
     }
 }

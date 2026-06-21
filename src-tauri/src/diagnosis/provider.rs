@@ -57,6 +57,60 @@ fn has(kinds: &[String], kind: &str) -> bool {
     kinds.iter().any(|k| k == kind)
 }
 
+fn recent_change_finding(context: &DiagnosisContext) -> Option<FindingDraft> {
+    if context.recent_change_titles.is_empty() {
+        return None;
+    }
+
+    let joined = context.recent_change_titles.join("; ");
+    let joined_lower = joined.to_lowercase();
+    let (title, cause, confidence, suggested_action) = if joined_lower.contains("browser extension")
+    {
+        (
+                "Recent browser extension change",
+                "A browser extension changed recently and could affect browser performance or stability.",
+                55,
+                "Disable the newest extension temporarily and compare browser behavior.",
+            )
+    } else if joined_lower.contains("network adapter") {
+        (
+                "Recent network change",
+                "A network adapter changed recently and may correlate with connectivity or latency issues.",
+                60,
+                "Review adapter drivers and compare the Timeline against when network symptoms began.",
+            )
+    } else if joined_lower.contains("power setting") {
+        (
+                "Recent power setting change",
+                "The active power configuration changed recently and may affect performance or battery behavior.",
+                55,
+                "Check the active power plan and restore the previous plan if the timing matches the issue.",
+            )
+    } else if joined_lower.contains("developer tool") {
+        (
+                "Recent developer tool change",
+                "A developer tool changed recently and may have added services, startup items, or background load.",
+                50,
+                "Review the new tool's background services and startup behavior in Device DNA.",
+            )
+    } else {
+        (
+            "Recent changes may be relevant",
+            "Software or configuration changed recently and may correlate with the issue.",
+            40,
+            "Review the Timeline around when the problem started.",
+        )
+    };
+
+    Some(FindingDraft {
+        title: title.to_string(),
+        cause: cause.to_string(),
+        evidence: format!("Recent changes: {joined}."),
+        confidence,
+        suggested_action: suggested_action.to_string(),
+    })
+}
+
 impl DiagnosisProvider for HeuristicProvider {
     fn diagnose(&self, _query: &str, context: &DiagnosisContext) -> Vec<FindingDraft> {
         let mut findings = Vec::new();
@@ -141,20 +195,8 @@ impl DiagnosisProvider for HeuristicProvider {
             });
         }
 
-        if !context.recent_change_titles.is_empty() {
-            findings.push(FindingDraft {
-                title: "Recent changes may be relevant".to_string(),
-                cause:
-                    "Software or configuration changed recently and may correlate with the issue."
-                        .to_string(),
-                evidence: format!(
-                    "Recent changes: {}.",
-                    context.recent_change_titles.join("; ")
-                ),
-                confidence: 40,
-                suggested_action: "Review the Timeline around when the problem started."
-                    .to_string(),
-            });
+        if let Some(finding) = recent_change_finding(context) {
+            findings.push(finding);
         }
 
         if let Some(score) = context.health_score {
@@ -242,5 +284,38 @@ mod tests {
         };
         let findings = HeuristicProvider::new().diagnose("", &context);
         assert!(findings.iter().any(|f| f.title == "Low disk space"));
+    }
+
+    #[test]
+    fn browser_extension_change_yields_specific_finding() {
+        let context = DiagnosisContext {
+            recent_change_titles: vec![
+                "Added browser extension: Chrome: React Developer Tools".to_string()
+            ],
+            ..Default::default()
+        };
+
+        let findings = HeuristicProvider::new().diagnose("", &context);
+        let finding = findings
+            .iter()
+            .find(|f| f.title == "Recent browser extension change")
+            .expect("browser extension finding");
+        assert!(finding.evidence.contains("React Developer Tools"));
+        assert!(finding.suggested_action.contains("Disable"));
+    }
+
+    #[test]
+    fn network_change_yields_specific_finding() {
+        let context = DiagnosisContext {
+            recent_change_titles: vec!["Added network adapter: Wi-Fi".to_string()],
+            ..Default::default()
+        };
+
+        let findings = HeuristicProvider::new().diagnose("", &context);
+        let finding = findings
+            .iter()
+            .find(|f| f.title == "Recent network change")
+            .expect("network finding");
+        assert!(finding.confidence >= 60);
     }
 }

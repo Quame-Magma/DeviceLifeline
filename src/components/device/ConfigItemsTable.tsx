@@ -6,12 +6,26 @@ interface ConfigItemsTableProps {
   items: ConfigItem[];
 }
 
-type KindFilter = 'all' | 'startup' | 'service' | 'scheduled_task';
+type KindFilter =
+  | 'all'
+  | 'startup'
+  | 'service'
+  | 'scheduled_task'
+  | 'browser_extension'
+  | 'dev_tool'
+  | 'hardware'
+  | 'power'
+  | 'network';
 
 const KIND_LABELS: Record<string, string> = {
   startup: 'Startup',
   service: 'Service',
   scheduled_task: 'Scheduled task',
+  browser_extension: 'Browser extension',
+  dev_tool: 'Dev tool',
+  hardware: 'Hardware',
+  power: 'Power',
+  network: 'Network',
 };
 
 const KIND_BADGE_CLASSES: Record<string, string> = {
@@ -21,6 +35,16 @@ const KIND_BADGE_CLASSES: Record<string, string> = {
     'bg-accent-subtle text-accent border border-accent/20',
   scheduled_task:
     'bg-surface-border text-text-secondary border border-surface-border',
+  browser_extension:
+    'bg-purple-50 text-purple-700 border border-purple-200',
+  dev_tool:
+    'bg-emerald-50 text-emerald-700 border border-emerald-200',
+  hardware:
+    'bg-slate-100 text-slate-700 border border-slate-200',
+  power:
+    'bg-amber-50 text-amber-700 border border-amber-200',
+  network:
+    'bg-cyan-50 text-cyan-700 border border-cyan-200',
 };
 
 function KindBadge({ kind }: { kind: string }) {
@@ -45,10 +69,15 @@ const FILTER_OPTIONS: { value: KindFilter; label: string }[] = [
   { value: 'startup', label: 'Startup' },
   { value: 'service', label: 'Services' },
   { value: 'scheduled_task', label: 'Scheduled tasks' },
+  { value: 'browser_extension', label: 'Browser' },
+  { value: 'dev_tool', label: 'Dev tools' },
+  { value: 'hardware', label: 'Hardware' },
+  { value: 'power', label: 'Power' },
+  { value: 'network', label: 'Network' },
 ];
 
 /**
- * Searchable, filterable table displaying system-configuration items.
+ * Searchable, filterable table displaying system-configuration and environment items.
  * Client-side filtering on Name, Path, or Status; kind filter via toggle buttons.
  * Handles the empty (no items) and no-results states internally.
  */
@@ -65,7 +94,9 @@ export function ConfigItemsTable({ items }: ConfigItemsTableProps) {
       !normalizedQuery ||
       item.name.toLowerCase().includes(normalizedQuery) ||
       (item.path ?? '').toLowerCase().includes(normalizedQuery) ||
-      (item.status ?? '').toLowerCase().includes(normalizedQuery);
+      (item.status ?? '').toLowerCase().includes(normalizedQuery) ||
+      (item.publisher ?? '').toLowerCase().includes(normalizedQuery) ||
+      item.source.toLowerCase().includes(normalizedQuery);
     return matchesKind && matchesQuery;
   });
 
@@ -121,8 +152,8 @@ export function ConfigItemsTable({ items }: ConfigItemsTableProps) {
       {/* Results count */}
       <p className="px-4 text-xs text-text-muted" aria-live="polite">
         {filtered.length === items.length
-          ? `${items.length} items`
-          : `${filtered.length} of ${items.length} items`}
+          ? `${items.length} filtered items`
+          : `${filtered.length} of ${items.length} filtered items`}
       </p>
 
       {/* Table or no-results */}

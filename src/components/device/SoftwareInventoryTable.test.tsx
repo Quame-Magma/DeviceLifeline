@@ -96,7 +96,7 @@ describe('SoftwareInventoryTable', () => {
 
   it('displays the item count', () => {
     render(<SoftwareInventoryTable items={MOCK_ITEMS} />);
-    expect(screen.getByText('3 items')).toBeInTheDocument();
+    expect(screen.getByText('3 filtered items')).toBeInTheDocument();
   });
 
   it('updates the item count when filtering', () => {
@@ -105,6 +105,6 @@ describe('SoftwareInventoryTable', () => {
 
     fireEvent.change(input, { target: { value: 'chrome' } });
 
-    expect(screen.getByText('1 of 3 items')).toBeInTheDocument();
+    expect(screen.getByText('1 of 3 filtered items')).toBeInTheDocument();
   });
 });

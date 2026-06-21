@@ -16,6 +16,8 @@ import type {
   RestoreStepResult,
 } from '../../types/device.types';
 
+export type RestoreRunMode = 'dryRun' | 'install';
+
 /** Create a restore plan from a given snapshot's software inventory. */
 export const createRestorePlan = (snapshotId: string): Promise<RestorePlan> =>
   invoke<RestorePlan>('create_restore_plan', { snapshotId });
@@ -32,10 +34,12 @@ export const getRestorePlanSteps = (
 
 /**
  * Execute a restore plan synchronously and return the finished job.
- * On Windows this triggers real WinGet installs.
+ * Defaults to dry-run mode so MVP testing cannot accidentally install apps.
  */
-export const runRestore = (planId: string): Promise<RestoreJob> =>
-  invoke<RestoreJob>('run_restore', { planId });
+export const runRestore = (
+  planId: string,
+  mode: RestoreRunMode = 'dryRun',
+): Promise<RestoreJob> => invoke<RestoreJob>('run_restore', { planId, mode });
 
 /** Retrieve all restore jobs, newest first. */
 export const getRestoreJobs = (): Promise<RestoreJob[]> =>

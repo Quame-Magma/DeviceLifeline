@@ -30,7 +30,9 @@ export interface DeviceDnaSnapshot {
 
 /**
  * A single system-configuration item captured in a `DeviceDnaSnapshot`.
- * `kind` is one of "startup" | "service" | "scheduled_task".
+ * `kind` includes local MVP environment categories such as "startup",
+ * "service", "scheduled_task", "browser_extension", "dev_tool", "hardware",
+ * "power", and "network".
  * Optional fields are null when unavailable from the OS source.
  */
 export interface ConfigItem {

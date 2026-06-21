@@ -9,6 +9,7 @@ import { EmptyState } from '../components/common/EmptyState';
 import { RestorePlanList } from '../components/restore/RestorePlanList';
 import { RestorePlanStepsTable } from '../components/restore/RestorePlanStepsTable';
 import { RestoreJobResult } from '../components/restore/RestoreJobResult';
+import type { RestoreRunMode } from '../api/tauri/restore';
 
 /**
  * Recovery Center page — Increment 4.
@@ -18,8 +19,8 @@ import { RestoreJobResult } from '../components/restore/RestoreJobResult';
  *   Left panel: list of restore plans.
  *   Right panel: selected plan steps + "Run restore" button + latest job result.
  *
- * NOTE: Clicking "Run restore" on Windows performs real WinGet package installations.
- * On non-Windows platforms the mock installer is used and no changes are made to the OS.
+ * Restore defaults to simulation mode. Real WinGet installs require explicit
+ * opt-in and confirmation.
  */
 export function RecoveryCenter() {
   const { snapshots, loadingSnapshots, loadSnapshots } = useDeviceDna();
@@ -42,6 +43,9 @@ export function RecoveryCenter() {
     useSetup();
 
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('');
+  const [restoreMode, setRestoreMode] =
+    useState<RestoreRunMode>('dryRun');
+  const [confirmRealInstall, setConfirmRealInstall] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Load snapshots and plans on mount.
@@ -66,7 +70,7 @@ export function RecoveryCenter() {
 
   const handleRunRestore = () => {
     if (selectedPlanId) {
-      void runRestore(selectedPlanId);
+      void runRestore(selectedPlanId, restoreMode);
     }
   };
 
@@ -108,6 +112,13 @@ export function RecoveryCenter() {
   };
 
   const selectedPlan = plans.find((p) => p.id === selectedPlanId) ?? null;
+  const realInstallMode = restoreMode === 'install';
+  const unresolvedStepCount = planSteps.filter((step) => !step.wingetId).length;
+  const canRunRestore =
+    selectedPlanId !== null &&
+    planSteps.length > 0 &&
+    !running &&
+    (!realInstallMode || confirmRealInstall);
 
   return (
     <div className="flex flex-col h-full">
@@ -118,7 +129,7 @@ export function RecoveryCenter() {
             Recovery Center
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">
-            Generate and execute restore plans from your device snapshots.
+            Generate, simulate, and execute restore plans from your device snapshots.
           </p>
         </div>
       </header>
@@ -261,21 +272,53 @@ export function RecoveryCenter() {
                   <p className="text-xs text-text-muted mt-0.5">
                     {selectedPlan.stepCount} steps &middot; created{' '}
                     {selectedPlan.createdAt.slice(0, 10)}
+                    {unresolvedStepCount > 0
+                      ? ` · ${unresolvedStepCount} need package review`
+                      : ''}
                   </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 max-w-[260px]">
-                    On Windows, this performs real WinGet installations. Use
-                    with care.
-                  </p>
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  <label className="inline-flex items-center gap-2 rounded border border-surface-border bg-white px-2 py-1 text-xs text-text-secondary">
+                    <input
+                      type="checkbox"
+                      checked={realInstallMode}
+                      onChange={(event) => {
+                        setRestoreMode(event.target.checked ? 'install' : 'dryRun');
+                        setConfirmRealInstall(false);
+                      }}
+                      className="h-3.5 w-3.5 rounded border-surface-border text-accent focus:ring-accent"
+                    />
+                    Real WinGet install
+                  </label>
+                  {realInstallMode ? (
+                    <label className="inline-flex max-w-[300px] items-center gap-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                      <input
+                        type="checkbox"
+                        checked={confirmRealInstall}
+                        onChange={(event) =>
+                          setConfirmRealInstall(event.target.checked)
+                        }
+                        className="h-3.5 w-3.5 rounded border-amber-300 text-amber-700 focus:ring-amber-500"
+                      />
+                      I understand this will install apps on this PC.
+                    </label>
+                  ) : (
+                    <p className="text-xs text-status-success bg-status-success-bg border border-status-success/20 rounded px-2 py-1 max-w-[300px]">
+                      Simulation mode records what would happen without changing this PC.
+                    </p>
+                  )}
                   <Button
                     variant="primary"
                     size="sm"
                     loading={running}
                     onClick={handleRunRestore}
-                    disabled={running || planSteps.length === 0}
+                    disabled={!canRunRestore}
                   >
-                    {running ? 'Running…' : 'Run restore'}
+                    {running
+                      ? 'Running…'
+                      : realInstallMode
+                        ? 'Run real install'
+                        : 'Simulate restore'}
                   </Button>
                 </div>
               </div>

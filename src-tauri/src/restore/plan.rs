@@ -17,7 +17,7 @@ const STEP_SOURCE: &str = "winget";
 ///
 /// Produces one step per `software` item, sorted by name, with `order_index`
 /// running `0..n`. `target_version` mirrors the item's version; `winget_id` is
-/// `None` in this cut and `source` is `"winget"`.
+/// filled for known packages and `source` is `"winget"`.
 pub fn build_plan(
     device_id: &str,
     snapshot: &DeviceDnaSnapshot,
@@ -37,7 +37,7 @@ pub fn build_plan(
             order_index: index as i64,
             software_name: item.name.clone(),
             target_version: item.version.clone(),
-            winget_id: None,
+            winget_id: resolve_winget_id(item),
             source: STEP_SOURCE.to_string(),
         })
         .collect();
@@ -52,6 +52,54 @@ pub fn build_plan(
     };
 
     Ok((plan, steps))
+}
+
+fn resolve_winget_id(item: &SoftwareInventoryItem) -> Option<String> {
+    let normalized = normalize_package_name(&item.name);
+    let id = match normalized.as_str() {
+        "7 zip" | "7 zip 64 bit" | "7 zip 32 bit" => "7zip.7zip",
+        "brave" | "brave browser" => "Brave.Brave",
+        "discord" => "Discord.Discord",
+        "docker desktop" => "Docker.DockerDesktop",
+        "figma" => "Figma.Figma",
+        "git" | "git version control" => "Git.Git",
+        "github desktop" => "GitHub.GitHubDesktop",
+        "google chrome" | "chrome" => "Google.Chrome",
+        "microsoft edge" | "edge" => "Microsoft.Edge",
+        "microsoft onedrive" | "onedrive" => "Microsoft.OneDrive",
+        "microsoft powertoys" | "powertoys" => "Microsoft.PowerToys",
+        "microsoft teams" | "teams" => "Microsoft.Teams",
+        "microsoft visual studio code" | "visual studio code" | "vs code" => {
+            "Microsoft.VisualStudioCode"
+        }
+        "mozilla firefox" | "firefox" => "Mozilla.Firefox",
+        "node js" | "nodejs" | "node" => "OpenJS.NodeJS",
+        "notion" => "Notion.Notion",
+        "postman" => "Postman.Postman",
+        "python" | "python 3" => "Python.Python.3",
+        "slack" => "SlackTechnologies.Slack",
+        "spotify" => "Spotify.Spotify",
+        "vlc media player" | "vlc" => "VideoLAN.VLC",
+        "whatsapp" => "WhatsApp.WhatsApp",
+        "zoom" | "zoom workplace" => "Zoom.Zoom",
+        _ => return None,
+    };
+    Some(id.to_string())
+}
+
+fn normalize_package_name(name: &str) -> String {
+    name.chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() {
+                ch.to_ascii_lowercase()
+            } else {
+                ' '
+            }
+        })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 #[cfg(test)]
@@ -115,5 +163,27 @@ mod tests {
         let (plan, steps) = build_plan("dev-1", &snap, &[]).expect("build plan");
         assert_eq!(plan.step_count, 0);
         assert!(steps.is_empty());
+    }
+
+    #[test]
+    fn build_plan_resolves_known_winget_ids() {
+        let snap = snapshot();
+        let software = vec![item("Google Chrome", Some("126.0"))];
+
+        let (_plan, steps) = build_plan("dev-1", &snap, &software).expect("build plan");
+
+        assert_eq!(steps.len(), 1);
+        assert_eq!(steps[0].winget_id.as_deref(), Some("Google.Chrome"));
+    }
+
+    #[test]
+    fn build_plan_leaves_unknown_winget_ids_empty() {
+        let snap = snapshot();
+        let software = vec![item("Special Vendor Utility", None)];
+
+        let (_plan, steps) = build_plan("dev-1", &snap, &software).expect("build plan");
+
+        assert_eq!(steps.len(), 1);
+        assert_eq!(steps[0].winget_id, None);
     }
 }

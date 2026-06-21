@@ -14,11 +14,19 @@ use crate::models::{RestorePlanStep, StepOutcome};
 const RESULT_SUCCEEDED: &str = "succeeded";
 /// Step-result status for a failed install.
 const RESULT_FAILED: &str = "failed";
+/// Step-result status for a deliberately skipped install.
+const RESULT_SKIPPED: &str = "skipped";
 
 /// Installs the software described by a single [`RestorePlanStep`].
 pub trait Installer: Send + Sync {
     /// Attempts to install `step`, returning the [`StepOutcome`].
     fn install(&self, step: &RestorePlanStep) -> StepOutcome;
+}
+
+/// Returns an installer that never mutates the OS and records the command that
+/// a real restore would attempt. This is the default path for MVP testing.
+pub fn dry_run_installer() -> Box<dyn Installer> {
+    Box::new(DryRunInstaller::new())
 }
 
 /// Returns the platform-appropriate [`Installer`].
@@ -33,6 +41,43 @@ pub fn default_installer() -> Box<dyn Installer> {
     #[cfg(not(windows))]
     {
         Box::new(MockInstaller::new())
+    }
+}
+
+/// A non-mutating installer used for restore simulations and preflight checks.
+pub struct DryRunInstaller;
+
+impl DryRunInstaller {
+    /// Creates a new dry-run installer.
+    pub fn new() -> Self {
+        DryRunInstaller
+    }
+}
+
+impl Default for DryRunInstaller {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Installer for DryRunInstaller {
+    fn install(&self, step: &RestorePlanStep) -> StepOutcome {
+        StepOutcome {
+            status: RESULT_SKIPPED.to_string(),
+            message: Some(describe_dry_run(step)),
+        }
+    }
+}
+
+fn describe_dry_run(step: &RestorePlanStep) -> String {
+    match &step.winget_id {
+        Some(id) => format!(
+            "Dry run only. Would run: winget install --id {id} -e --silent --accept-source-agreements --accept-package-agreements"
+        ),
+        None => format!(
+            "Dry run only. No WinGet package id is resolved for '{}'; review before real install.",
+            step.software_name
+        ),
     }
 }
 
@@ -103,5 +148,34 @@ mod tests {
             outcome.message.as_deref(),
             Some("winget package not found (simulated)")
         );
+    }
+
+    #[test]
+    fn dry_run_installer_never_installs() {
+        let installer = DryRunInstaller::new();
+        let mut step = step("Google Chrome");
+        step.winget_id = Some("Google.Chrome".to_string());
+
+        let outcome = installer.install(&step);
+
+        assert_eq!(outcome.status, "skipped");
+        assert!(outcome
+            .message
+            .as_deref()
+            .expect("dry run message")
+            .contains("winget install --id Google.Chrome"));
+    }
+
+    #[test]
+    fn dry_run_installer_flags_unresolved_packages() {
+        let installer = DryRunInstaller::new();
+        let outcome = installer.install(&step("Unknown Vendor Tool"));
+
+        assert_eq!(outcome.status, "skipped");
+        assert!(outcome
+            .message
+            .as_deref()
+            .expect("dry run message")
+            .contains("No WinGet package id is resolved"));
     }
 }

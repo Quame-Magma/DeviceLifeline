@@ -34,5 +34,13 @@ module.exports = {
     'react-hooks/rules-of-hooks': 'error',
     'react-hooks/exhaustive-deps': 'warn',
   },
-  ignorePatterns: ['dist/', 'node_modules/', '*.cjs', '*.config.ts', '*.config.js'],
+  ignorePatterns: [
+    'dist/',
+    'node_modules/',
+    'src-tauri/gen/',
+    'src-tauri/target/',
+    '*.cjs',
+    '*.config.ts',
+    '*.config.js',
+  ],
 };

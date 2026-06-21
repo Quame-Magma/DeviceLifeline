@@ -5,6 +5,8 @@ import type {
   DeviceDnaSnapshot,
   HealthAlert,
   HealthSample,
+  RestorePlan,
+  SyncStatus,
 } from '../types/device.types';
 
 const snapshot = (id: string): DeviceDnaSnapshot => ({
@@ -55,6 +57,22 @@ const latestHealth: HealthSample = {
   healthScore: 72,
 };
 
+const restorePlan: RestorePlan = {
+  id: 'p1',
+  deviceId: 'd1',
+  snapshotId: 's2',
+  name: 'Restore plan',
+  createdAt: '2026-06-08T10:05:00Z',
+  stepCount: 4,
+};
+
+const syncStatus: SyncStatus = {
+  configured: false,
+  pending: 2,
+  synced: 0,
+  failed: 0,
+};
+
 describe('summarize', () => {
   it('derives counts and the latest snapshot', () => {
     const stats = summarize({
@@ -63,6 +81,8 @@ describe('summarize', () => {
       alerts: [alert(false), alert(false), alert(true)],
       crashes: [crash('critical'), crash('error'), crash('warning')],
       timelineEvents: [],
+      restorePlans: [restorePlan],
+      syncStatus,
     });
 
     expect(stats.snapshotCount).toBe(2);
@@ -72,6 +92,13 @@ describe('summarize', () => {
     expect(stats.crashTotal).toBe(3);
     expect(stats.crashCritical).toBe(1);
     expect(stats.timelineCount).toBe(0);
+    expect(stats.restorePlanCount).toBe(1);
+    expect(stats.latestRestorePlan?.id).toBe('p1');
+    expect(stats.syncStatus?.pending).toBe(2);
+    expect(stats.readiness.state).toBe('attention');
+    expect(stats.attentionItems.some((item) => item.id === 'critical-crashes')).toBe(
+      true,
+    );
   });
 
   it('handles an empty first-run state', () => {
@@ -88,5 +115,23 @@ describe('summarize', () => {
     expect(stats.healthScore).toBeNull();
     expect(stats.activeAlerts).toBe(0);
     expect(stats.crashTotal).toBe(0);
+    expect(stats.restorePlanCount).toBe(0);
+    expect(stats.readiness.state).toBe('setup');
+    expect(stats.attentionItems[0]?.id).toBe('baseline-missing');
+  });
+
+  it('marks a complete local MVP loop as ready', () => {
+    const stats = summarize({
+      snapshots: [snapshot('s2')],
+      latestHealth: { ...latestHealth, healthScore: 91 },
+      alerts: [],
+      crashes: [crash('warning')],
+      timelineEvents: [],
+      restorePlans: [restorePlan],
+    });
+
+    expect(stats.readiness.state).toBe('ready');
+    expect(stats.readiness.readyChecks).toBe(5);
+    expect(stats.attentionItems[0]?.id).toBe('clear');
   });
 });

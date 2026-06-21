@@ -54,6 +54,56 @@ const MOCK_ITEMS: ConfigItem[] = [
     publisher: null,
     source: 'registry',
   },
+  {
+    id: 'cfg-006',
+    snapshotId: 'snap-001',
+    kind: 'browser_extension',
+    name: 'Chrome: React Developer Tools',
+    status: 'Default',
+    path: 'fmkadmapgofadopljbjfkapdkoienihi @ 5.0.0',
+    publisher: null,
+    source: 'browser',
+  },
+  {
+    id: 'cfg-007',
+    snapshotId: 'snap-001',
+    kind: 'dev_tool',
+    name: 'Git',
+    status: 'detected',
+    path: 'C:\\Program Files\\Git\\cmd\\git.exe',
+    publisher: null,
+    source: 'path',
+  },
+  {
+    id: 'cfg-008',
+    snapshotId: 'snap-001',
+    kind: 'hardware',
+    name: 'CPU',
+    status: '16 logical cores',
+    path: 'Mock CPU',
+    publisher: null,
+    source: 'sysinfo',
+  },
+  {
+    id: 'cfg-009',
+    snapshotId: 'snap-001',
+    kind: 'power',
+    name: 'Active power plan',
+    status: 'Balanced',
+    path: '381b4222-f694-41f0-9685-ff5bb260df2e',
+    publisher: null,
+    source: 'powercfg',
+  },
+  {
+    id: 'cfg-010',
+    snapshotId: 'snap-001',
+    kind: 'network',
+    name: 'Wi-Fi',
+    status: 'Up · 866 Mbps',
+    path: 'Mock Wireless Adapter',
+    publisher: null,
+    source: 'powershell',
+  },
 ];
 
 describe('ConfigItemsTable', () => {
@@ -66,6 +116,11 @@ describe('ConfigItemsTable', () => {
     expect(
       screen.getByText('\\Microsoft\\Windows\\Defrag\\ScheduledDefrag'),
     ).toBeInTheDocument();
+    expect(screen.getByText('Chrome: React Developer Tools')).toBeInTheDocument();
+    expect(screen.getByText('Git')).toBeInTheDocument();
+    expect(screen.getByText('CPU')).toBeInTheDocument();
+    expect(screen.getByText('Active power plan')).toBeInTheDocument();
+    expect(screen.getByText('Wi-Fi')).toBeInTheDocument();
   });
 
   it('renders kind badges for all item kinds', () => {
@@ -87,9 +142,29 @@ describe('ConfigItemsTable', () => {
     const scheduledCells = kindCells.filter((td) =>
       td?.textContent?.trim() === 'Scheduled task',
     );
+    const browserCells = kindCells.filter((td) =>
+      td?.textContent?.trim() === 'Browser extension',
+    );
+    const devToolCells = kindCells.filter((td) =>
+      td?.textContent?.trim() === 'Dev tool',
+    );
+    const hardwareCells = kindCells.filter((td) =>
+      td?.textContent?.trim() === 'Hardware',
+    );
+    const powerCells = kindCells.filter((td) =>
+      td?.textContent?.trim() === 'Power',
+    );
+    const networkCells = kindCells.filter((td) =>
+      td?.textContent?.trim() === 'Network',
+    );
     expect(startupCells).toHaveLength(2);
     expect(serviceCells).toHaveLength(2);
     expect(scheduledCells).toHaveLength(1);
+    expect(browserCells).toHaveLength(1);
+    expect(devToolCells).toHaveLength(1);
+    expect(hardwareCells).toHaveLength(1);
+    expect(powerCells).toHaveLength(1);
+    expect(networkCells).toHaveLength(1);
   });
 
   it('shows "No configuration items found" when items array is empty', () => {
@@ -101,7 +176,7 @@ describe('ConfigItemsTable', () => {
 
   it('displays the total item count', () => {
     render(<ConfigItemsTable items={MOCK_ITEMS} />);
-    expect(screen.getByText('5 items')).toBeInTheDocument();
+    expect(screen.getByText('10 filtered items')).toBeInTheDocument();
   });
 
   it('filters rows based on the search input', () => {
@@ -149,7 +224,7 @@ describe('ConfigItemsTable', () => {
 
     fireEvent.change(input, { target: { value: 'OneDrive' } });
 
-    expect(screen.getByText('1 of 5 items')).toBeInTheDocument();
+    expect(screen.getByText('1 of 10 filtered items')).toBeInTheDocument();
   });
 
   it('filters by kind when clicking a kind filter button', () => {
@@ -216,5 +291,28 @@ describe('ConfigItemsTable', () => {
     const allBtn = screen.getByRole('button', { name: /^All$/i });
     fireEvent.click(allBtn);
     expect(screen.getByText('OneDrive')).toBeInTheDocument();
+  });
+
+  it('filters by dev tool kind', () => {
+    render(<ConfigItemsTable items={MOCK_ITEMS} />);
+
+    const devToolsBtn = screen.getByRole('button', { name: /^Dev tools$/i });
+    fireEvent.click(devToolsBtn);
+
+    expect(screen.getByText('Git')).toBeInTheDocument();
+    expect(screen.queryByText('OneDrive')).not.toBeInTheDocument();
+    expect(screen.queryByText('CPU')).not.toBeInTheDocument();
+  });
+
+  it('searches by source', () => {
+    render(<ConfigItemsTable items={MOCK_ITEMS} />);
+    const input = screen.getByRole('searchbox', {
+      name: /search configuration items/i,
+    });
+
+    fireEvent.change(input, { target: { value: 'sysinfo' } });
+
+    expect(screen.getByText('CPU')).toBeInTheDocument();
+    expect(screen.queryByText('OneDrive')).not.toBeInTheDocument();
   });
 });

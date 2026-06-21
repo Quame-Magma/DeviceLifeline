@@ -1,8 +1,10 @@
 # Contributing to DeviceLifeline
 
-DeviceLifeline is a Windows-first Tauri desktop app (Rust core + React/TypeScript UI) with a
-Supabase cloud backend (later increments). This guide covers local development. For the full
+DeviceLifeline is a Windows-first Tauri desktop app (Rust core + React/TypeScript UI). The current
+implementation target is a local-first MVP; Supabase cloud sync, auth, and billing remain deferred.
+This guide covers local development. For the full
 design, see the [documentation suite](docs/README.md) — especially
+[61. Local-First MVP Plan](docs/61-local-first-mvp-plan.md),
 [48. Folder Structure](docs/48-folder-structure-specification.md) and
 [47. Coding Standards](docs/47-coding-standards.md).
 
@@ -61,6 +63,18 @@ cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 cargo test  --manifest-path src-tauri/Cargo.toml
 ```
 
+## Restore safety
+
+Recovery Center runs restore jobs in **simulation mode** by default. Simulation mode records the WinGet command
+that would run, or flags the step as needing package review, but does not install anything.
+
+Real WinGet installs require both:
+
+1. The `Real WinGet install` toggle in the UI.
+2. The confirmation checkbox acknowledging that apps will be installed on the current PC.
+
+Do not use real install mode on a primary workstation until the generated plan has been reviewed.
+
 ## Conventions
 
 - **Branching:** commit directly to `main` for now (small team / early stage).
@@ -72,6 +86,7 @@ cargo test  --manifest-path src-tauri/Cargo.toml
 
 ## Current status
 
-**Increment 1** delivers the foundation plus the first vertical slice: Device DNA snapshot capture
-for installed software → SQLite → Tauri IPC → a Snapshots view. See
-[60. Final Implementation Roadmap](docs/60-final-implementation-roadmap.md) for what comes next.
+**Local MVP hardening** is in progress. The app now has local Device DNA, setup export/import, restore planning,
+simulation-first restore execution, timeline, health, crash, and offline diagnosis slices. See
+[61. Local-First MVP Plan](docs/61-local-first-mvp-plan.md) for the scope that should become testable before
+cloud/auth/payment work resumes.

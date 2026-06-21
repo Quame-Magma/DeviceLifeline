@@ -12,6 +12,7 @@ import {
   getRestorePlanSteps,
   runRestore as apiRunRestore,
   getRestoreStepResults,
+  type RestoreRunMode,
 } from '../api/tauri/restore';
 import { useRestoreStore, type RestoreStore } from '../store/restore.store';
 
@@ -30,8 +31,8 @@ export interface UseRecoveryReturn {
   createPlan: (snapshotId: string) => Promise<void>;
   /** Select a plan by ID and load its steps; clears previous step results. */
   selectPlan: (planId: string) => Promise<void>;
-  /** Run the selected restore plan and store the resulting job + step results. */
-  runRestore: (planId: string) => Promise<void>;
+  /** Run or simulate the selected restore plan and store the job + step results. */
+  runRestore: (planId: string, mode?: RestoreRunMode) => Promise<void>;
 }
 
 export function useRecovery(): UseRecoveryReturn {
@@ -130,11 +131,11 @@ export function useRecovery(): UseRecoveryReturn {
   );
 
   const runRestore = useCallback(
-    async (planId: string) => {
+    async (planId: string, mode: RestoreRunMode = 'dryRun') => {
       setRunning(true);
       setError(null);
       try {
-        const job = await apiRunRestore(planId);
+        const job = await apiRunRestore(planId, mode);
         setLatestJob(job);
         const results = await getRestoreStepResults(job.id);
         setStepResults(results);

@@ -54,24 +54,34 @@ Highlights:
 - [Performance Timeline Design](docs/23-performance-timeline-design.md) · [AI Diagnostics Design](docs/22-ai-diagnostics-design.md) · [Device DNA Design](docs/24-device-dna-design.md)
 - [Final Implementation Roadmap](docs/60-final-implementation-roadmap.md) — the capstone build plan.
 
-## MVP scope (V1)
+## Local MVP scope
 
-Device DNA Engine · Software Inventory · Setup Export · Setup Restore · Performance Timeline ·
-Basic Health Monitoring · Basic AI Diagnosis. *Everything else is post-MVP and labeled as such in the docs.*
+The active implementation target is a **Windows-first, local-first MVP**:
+Device DNA Engine, software inventory, setup export/import, restore planning with safe simulation-first
+execution, Performance Timeline, basic health monitoring, crash event collection, and offline diagnosis.
+
+Cloud sync, auth, payments, subscriptions, fleet management, and paid edition gating are intentionally deferred
+until the local MVP is stable enough to test on real Windows devices. See
+[Local-First MVP Plan](docs/61-local-first-mvp-plan.md).
 
 ## Repository status
 
-🚧 **Increment 1 — Foundation + first vertical slice.**
-The repo contains a runnable scaffold plus the first feature slice: **Device DNA snapshot capture
-for installed software → SQLite → Tauri IPC → a Snapshots UI.** See [CONTRIBUTING.md](CONTRIBUTING.md)
-to build and run it locally (Windows-first; non-Windows runs use a mock software collector). The full
-build sequence is in the [Final Implementation Roadmap](docs/60-final-implementation-roadmap.md).
+🚧 **Local MVP hardening.**
+The repo contains the Tauri app, local SQLite schema, Rust collectors, restore/diagnosis/health/crash slices,
+and a React UI for the core workflows. See [CONTRIBUTING.md](CONTRIBUTING.md) to build and run it locally
+(Windows-first; non-Windows runs use deterministic mock collectors where OS access is unavailable). The broader
+cloud-backed product sequence remains documented in the
+[Final Implementation Roadmap](docs/60-final-implementation-roadmap.md).
 
-**What works in Increment 1:**
-- Capture a snapshot of installed software (real Windows registry collector; deterministic mock elsewhere)
+**What is testable locally:**
+- Capture a filtered snapshot of restore-relevant installed software (real Windows collectors; deterministic mock elsewhere)
 - Persist snapshots + inventory to a local SQLite database with versioned migrations
 - Browse snapshots and search the software inventory in the desktop UI
-- Tauri v2 IPC between the React UI and the Rust core; CI for the frontend and the Rust core (Linux + Windows)
+- Capture restore-relevant browser, developer-tool, scheduled-task, hardware, power, and network configuration basics and diff snapshots into timeline events
+- Export/import local `.dlsetup` setup bundles with checksum verification
+- Create restore plans, simulate restore jobs safely by default, and opt into real WinGet installs explicitly
+- Capture basic health samples, crash events, and offline diagnosis findings
+- Tauri v2 IPC between the React UI and the Rust core; CI definitions for the frontend and Rust core
 
 **Layout:** `src-tauri/` (Rust core + Tauri), `src/` (React UI), `supabase/` (cloud scaffold for later),
 `docs/` (the 60-document suite). See [48. Folder Structure](docs/48-folder-structure-specification.md).

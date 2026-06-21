@@ -8,7 +8,7 @@
 use tauri::State;
 
 use crate::error::CoreError;
-use crate::installer::default_installer;
+use crate::installer::{default_installer, dry_run_installer};
 use crate::models::{RestoreJob, RestorePlan, RestorePlanStep, RestoreStepResult};
 use crate::restore::{executor, plan};
 use crate::storage::{device_repo, restore_repo};
@@ -58,8 +58,15 @@ pub fn get_restore_plan_steps(
 }
 
 /// Executes a restore plan synchronously and returns the finished job.
+///
+/// `mode` defaults to `"dryRun"`, which records a non-mutating simulation.
+/// Passing `"install"` opts into the real platform installer.
 #[tauri::command]
-pub fn run_restore(state: State<'_, AppState>, plan_id: String) -> Result<RestoreJob, CoreError> {
+pub fn run_restore(
+    state: State<'_, AppState>,
+    plan_id: String,
+    mode: Option<String>,
+) -> Result<RestoreJob, CoreError> {
     let mut conn = state
         .db
         .lock()
@@ -68,7 +75,10 @@ pub fn run_restore(state: State<'_, AppState>, plan_id: String) -> Result<Restor
     let restore_plan = restore_repo::get_plan(&conn, &plan_id)?
         .ok_or_else(|| CoreError::NotFound(format!("restore plan {plan_id}")))?;
     let steps = restore_repo::list_steps(&conn, &plan_id)?;
-    let installer = default_installer();
+    let installer = match mode.as_deref() {
+        Some("install") => default_installer(),
+        _ => dry_run_installer(),
+    };
     executor::run_job(&mut conn, &restore_plan, &steps, installer.as_ref())
 }
 

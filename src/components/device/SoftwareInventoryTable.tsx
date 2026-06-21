@@ -57,8 +57,8 @@ export function SoftwareInventoryTable({
       {/* Results count */}
       <p className="px-4 text-xs text-text-muted" aria-live="polite">
         {filtered.length === items.length
-          ? `${items.length} items`
-          : `${filtered.length} of ${items.length} items`}
+          ? `${items.length} filtered items`
+          : `${filtered.length} of ${items.length} filtered items`}
       </p>
 
       {/* Table */}

@@ -192,6 +192,11 @@ fn kind_label(kind: &str) -> &str {
         "startup" => "startup item",
         "service" => "service",
         "scheduled_task" => "scheduled task",
+        "browser_extension" => "browser extension",
+        "dev_tool" => "developer tool",
+        "hardware" => "hardware",
+        "power" => "power setting",
+        "network" => "network adapter",
         other => other,
     }
 }
@@ -305,6 +310,35 @@ mod tests {
 
         assert_eq!(events[2].event_type, "config_removed");
         assert_eq!(events[2].title, "Removed service: OldSvc");
+    }
+
+    #[test]
+    fn labels_local_mvp_config_kinds() {
+        let new_snap = snapshot("snap-new");
+        let prev_snap = snapshot("snap-prev");
+
+        let new_config = vec![
+            config(
+                "browser_extension",
+                "Chrome: React Developer Tools",
+                Some("Default"),
+            ),
+            config("dev_tool", "Git", Some("detected")),
+            config("network", "Wi-Fi", Some("Up")),
+        ];
+
+        let events = compute_events(&new_snap, &prev_snap, &[], &[], &[], &new_config);
+
+        assert_eq!(events.len(), 3);
+        assert!(events
+            .iter()
+            .any(|event| event.title == "Added browser extension: Chrome: React Developer Tools"));
+        assert!(events
+            .iter()
+            .any(|event| event.title == "Added developer tool: Git"));
+        assert!(events
+            .iter()
+            .any(|event| event.title == "Added network adapter: Wi-Fi"));
     }
 
     #[test]

@@ -8,7 +8,7 @@ interface RestorePlanStepsTableProps {
 
 /**
  * Searchable table of steps belonging to a restore plan.
- * Columns: order, software name, target version, source.
+ * Columns: order, software name, target version, package id, source.
  */
 export function RestorePlanStepsTable({ steps }: RestorePlanStepsTableProps) {
   const [query, setQuery] = useState('');
@@ -19,6 +19,7 @@ export function RestorePlanStepsTable({ steps }: RestorePlanStepsTableProps) {
         (step) =>
           step.softwareName.toLowerCase().includes(normalizedQuery) ||
           (step.targetVersion ?? '').toLowerCase().includes(normalizedQuery) ||
+          (step.wingetId ?? '').toLowerCase().includes(normalizedQuery) ||
           step.source.toLowerCase().includes(normalizedQuery),
       )
     : steps;
@@ -38,7 +39,7 @@ export function RestorePlanStepsTable({ steps }: RestorePlanStepsTableProps) {
       <div className="px-4 pt-1">
         <input
           type="search"
-          placeholder="Search by name, version, or source…"
+          placeholder="Search by name, version, package ID, or source…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className={[
@@ -89,6 +90,12 @@ export function RestorePlanStepsTable({ steps }: RestorePlanStepsTableProps) {
                 </th>
                 <th
                   scope="col"
+                  className="py-2.5 pr-4 text-left text-xs font-semibold text-text-secondary uppercase tracking-wide"
+                >
+                  Package ID
+                </th>
+                <th
+                  scope="col"
                   className="py-2.5 text-left text-xs font-semibold text-text-secondary uppercase tracking-wide"
                 >
                   Source
@@ -110,6 +117,11 @@ export function RestorePlanStepsTable({ steps }: RestorePlanStepsTableProps) {
                   <td className="py-2.5 pr-4 font-mono text-xs text-text-secondary">
                     {step.targetVersion ?? (
                       <span className="text-text-muted italic">—</span>
+                    )}
+                  </td>
+                  <td className="py-2.5 pr-4 font-mono text-xs text-text-secondary max-w-[220px] truncate">
+                    {step.wingetId ?? (
+                      <span className="text-amber-700">Needs review</span>
                     )}
                   </td>
                   <td className="py-2.5">
