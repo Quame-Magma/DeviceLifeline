@@ -18,23 +18,60 @@
   }
 
   body {
-    font-family:
-      'Segoe UI Variable',
-      'Segoe UI',
-      system-ui,
-      ui-sans-serif,
-      sans-serif;
+    font-family: 'Cause', system-ui, ui-sans-serif, 'Segoe UI', sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #07080a;
-    color: #f4f4f6;
+    background-color: #0b1019;
+    color: #eef2f8;
     line-height: 1.5;
   }
 
   #root {
     min-height: 100%;
-    background-color: #07080a;
-    color: #f4f4f6;
+    background-color: #0b1019;
+    color: #eef2f8;
+    font-family: 'Cause', system-ui, ui-sans-serif, 'Segoe UI', sans-serif;
+  }
+
+  /* Variable weight helpers for Cause */
+  .cause-thin {
+    font-family: 'Cause', system-ui, sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 100;
+    font-style: normal;
+  }
+  .cause-light {
+    font-family: 'Cause', system-ui, sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 300;
+    font-style: normal;
+  }
+  .cause-regular {
+    font-family: 'Cause', system-ui, sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    font-style: normal;
+  }
+  .cause-medium {
+    font-family: 'Cause', system-ui, sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 500;
+    font-style: normal;
+  }
+  .cause-semibold {
+    font-family: 'Cause', system-ui, sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 600;
+    font-style: normal;
+  }
+  .cause-bold {
+    font-family: 'Cause', system-ui, sans-serif;
+    font-optical-sizing: auto;
+    font-weight: 700;
+    font-style: normal;
   }
 
   :focus-visible {
@@ -77,8 +114,8 @@
     @apply min-h-0 flex-1 bg-canvas;
     background-image: linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.02) 0%,
-      transparent 120px
+      rgba(79, 140, 255, 0.04) 0%,
+      transparent 140px
     );
   }
 
@@ -185,7 +222,7 @@
   }
 
   .panel {
-    @apply overflow-hidden rounded-card border border-hairline bg-surface;
+    @apply overflow-hidden rounded-card border border-hairline bg-surface-card shadow-card;
   }
 
   .panel-header {
@@ -193,11 +230,11 @@
   }
 
   .panel-title {
-    @apply text-sm font-semibold text-text-primary;
+    @apply text-sm font-semibold text-text-primary cause-semibold;
   }
 
   .panel-subtitle {
-    @apply mt-0.5 text-xs text-text-muted;
+    @apply mt-0.5 text-2xs text-text-muted;
   }
 
   /* Kill leftover “AI dashboard” table header shouting */

@@ -109,8 +109,8 @@ export function HardwareCenter() {
   return (
     <div className="page-shell page-section">
       <PageHeader
-        title="Hardware"
-        description="Full OS-source HWiNFO-class sensors: ACPI, PDH, LHM/OHM if installed, nvidia-smi, SMART, fans, power."
+        title="Performance"
+        description="Sensors, clocks, GPU load, and disk health — HWiNFO-class OS telemetry."
         actions={
           <>
             <Button

@@ -12,13 +12,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-white text-text-inverse hover:bg-[#e8e8e8] focus-visible:ring-white/40 disabled:opacity-40',
+    'bg-accent text-white hover:bg-accent-hover focus-visible:ring-accent/40 disabled:opacity-40 shadow-glow-sm',
   accent:
-    'bg-white text-text-inverse hover:bg-[#e8e8e8] focus-visible:ring-white/40 disabled:opacity-40',
+    'bg-accent text-white hover:bg-accent-hover focus-visible:ring-accent/40 disabled:opacity-40',
   secondary:
-    'border border-hairline bg-transparent text-text-primary hover:bg-surface-card focus-visible:ring-white/25 disabled:opacity-40',
+    'border border-hairline bg-surface-elevated/60 text-text-primary hover:bg-surface-card focus-visible:ring-accent/30 disabled:opacity-40',
   ghost:
-    'bg-transparent text-text-secondary hover:bg-surface-card hover:text-text-primary focus-visible:ring-white/25 disabled:opacity-40',
+    'bg-transparent text-text-secondary hover:bg-surface-card hover:text-text-primary focus-visible:ring-accent/30 disabled:opacity-40',
   danger:
     'bg-status-error/90 text-white hover:bg-status-error focus-visible:ring-status-error/50 disabled:opacity-40',
 };

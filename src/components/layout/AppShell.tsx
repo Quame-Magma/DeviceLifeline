@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { FolderSearch, Settings } from 'lucide-react';
+import { Bell, ChevronDown, Search, Settings } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import type { View } from './Sidebar';
 import {
@@ -33,9 +33,18 @@ function isMacPlatform(): boolean {
  * Raycast owns: palette, keycaps, white CTAs, dense command rows.
  * Acrylic only on the palette (transient); shell stays solid.
  */
+const SIDEBAR_COLLAPSED_KEY = 'devicelifeline.sidebar.collapsed';
+
 export function AppShell({ activeView, onNavigate, children }: AppShellProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [showKeyHints, setShowKeyHints] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     const apply = (prefs: UserPreferences) => {
@@ -70,6 +79,18 @@ export function AppShell({ activeView, onNavigate, children }: AppShellProps) {
     };
   }, []);
 
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
   const togglePalette = useCallback(() => {
     setPaletteOpen((open) => !open);
   }, []);
@@ -82,24 +103,39 @@ export function AppShell({ activeView, onNavigate, children }: AppShellProps) {
 
   const modKey = isMacPlatform() ? '⌘' : 'Ctrl';
 
+  function avatarInitial(): string {
+    try {
+      const n = localStorage.getItem('devicelifeline.displayName')?.trim();
+      if (n) return n.charAt(0).toUpperCase();
+    } catch {
+      /* ignore */
+    }
+    return 'A';
+  }
+
   return (
-    <div className="app-backdrop flex h-screen overflow-hidden">
-      <Sidebar activeView={activeView} onNavigate={onNavigate} />
+    <div className="app-backdrop flex h-screen overflow-hidden bg-canvas">
+      <Sidebar
+        activeView={activeView}
+        onNavigate={onNavigate}
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={toggleSidebar}
+      />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="flex h-12 flex-shrink-0 items-center gap-2 border-b border-hairline bg-canvas px-3 sm:px-4">
+        <header className="flex h-14 flex-shrink-0 items-center gap-3 border-b border-hairline bg-canvas px-3 sm:px-5">
           <button
             type="button"
             onClick={() => setPaletteOpen(true)}
             data-testid="command-palette-trigger"
             className={[
-              'group flex max-w-xl flex-1 items-center gap-2.5 rounded-control',
-              'border border-hairline bg-surface-elevated px-3 py-1.5 text-left text-sm text-text-muted',
+              'group flex min-w-0 max-w-md flex-1 items-center gap-2.5 rounded-xl',
+              'border border-hairline bg-surface-elevated px-3.5 py-2 text-left text-sm text-text-muted',
               'transition-colors duration-150 ease-ray',
               'hover:border-hairline-strong hover:bg-surface-card hover:text-text-secondary',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
             ].join(' ')}
           >
-            <FolderSearch
+            <Search
               aria-hidden="true"
               className="h-4 w-4 flex-shrink-0 text-text-muted transition-colors group-hover:text-text-secondary"
               strokeWidth={1.75}
@@ -115,25 +151,54 @@ export function AppShell({ activeView, onNavigate, children }: AppShellProps) {
             ) : null}
           </button>
 
-          <button
-            type="button"
-            onClick={() => onNavigate('settings')}
-            title="Settings"
-            aria-label="Open settings"
-            data-testid="settings-trigger"
-            className={[
-              'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control',
-              'border border-transparent text-text-muted',
-              'transition-colors duration-150 ease-ray',
-              'hover:border-hairline hover:bg-surface-elevated hover:text-text-primary',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
-              activeView === 'settings'
-                ? 'border-hairline bg-surface-card text-text-primary'
-                : '',
-            ].join(' ')}
-          >
-            <Settings className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-          </button>
+          <div className="ml-auto flex flex-shrink-0 items-center gap-1">
+            <button
+              type="button"
+              title="Notifications"
+              aria-label="Notifications"
+              className={[
+                'flex h-9 w-9 items-center justify-center rounded-lg',
+                'text-text-muted hover:bg-surface-elevated hover:text-text-primary',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
+              ].join(' ')}
+            >
+              <Bell className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('settings')}
+              title="Settings"
+              aria-label="Open settings"
+              data-testid="settings-trigger"
+              className={[
+                'flex h-9 w-9 items-center justify-center rounded-lg',
+                'text-text-muted hover:bg-surface-elevated hover:text-text-primary',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
+                activeView === 'settings'
+                  ? 'bg-surface-card text-text-primary'
+                  : '',
+              ].join(' ')}
+            >
+              <Settings className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('settings')}
+              title="Account"
+              aria-label="Account menu"
+              className={[
+                'ml-0.5 flex h-9 items-center gap-1 rounded-full border border-hairline',
+                'bg-surface-elevated pl-0.5 pr-1.5 text-text-secondary',
+                'hover:border-hairline-strong hover:text-text-primary',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
+              ].join(' ')}
+            >
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-subtle text-xs font-semibold text-accent">
+                {avatarInitial()}
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 text-text-muted" aria-hidden />
+            </button>
+          </div>
         </header>
 
         <main

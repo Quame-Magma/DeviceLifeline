@@ -1,9 +1,9 @@
 import type { Config } from 'tailwindcss';
 
 /**
- * Fluent Ops Shell × Raycast Command Layer
- * Solid surface ladder, hairline borders, monochrome chrome,
- * semantic accents only. Acrylic reserved for transient overlays.
+ * Dashboard palette aligned to the product mock:
+ * deep navy canvas, blue active accents, green health, amber warnings.
+ * Typeface: Cause (Google Fonts variable).
  */
 const config: Config = {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
@@ -11,67 +11,67 @@ const config: Config = {
     extend: {
       colors: {
         canvas: {
-          DEFAULT: '#07080a',
-          elevated: '#0d0d0d',
-          glow: '#101111',
+          DEFAULT: '#0b1019',
+          elevated: '#101725',
+          glow: '#121a2a',
         },
         glass: {
-          DEFAULT: '#0d0d0d',
-          strong: '#101111',
-          border: '#242728',
-          highlight: 'rgba(255,255,255,0.16)',
+          DEFAULT: '#121a28',
+          strong: '#162033',
+          border: 'rgba(120, 150, 200, 0.14)',
+          highlight: 'rgba(120, 170, 255, 0.18)',
         },
         sidebar: {
-          DEFAULT: '#07080a',
-          hover: '#121212',
-          active: '#121212',
-          border: '#242728',
+          DEFAULT: '#0a0f18',
+          hover: '#141d2c',
+          active: '#162033',
+          border: 'rgba(120, 150, 200, 0.12)',
         },
         surface: {
-          DEFAULT: '#0d0d0d',
-          card: '#121212',
-          elevated: '#101111',
-          border: '#242728',
-          muted: 'rgba(255,255,255,0.04)',
+          DEFAULT: '#101725',
+          card: '#141d2c',
+          elevated: '#162033',
+          border: 'rgba(120, 150, 200, 0.14)',
+          muted: 'rgba(120, 160, 220, 0.06)',
         },
         hairline: {
-          DEFAULT: '#242728',
-          soft: 'rgba(255,255,255,0.08)',
-          strong: 'rgba(255,255,255,0.16)',
+          DEFAULT: 'rgba(120, 150, 200, 0.14)',
+          soft: 'rgba(120, 160, 220, 0.08)',
+          strong: 'rgba(140, 180, 255, 0.22)',
         },
         accent: {
-          DEFAULT: '#f4f4f6',
-          hover: '#ffffff',
-          subtle: 'rgba(255,255,255,0.08)',
-          muted: '#cdcdcd',
-          glow: 'transparent',
+          DEFAULT: '#4f8cff',
+          hover: '#6ba0ff',
+          subtle: 'rgba(79, 140, 255, 0.14)',
+          muted: '#8fb4ff',
+          glow: 'rgba(79, 140, 255, 0.35)',
         },
         text: {
-          primary: '#f4f4f6',
-          secondary: '#cdcdcd',
-          muted: '#9c9c9d',
-          inverse: '#07080a',
-          'inverse-muted': '#434345',
-          ash: '#6a6b6c',
-          stone: '#434345',
+          primary: '#eef2f8',
+          secondary: '#b4c0d4',
+          muted: '#7f8fa8',
+          inverse: '#0b1019',
+          'inverse-muted': '#4a5568',
+          ash: '#5c6b82',
+          stone: '#445066',
         },
         status: {
-          error: '#ff6161',
-          warning: '#ffc533',
-          success: '#59d499',
-          info: '#57c1ff',
-          'error-bg': 'rgba(255,97,97,0.15)',
-          'warning-bg': 'rgba(255,197,51,0.15)',
-          'success-bg': 'rgba(89,212,153,0.15)',
-          'info-bg': 'rgba(87,193,255,0.15)',
+          error: '#ff6b6b',
+          warning: '#f5b942',
+          success: '#3dd68c',
+          info: '#4f8cff',
+          'error-bg': 'rgba(255, 107, 107, 0.14)',
+          'warning-bg': 'rgba(245, 185, 66, 0.14)',
+          'success-bg': 'rgba(61, 214, 140, 0.14)',
+          'info-bg': 'rgba(79, 140, 255, 0.14)',
         },
       },
       fontFamily: {
         sans: [
-          '"Segoe UI Variable"',
-          '"Segoe UI"',
+          '"Cause"',
           'system-ui',
           'ui-sans-serif',
+          'Segoe UI',
           'sans-serif',
         ],
         mono: [
@@ -90,20 +90,20 @@ const config: Config = {
         title: ['1.75rem', { lineHeight: '2.25rem' }],
       },
       borderRadius: {
-        card: '0.5rem',
-        control: '0.375rem',
-        overlay: '0.625rem',
+        card: '0.75rem',
+        control: '0.5rem',
+        overlay: '0.75rem',
         pill: '9999px',
       },
       boxShadow: {
-        glass: 'none',
-        'glass-lg': 'none',
-        glow: 'none',
-        'glow-sm': 'none',
+        glass: '0 8px 32px rgba(0, 0, 0, 0.35)',
+        'glass-lg': '0 16px 48px rgba(0, 0, 0, 0.45)',
+        glow: '0 0 24px rgba(79, 140, 255, 0.2)',
+        'glow-sm': '0 0 12px rgba(79, 140, 255, 0.15)',
         palette:
-          '0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)',
-        card: 'none',
-        elevated: 'none',
+          '0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(120,150,200,0.1)',
+        card: '0 4px 24px rgba(0, 0, 0, 0.28)',
+        elevated: '0 8px 28px rgba(0, 0, 0, 0.35)',
       },
       maxWidth: {
         content: '74rem',
@@ -111,6 +111,8 @@ const config: Config = {
       spacing: {
         page: '1.5rem',
         'page-lg': '2rem',
+        'sidebar-expanded': '220px',
+        'sidebar-collapsed': '72px',
       },
       transitionTimingFunction: {
         ray: 'cubic-bezier(0.2, 0, 0, 1)',

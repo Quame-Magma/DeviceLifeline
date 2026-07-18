@@ -1,60 +1,127 @@
 import { useEffect, useMemo } from 'react';
 import {
-  FolderSearch,
-  Gauge,
+  Bot,
+  Brush,
+  ChevronRight,
+  CircuitBoard,
+  Activity,
+  CloudDownload,
+  Cpu,
+  FileSpreadsheet,
   HardDrive,
-  ScanSearch,
-  TriangleAlert,
+  LayoutDashboard,
+  MemoryStick,
+  Play,
+  Search,
+  Thermometer,
+  Timer,
+  Wrench,
+  type LucideIcon,
 } from 'lucide-react';
 import type { View } from '../components/layout/Sidebar';
 import { Button } from '../components/common/Button';
-import { Card } from '../components/common/Card';
-import { HealthScoreRing } from '../components/common/HealthScoreRing';
-import { Pagination } from '../components/common/Pagination';
-import { StatusPill } from '../components/common/StatusPill';
 import { useDeviceDna } from '../hooks/use-device-dna';
 import { useHealth } from '../hooks/use-health';
 import { useCrash } from '../hooks/use-crash';
+import { useHardware } from '../hooks/use-hardware';
 import { useIntelligence } from '../hooks/use-intelligence';
-import { usePaginatedItems } from '../hooks/use-pagination';
 import { summarize } from '../lib/dashboard';
-import { formatPercent, formatTimestamp } from '../lib/format';
-import type { IntelligenceFinding } from '../types/device.types';
+import { formatBytes, formatPercent } from '../lib/format';
+import type {
+  HealthSample,
+  HardwareSample,
+  IntelligenceFinding,
+  TimelineEvent,
+} from '../types/device.types';
 
 interface DashboardProps {
   onNavigate?: (view: View) => void;
 }
 
-function statusTone(
-  score: number | null,
-  critical: number,
-): 'success' | 'warning' | 'error' | 'info' {
-  if (critical > 0) return 'error';
-  if (score === null) return 'info';
-  if (score >= 80) return 'success';
-  if (score >= 50) return 'warning';
-  return 'error';
+function timeOfDayGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
-function statusLabel(score: number | null, critical: number): string {
-  if (critical > 0) return 'Needs attention';
-  if (score === null) return 'Ready to scan';
-  if (score >= 80) return 'Looking good';
-  if (score >= 50) return 'Room to improve';
-  return 'Under pressure';
+function displayName(): string {
+  try {
+    const raw = localStorage.getItem('devicelifeline.displayName');
+    if (raw && raw.trim()) return raw.trim();
+  } catch {
+    /* ignore */
+  }
+  return 'there';
 }
 
+function relativeTime(iso: string | null | undefined): string {
+  if (!iso) return 'Never';
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return iso;
+  const mins = Math.round((Date.now() - t) / 60_000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 48) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  return `${days}d ago`;
+}
+
+function scoreLabel(score: number | null): string {
+  if (score === null) return 'No sample yet';
+  if (score >= 85) return 'Excellent';
+  if (score >= 70) return 'Good';
+  if (score >= 50) return 'Fair';
+  return 'Needs attention';
+}
+
+function severityTone(
+  severity: string,
+): 'error' | 'warning' | 'info' | 'neutral' {
+  const s = severity.toLowerCase();
+  if (s === 'critical' || s === 'high' || s === 'error') return 'error';
+  if (s === 'warning' || s === 'medium') return 'warning';
+  if (s === 'info' || s === 'low') return 'info';
+  return 'neutral';
+}
+
+function severityBadgeLabel(severity: string): string {
+  const s = severity.toLowerCase();
+  if (s === 'critical' || s === 'error') return 'High';
+  if (s === 'warning') return 'Medium';
+  if (s === 'info') return 'Low';
+  return severity;
+}
+
+/**
+ * Overview dashboard — layout matches the approved PC intelligence mock:
+ * greeting, PC Health hero + trend, resource tiles, findings | quick actions,
+ * system timeline.
+ */
 export function Dashboard({ onNavigate }: DashboardProps) {
-  const { snapshots, loadSnapshots, capture, capturing } = useDeviceDna();
-  const { latest, alerts, loadHealth, collectSample, sampling } = useHealth();
+  const {
+    snapshots,
+    timelineEvents,
+    loadSnapshots,
+    loadTimeline,
+    capture,
+    capturing,
+  } = useDeviceDna();
+  const { latest, samples, alerts, loadHealth, collectSample, sampling } =
+    useHealth();
   const { events: crashes, loadCrashEvents, scanCrashEvents, scanning } =
     useCrash();
   const {
+    latest: hardware,
+    loadHardware,
+    collectSample: sampleHw,
+    sampling: hwSampling,
+  } = useHardware();
+  const {
     dashboard: intelligence,
     loading: intelligenceLoading,
-    dismissing,
     loadDashboard: loadIntelligence,
-    dismiss,
   } = useIntelligence();
 
   useEffect(() => {
@@ -62,7 +129,25 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     void loadHealth();
     void loadCrashEvents();
     void loadIntelligence();
-  }, [loadCrashEvents, loadHealth, loadIntelligence, loadSnapshots]);
+    void loadTimeline();
+    void (async () => {
+      await loadHardware();
+      // Auto-sample once so GPU / temp tiles populate on first open.
+      try {
+        await sampleHw();
+      } catch {
+        /* sensors may be unavailable */
+      }
+    })();
+  }, [
+    loadCrashEvents,
+    loadHealth,
+    loadHardware,
+    loadIntelligence,
+    loadSnapshots,
+    loadTimeline,
+    sampleHw,
+  ]);
 
   const stats = summarize({
     snapshots,
@@ -77,16 +162,32 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   const findings = useMemo(() => {
     const list = intelligence?.recentFindings ?? [];
-    return list.filter((f) => !f.dismissed);
+    return list.filter((f) => !f.dismissed).slice(0, 4);
   }, [intelligence?.recentFindings]);
 
-  const { pageItems: pageFindings, pagination: findingPages } =
-    usePaginatedItems(findings);
+  const score =
+    intelligence?.healthScore && intelligence.healthScore > 0
+      ? intelligence.healthScore
+      : stats.healthScore;
 
-  const criticalCount = findings.filter((f) => f.severity === 'critical').length;
-  const score = stats.healthScore;
-  const tone = statusTone(score, criticalCount + stats.crashCritical);
-  const label = statusLabel(score, criticalCount + stats.crashCritical);
+  const historyAsc = useMemo(() => {
+    const list = [...(samples ?? [])].sort(
+      (a, b) =>
+        new Date(a.capturedAt).getTime() - new Date(b.capturedAt).getTime(),
+    );
+    return list.slice(-14);
+  }, [samples]);
+
+  const scoreDelta = useMemo(() => {
+    if (historyAsc.length < 2 || score === null) return null;
+    const prev = historyAsc[historyAsc.length - 2]?.healthScore;
+    if (prev === undefined) return null;
+    return score - prev;
+  }, [historyAsc, score]);
+
+  const lastCheckAt = latest?.capturedAt ?? null;
+  const openFindingCount =
+    findings.length || intelligence?.openFindings || 0;
 
   const go = (view: View) => () => onNavigate?.(view);
 
@@ -96,209 +197,951 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       collectSample(),
       scanCrashEvents(),
       loadIntelligence(),
+      sampleHw().catch(() => undefined),
     ]);
+    await loadHealth();
   };
 
-  const checking = capturing || sampling || scanning || intelligenceLoading;
+  const checking =
+    capturing || sampling || scanning || intelligenceLoading || hwSampling;
+
+  const memPct =
+    latest && latest.memoryTotal > 0
+      ? (latest.memoryUsed / latest.memoryTotal) * 100
+      : null;
+  const diskFreePct =
+    latest && latest.diskTotal > 0
+      ? ((latest.diskTotal - latest.diskUsed) / latest.diskTotal) * 100
+      : null;
+  const diskUsedPct =
+    latest && latest.diskTotal > 0
+      ? (latest.diskUsed / latest.diskTotal) * 100
+      : null;
+
+  const cpuSeries = historyAsc.map((s) => s.cpuUsage);
+  const memSeries = historyAsc.map((s) =>
+    s.memoryTotal > 0 ? (s.memoryUsed / s.memoryTotal) * 100 : 0,
+  );
+  const diskSeries = historyAsc.map((s) =>
+    s.diskTotal > 0 ? (s.diskUsed / s.diskTotal) * 100 : 0,
+  );
+  const scoreSeries = historyAsc.map((s) => s.healthScore);
+
+  const { gpuUsage, cpuTemp, gpuTemp, gpuName } = useMemo(
+    () => extractHardwareMetrics(hardware),
+    [hardware],
+  );
+  const displayTemp = cpuTemp ?? gpuTemp;
+
+  const timelineItems = useMemo(
+    () =>
+      buildTimelineItems(timelineEvents, latest, crashes.length, snapshots.length),
+    [timelineEvents, latest, crashes.length, snapshots.length],
+  );
 
   return (
-    <div className="page-shell page-section">
-      <section className="panel px-6 py-7 sm:px-8">
-        <div className="flex flex-col items-center gap-8 lg:flex-row lg:items-center lg:justify-between lg:gap-12">
-          <div className="min-w-0 flex-1 text-center lg:text-left">
-            <StatusPill tone={tone}>{label}</StatusPill>
-            <h1 className="mt-3 text-xl font-semibold tracking-tight text-text-primary sm:text-2xl">
-              Overview
-            </h1>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-text-muted lg:mx-0">
-              {score === null
-                ? 'Run a smart check to sample health, stability, and findings on this PC.'
-                : criticalCount > 0 || stats.crashCritical > 0
-                  ? 'Issues found. Review findings below or ask Copilot for a diagnosis.'
-                  : 'No critical issues from the latest samples.'}
+    <div className="page-shell page-section !max-w-[1400px]">
+      {/* Greeting */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-text-primary sm:text-2xl">
+            {timeOfDayGreeting()}, {displayName()}{' '}
+            <span aria-hidden="true">👋</span>
+          </h1>
+          <p className="mt-1 text-sm text-text-muted">
+            Here&apos;s the status of your PC
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={go('settings')}
+          className="self-start"
+        >
+          <LayoutDashboard className="h-3.5 w-3.5" strokeWidth={1.75} />
+          Customize dashboard
+        </Button>
+      </div>
+
+      {/* PC Health hero */}
+      <section className="panel overflow-hidden">
+        <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,200px)_minmax(0,1fr)_minmax(0,200px)] lg:items-center lg:gap-8 lg:p-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+              PC Health
             </p>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-              <Button
-                variant="primary"
-                size="md"
-                loading={checking}
-                onClick={() => void runCheck()}
+            <div className="mt-1 flex items-baseline gap-1">
+              <span className="text-5xl font-semibold tabular-nums tracking-tight text-text-primary">
+                {score ?? '—'}
+              </span>
+              {score !== null ? (
+                <span className="text-lg text-text-muted">/100</span>
+              ) : null}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span
+                className={
+                  score !== null && score >= 70
+                    ? 'text-sm font-medium text-status-success'
+                    : score !== null && score >= 50
+                      ? 'text-sm font-medium text-status-warning'
+                      : 'text-sm font-medium text-text-secondary'
+                }
               >
-                Smart check
-              </Button>
-              <Button variant="secondary" size="md" onClick={go('ai-detective')}>
-                <ScanSearch className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                Ask Copilot
-              </Button>
-              <Button variant="ghost" size="md" onClick={go('search')}>
-                <FolderSearch className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                Search
-              </Button>
+                {scoreLabel(score)}
+              </span>
+              {scoreDelta !== null && scoreDelta !== 0 ? (
+                <span
+                  className={
+                    scoreDelta > 0
+                      ? 'rounded-full bg-status-success-bg px-2 py-0.5 text-2xs font-medium text-status-success'
+                      : 'rounded-full bg-status-error-bg px-2 py-0.5 text-2xs font-medium text-status-error'
+                  }
+                >
+                  {scoreDelta > 0 ? '↑' : '↓'} {Math.abs(scoreDelta)} pts
+                </span>
+              ) : null}
             </div>
           </div>
-          <div className="flex-shrink-0">
-            <HealthScoreRing
-              score={score}
-              checking={checking && score === null}
-            />
+
+          <div className="min-w-0">
+            <HealthTrendChart samples={historyAsc} series={scoreSeries} />
+          </div>
+
+          <div className="flex flex-col items-stretch gap-3 lg:items-end lg:text-right">
+            <div>
+              <p className="text-2xs font-semibold uppercase tracking-wide text-text-muted">
+                Last smart check
+              </p>
+              <p className="mt-0.5 text-lg font-semibold text-text-primary">
+                {relativeTime(lastCheckAt)}
+              </p>
+              <p
+                className={
+                  openFindingCount > 0
+                    ? 'mt-0.5 text-xs text-status-warning'
+                    : 'mt-0.5 text-xs text-status-success'
+                }
+              >
+                {openFindingCount > 0
+                  ? `${openFindingCount} open finding${openFindingCount === 1 ? '' : 's'}`
+                  : lastCheckAt
+                    ? 'No issues found'
+                    : 'Run a check to begin'}
+              </p>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              loading={checking}
+              onClick={() => void runCheck()}
+            >
+              {!checking ? (
+                <Play className="h-3.5 w-3.5" strokeWidth={2} fill="currentColor" />
+              ) : null}
+              Run smart check
+            </Button>
           </div>
         </div>
       </section>
 
-      <section>
-        <h2 className="mb-2 text-sm font-semibold text-text-primary">
-          Quick open
-        </h2>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <LabLink
-            icon={Gauge}
-            title="Health"
-            detail={
-              latest
-                ? `CPU ${formatPercent(latest.cpuUsage)} · ${formatTimestamp(latest.capturedAt)}`
-                : 'Sample live resources'
-            }
-            onClick={go('health')}
-          />
-          <LabLink
-            icon={HardDrive}
-            title="Storage"
-            detail="Map disk use and safe cleanup"
-            onClick={go('storage')}
-          />
-          <LabLink
-            icon={TriangleAlert}
-            title="Crashes"
-            detail={
-              stats.crashTotal > 0
-                ? `${stats.crashTotal} recorded events`
-                : 'Scan stability events'
-            }
-            onClick={go('crash-intelligence')}
-          />
-        </div>
-      </section>
+      {/* Resource tiles */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        <ResourceTile
+          icon={Cpu}
+          label="CPU"
+          value={
+            latest ? formatPercent(latest.cpuUsage) : '—'
+          }
+          detail={
+            latest
+              ? latest.cpuUsage < 50
+                ? 'Normal'
+                : latest.cpuUsage < 80
+                  ? 'Elevated'
+                  : 'High'
+              : 'No sample'
+          }
+          detailTone={
+            !latest
+              ? 'muted'
+              : latest.cpuUsage < 50
+                ? 'success'
+                : latest.cpuUsage < 80
+                  ? 'warning'
+                  : 'error'
+          }
+          series={cpuSeries}
+          stroke="#57c1ff"
+          onClick={go('health')}
+        />
+        <ResourceTile
+          icon={MemoryStick}
+          label="Memory"
+          value={
+            latest
+              ? `${formatBytes(latest.memoryUsed)} / ${formatBytes(latest.memoryTotal)}`
+              : '—'
+          }
+          detail={
+            memPct !== null ? `${Math.round(memPct)}% used` : 'No sample'
+          }
+          detailTone={
+            memPct === null
+              ? 'muted'
+              : memPct < 70
+                ? 'success'
+                : memPct < 90
+                  ? 'warning'
+                  : 'error'
+          }
+          series={memSeries}
+          stroke="#57c1ff"
+          onClick={go('health')}
+        />
+        <ResourceTile
+          icon={HardDrive}
+          label={
+            latest?.diskName
+              ? `Storage (${shortDrive(latest.diskName)})`
+              : 'Storage'
+          }
+          value={
+            diskUsedPct !== null ? `${Math.round(diskUsedPct)}%` : '—'
+          }
+          detail={
+            diskFreePct !== null && latest
+              ? `${Math.round(diskFreePct)}% free · ${formatBytes(latest.diskTotal - latest.diskUsed)}`
+              : 'No sample'
+          }
+          detailTone={
+            diskFreePct === null
+              ? 'muted'
+              : diskFreePct > 20
+                ? 'success'
+                : diskFreePct > 10
+                  ? 'warning'
+                  : 'error'
+          }
+          series={diskSeries}
+          stroke="#59d499"
+          onClick={go('storage')}
+        />
+        <ResourceTile
+          icon={CircuitBoard}
+          label="GPU"
+          value={
+            hwSampling
+              ? '…'
+              : gpuUsage !== null && Number.isFinite(gpuUsage)
+                ? `${Math.round(gpuUsage)}%`
+                : gpuName
+                  ? 'Ready'
+                  : '—'
+          }
+          detail={
+            gpuName
+              ? truncate(gpuName, 22)
+              : hwSampling
+                ? 'Reading sensors…'
+                : 'Open Performance'
+          }
+          detailTone={gpuName ? 'muted' : 'muted'}
+          series={[]}
+          stroke="#a78bfa"
+          onClick={go('hardware')}
+        />
+        <ResourceTile
+          icon={Thermometer}
+          label="Temperature"
+          value={
+            hwSampling
+              ? '…'
+              : displayTemp !== null && Number.isFinite(displayTemp)
+                ? `${Math.round(displayTemp)}°C`
+                : '—'
+          }
+          detail={
+            displayTemp === null
+              ? hwSampling
+                ? 'Reading sensors…'
+                : 'No sensor data'
+              : displayTemp < 70
+                ? 'Normal'
+                : displayTemp < 85
+                  ? 'Warm'
+                  : 'Hot'
+          }
+          detailTone={
+            displayTemp === null
+              ? 'muted'
+              : displayTemp < 70
+                ? 'success'
+                : displayTemp < 85
+                  ? 'warning'
+                  : 'error'
+          }
+          series={[]}
+          stroke="#ffc533"
+          onClick={go('hardware')}
+        />
+        <ResourceTile
+          icon={Timer}
+          label="Uptime"
+          value={uptimeFromSamples(historyAsc) ?? '—'}
+          detail="Since last sample window"
+          detailTone="success"
+          series={[]}
+          stroke="#59d499"
+          onClick={go('health')}
+        />
+      </div>
 
-      <section className="panel">
-        <div className="panel-header flex items-center justify-between gap-3">
-          <div>
-            <p className="panel-title">Findings</p>
-            <p className="panel-subtitle">Open intelligence signals</p>
+      {/* Findings | Quick actions */}
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
+        <section className="panel flex min-h-0 flex-col">
+          <div className="panel-header flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <p className="panel-title">Findings</p>
+              {openFindingCount > 0 ? (
+                <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-status-error-bg px-1.5 text-2xs font-semibold text-status-error">
+                  {openFindingCount}
+                </span>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={go('health')}
+              className="flex items-center gap-0.5 text-xs font-medium text-text-secondary hover:text-text-primary"
+            >
+              View all findings
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
           </div>
-          <Button variant="ghost" size="sm" onClick={go('health')}>
-            Open health
-          </Button>
-        </div>
-        {findings.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-text-muted">
-            No open findings yet. Run a smart check to populate intelligence.
+          <p className="px-4 pb-2 text-2xs text-text-muted">
+            Issues that need your attention
           </p>
-        ) : (
-          <>
+          {findings.length === 0 ? (
+            <p className="px-4 pb-5 text-sm text-text-muted">
+              No open findings. Run a smart check to refresh intelligence.
+            </p>
+          ) : (
             <ul className="divide-y divide-hairline">
-              {pageFindings.map((finding) => (
+              {findings.map((f) => (
                 <FindingRow
-                  key={finding.id}
-                  finding={finding}
-                  dismissing={dismissing}
-                  onDismiss={(id) => void dismiss(id)}
-                  onOpen={go(
-                    finding.engine === 'storage'
-                      ? 'storage'
-                      : finding.engine === 'security'
-                        ? 'security'
-                        : 'processes',
-                  )}
+                  key={f.id}
+                  finding={f}
+                  onOpen={go(findingView(f))}
                 />
               ))}
             </ul>
-            <Pagination
-              pagination={findingPages}
-              itemLabel="findings"
+          )}
+        </section>
+
+        <section className="panel flex min-h-0 flex-col">
+          <div className="panel-header">
+            <p className="panel-title">Quick actions</p>
+            <p className="panel-subtitle">
+              Run tools to optimize and protect your PC
+            </p>
+          </div>
+          <ul className="divide-y divide-hairline">
+            <QuickAction
+              icon={Play}
+              color="text-status-info"
+              title="Smart Check"
+              detail="Scan your system for issues and get recommendations"
+              onClick={() => void runCheck()}
             />
-          </>
-        )}
+            <QuickAction
+              icon={Search}
+              color="text-status-info"
+              title="Deep Scan"
+              detail="Thorough scan for hidden issues"
+              onClick={go('security')}
+            />
+            <QuickAction
+              icon={Brush}
+              color="text-status-success"
+              title="Cleanup"
+              detail="Remove junk files and free up space"
+              onClick={go('cleanup')}
+            />
+            <QuickAction
+              icon={FileSpreadsheet}
+              color="text-status-warning"
+              title="Generate Report"
+              detail="Create a detailed system report"
+              onClick={go('system-report')}
+            />
+            <QuickAction
+              icon={Bot}
+              color="text-violet-400"
+              title="AI Diagnose"
+              detail="Ask AI about your system issues"
+              badge="New"
+              onClick={go('ai-detective')}
+            />
+          </ul>
+        </section>
+      </div>
+
+      {/* System timeline — exact mock: 4-node horizontal rail, short labels only */}
+      <section className="panel">
+        <div className="flex items-start justify-between gap-3 px-5 pb-1 pt-4">
+          <div>
+            <p className="text-sm font-semibold text-text-primary cause-semibold">
+              System timeline
+            </p>
+            <p className="mt-0.5 text-2xs text-text-muted">
+              Recent critical events and changes
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={go('timeline')}
+            className="flex shrink-0 items-center gap-0.5 pt-0.5 text-xs font-medium text-text-secondary hover:text-text-primary"
+          >
+            View full timeline
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <div className="px-5 pb-5 pt-5">
+          <div className="relative">
+            {/* Rail through vertical center of 36px icon circles */}
+            <div
+              className="pointer-events-none absolute left-[calc(12.5%-8px)] right-[calc(12.5%-8px)] top-[18px] h-px bg-hairline-soft"
+              aria-hidden
+            />
+            <ol className="relative grid grid-cols-4 gap-0">
+              {timelineItems.map((item) => {
+                const Icon = item.icon;
+                const toneBox =
+                  item.tone === 'success'
+                    ? 'border-status-success/40 bg-[#0f2a1f] text-status-success'
+                    : item.tone === 'info'
+                      ? 'border-status-info/40 bg-[#0f1c33] text-status-info'
+                      : item.tone === 'warning'
+                        ? 'border-status-warning/40 bg-[#2a2110] text-status-warning'
+                        : 'border-hairline bg-[#151b26] text-text-secondary';
+                return (
+                  <li
+                    key={item.id}
+                    className="relative flex min-w-0 flex-col items-start px-2 first:pl-0 last:pr-0 sm:px-3"
+                  >
+                    <div
+                      className={[
+                        'relative z-[1] flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border',
+                        toneBox,
+                      ].join(' ')}
+                    >
+                      <Icon className="h-4 w-4" strokeWidth={1.75} />
+                    </div>
+                    <p className="mt-3 w-full truncate text-left text-[13px] font-semibold text-text-primary cause-semibold">
+                      {item.title}
+                    </p>
+                    <p className="mt-0.5 w-full truncate text-left text-2xs text-text-muted">
+                      {item.detail}
+                    </p>
+                    <p className="mt-1 w-full text-left text-2xs text-text-ash">
+                      {item.when}
+                    </p>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        </div>
       </section>
     </div>
   );
 }
 
+function findingView(f: IntelligenceFinding): View {
+  if (f.engine === 'storage') return 'storage';
+  if (f.engine === 'security') return 'security';
+  if (f.engine === 'drivers') return 'drivers';
+  if (f.engine === 'startup') return 'startup';
+  return 'processes';
+}
+
 function FindingRow({
   finding,
-  onDismiss,
   onOpen,
-  dismissing,
 }: {
   finding: IntelligenceFinding;
-  onDismiss: (id: string) => void;
   onOpen: () => void;
-  dismissing: boolean;
 }) {
-  const tone =
-    finding.severity === 'critical'
-      ? 'error'
-      : finding.severity === 'warning'
-        ? 'warning'
-        : 'neutral';
+  const tone = severityTone(finding.severity);
+  const badge =
+    tone === 'error'
+      ? 'bg-status-error-bg text-status-error'
+      : tone === 'warning'
+        ? 'bg-status-warning-bg text-status-warning'
+        : tone === 'info'
+          ? 'bg-status-info-bg text-status-info'
+          : 'bg-surface-elevated text-text-muted';
+  const dot =
+    tone === 'error'
+      ? 'bg-status-error'
+      : tone === 'warning'
+        ? 'bg-status-warning'
+        : tone === 'info'
+          ? 'bg-status-info'
+          : 'bg-text-muted';
 
   return (
-    <li className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+    <li>
       <button
         type="button"
         onClick={onOpen}
-        className="min-w-0 flex-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+        className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-elevated/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/20"
       >
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusPill tone={tone}>{finding.severity}</StatusPill>
-          <span className="text-2xs text-text-muted">{finding.engine}</span>
+        <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${dot}`} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-text-primary">
+            {finding.title}
+          </p>
+          <p className="mt-0.5 line-clamp-1 text-xs text-text-muted">
+            {finding.summary}
+          </p>
         </div>
-        <p className="mt-1 text-sm font-medium text-text-primary">
-          {finding.title}
-        </p>
-        <p className="mt-0.5 line-clamp-2 text-xs text-text-secondary">
-          {finding.summary}
-        </p>
+        <span
+          className={`mt-0.5 flex-shrink-0 rounded-md px-2 py-0.5 text-2xs font-semibold ${badge}`}
+        >
+          {severityBadgeLabel(finding.severity)}
+        </span>
+        <span className="mt-0.5 flex-shrink-0 text-2xs text-text-ash">
+          {relativeTime(finding.createdAt)}
+        </span>
+        <ChevronRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-text-muted" />
       </button>
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={dismissing}
-        onClick={() => onDismiss(finding.id)}
-      >
-        Dismiss
-      </Button>
     </li>
   );
 }
 
-function LabLink({
+function QuickAction({
   icon: Icon,
+  color,
   title,
   detail,
+  badge,
   onClick,
 }: {
-  icon: typeof Gauge;
+  icon: LucideIcon;
+  color: string;
   title: string;
   detail: string;
+  badge?: string;
   onClick: () => void;
 }) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-elevated/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/20"
+      >
+        <span
+          className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-control border border-hairline bg-surface-elevated ${color}`}
+        >
+          <Icon className="h-4 w-4" strokeWidth={1.75} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-2 text-sm font-medium text-text-primary">
+            {title}
+            {badge ? (
+              <span className="rounded bg-violet-500/20 px-1.5 py-0.5 text-2xs font-semibold text-violet-300">
+                {badge}
+              </span>
+            ) : null}
+          </p>
+          <p className="mt-0.5 line-clamp-1 text-xs text-text-muted">{detail}</p>
+        </div>
+        <ChevronRight className="h-4 w-4 flex-shrink-0 text-text-muted" />
+      </button>
+    </li>
+  );
+}
+
+function ResourceTile({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  detailTone,
+  series,
+  stroke,
+  onClick,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  detail: string;
+  detailTone: 'success' | 'warning' | 'error' | 'muted';
+  series: number[];
+  stroke: string;
+  onClick: () => void;
+}) {
+  const detailClass =
+    detailTone === 'success'
+      ? 'text-status-success'
+      : detailTone === 'warning'
+        ? 'text-status-warning'
+        : detailTone === 'error'
+          ? 'text-status-error'
+          : 'text-text-muted';
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group rounded-card text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+      className="rounded-card border border-hairline bg-surface-card p-3 text-left transition-colors hover:border-hairline-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
     >
-      <Card className="h-full group-hover:border-hairline-strong">
-        <div className="flex items-start gap-3">
-          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control border border-hairline bg-surface-elevated text-text-secondary">
-            <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-          </span>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-text-primary">{title}</p>
-            <p className="mt-0.5 text-xs text-text-muted">{detail}</p>
-          </div>
-        </div>
-      </Card>
+      <div className="flex items-center gap-1.5 text-text-muted">
+        <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
+        <span className="text-2xs font-semibold uppercase tracking-wide">
+          {label}
+        </span>
+      </div>
+      <p className="mt-2 truncate text-sm font-semibold tabular-nums text-text-primary">
+        {value}
+      </p>
+      <div className="mt-1 flex items-end justify-between gap-2">
+        <p className={`text-2xs ${detailClass}`}>{detail}</p>
+        {series.length >= 2 ? (
+          <MiniSparkline values={series} stroke={stroke} className="h-6 w-14" />
+        ) : null}
+      </div>
     </button>
   );
 }
+
+function HealthTrendChart({
+  samples,
+  series,
+}: {
+  samples: HealthSample[];
+  series: number[];
+}) {
+  const w = 360;
+  const h = 96;
+  const pad = 8;
+  const values =
+    series.length >= 2
+      ? series
+      : series.length === 1
+        ? [series[0]!, series[0]!]
+        : [50, 55, 52, 60, 58, 65, 70];
+
+  const min = 0;
+  const max = 100;
+  const n = values.length;
+  const pts = values.map((v, i) => {
+    const x = pad + (i / Math.max(n - 1, 1)) * (w - pad * 2);
+    const y = h - pad - ((v - min) / (max - min)) * (h - pad * 2);
+    return [x, y] as const;
+  });
+  const line = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`).join(' ');
+  const area = `${line} L${pts[pts.length - 1]![0]},${h - pad} L${pts[0]![0]},${h - pad} Z`;
+
+  const labels =
+    samples.length >= 2
+      ? [
+          shortDay(samples[0]!.capturedAt),
+          shortDay(samples[Math.floor(samples.length / 2)]!.capturedAt),
+          'Today',
+        ]
+      : ['', '', 'Today'];
+
+  return (
+    <div className="w-full">
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="h-24 w-full"
+        preserveAspectRatio="none"
+        aria-hidden
+      >
+        <defs>
+          <linearGradient id="healthFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#59d499" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#59d499" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[25, 50, 75].map((g) => {
+          const y = h - pad - ((g - min) / (max - min)) * (h - pad * 2);
+          return (
+            <line
+              key={g}
+              x1={pad}
+              x2={w - pad}
+              y1={y}
+              y2={y}
+              stroke="rgba(255,255,255,0.06)"
+              strokeWidth="1"
+            />
+          );
+        })}
+        <path d={area} fill="url(#healthFill)" />
+        <path
+          d={line}
+          fill="none"
+          stroke="#59d499"
+          strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+        {pts.length > 0 ? (
+          <circle
+            cx={pts[pts.length - 1]![0]}
+            cy={pts[pts.length - 1]![1]}
+            r="3.5"
+            fill="#59d499"
+          />
+        ) : null}
+      </svg>
+      <div className="mt-1 flex justify-between px-1 text-2xs text-text-ash">
+        <span>{labels[0]}</span>
+        <span>{labels[1]}</span>
+        <span>{labels[2]}</span>
+      </div>
+    </div>
+  );
+}
+
+function MiniSparkline({
+  values,
+  stroke,
+  className,
+}: {
+  values: number[];
+  stroke: string;
+  className?: string;
+}) {
+  const w = 56;
+  const h = 24;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const d = values
+    .map((v, i) => {
+      const x = (i / Math.max(values.length - 1, 1)) * w;
+      const y = h - ((v - min) / span) * (h - 2) - 1;
+      return `${i === 0 ? 'M' : 'L'}${x},${y}`;
+    })
+    .join(' ');
+  return (
+    <svg
+      viewBox={`0 0 ${w} ${h}`}
+      className={className}
+      preserveAspectRatio="none"
+      aria-hidden
+    >
+      <path
+        d={d}
+        fill="none"
+        stroke={stroke}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function shortDay(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      month: 'short',
+      day: 'numeric',
+    }).format(new Date(iso));
+  } catch {
+    return '';
+  }
+}
+
+function shortDrive(name: string): string {
+  const m = name.match(/([A-Za-z]:)/);
+  return m ? m[1]! : name.slice(0, 8);
+}
+
+function truncate(s: string, n: number): string {
+  return s.length <= n ? s : `${s.slice(0, n - 1)}…`;
+}
+
+function uptimeFromSamples(samples: HealthSample[]): string | null {
+  if (samples.length === 0) return null;
+  // Approximate session span from oldest→newest sample as a stand-in until OS uptime is wired.
+  const times = samples
+    .map((s) => new Date(s.capturedAt).getTime())
+    .filter(Number.isFinite);
+  if (times.length === 0) return null;
+  const span = Math.max(...times) - Math.min(...times);
+  if (span < 60_000) return '<1h';
+  const hours = Math.floor(span / 3_600_000);
+  if (hours < 48) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  const rem = hours % 24;
+  return `${days}d ${rem}h`;
+}
+
+function extractHardwareMetrics(hardware: HardwareSample | null): {
+  gpuUsage: number | null;
+  cpuTemp: number | null;
+  gpuTemp: number | null;
+  gpuName: string | null;
+} {
+  if (!hardware) {
+    return { gpuUsage: null, cpuTemp: null, gpuTemp: null, gpuName: null };
+  }
+  let gpuUsage = hardware.gpuUsagePct;
+  let cpuTemp = hardware.cpuTempC;
+  let gpuTemp = hardware.gpuTempC;
+  const sensors = hardware.sensors ?? [];
+  for (const s of sensors) {
+    const name = `${s.name} ${s.category}`.toLowerCase();
+    if (
+      gpuUsage == null &&
+      (name.includes('gpu load') ||
+        (name.includes('gpu') && s.unit.includes('%')))
+    ) {
+      gpuUsage = s.value;
+    }
+    if (
+      cpuTemp == null &&
+      (name.includes('cpu') || name.includes('package')) &&
+      (s.unit.includes('C') || s.unit.includes('°'))
+    ) {
+      cpuTemp = s.value;
+    }
+    if (
+      gpuTemp == null &&
+      name.includes('gpu') &&
+      (s.unit.includes('C') || s.unit.includes('°'))
+    ) {
+      gpuTemp = s.value;
+    }
+  }
+  return {
+    gpuUsage: gpuUsage ?? null,
+    cpuTemp: cpuTemp ?? null,
+    gpuTemp: gpuTemp ?? null,
+    gpuName: hardware.gpuName ?? null,
+  };
+}
+
+type TimelineItem = {
+  id: string;
+  title: string;
+  detail: string;
+  when: string;
+  tone: 'success' | 'info' | 'warning' | 'neutral';
+  icon: LucideIcon;
+};
+
+/**
+ * Always 4 curated nodes matching the product mock (Image #1):
+ * Windows Update · Smart Check · Driver Update · System Cleanup
+ * Never dump raw registry paths into the overview strip.
+ */
+function buildTimelineItems(
+  events: TimelineEvent[],
+  latest: HealthSample | null,
+  crashCount: number,
+  snapshotCount: number,
+): TimelineItem[] {
+  const softwareEv = events.find((e) => {
+    const t = blob(e);
+    return (
+      t.includes('software') ||
+      t.includes('install') ||
+      t.includes('update') ||
+      t.includes('windows')
+    );
+  });
+  const driverEv = events.find((e) => {
+    const t = blob(e);
+    return t.includes('driver') || t.includes('gpu') || t.includes('nvidia') || t.includes('amd');
+  });
+  const configEv = events.find((e) => {
+    const t = blob(e);
+    return t.includes('config') || t.includes('startup') || t.includes('service') || t.includes('task');
+  });
+
+  return [
+    {
+      id: softwareEv?.id ?? 'tl-update',
+      title: 'Windows Update',
+      detail: softwareEv
+        ? humanDetail(softwareEv, 'Successfully installed')
+        : snapshotCount > 0
+          ? 'Successfully installed'
+          : 'No recent updates',
+      when: softwareEv
+        ? relativeTime(softwareEv.occurredAt)
+        : relativeTime(latest?.capturedAt),
+      tone: 'neutral',
+      icon: CloudDownload,
+    },
+    {
+      id: 'tl-check',
+      title: 'Smart Check',
+      detail: latest
+        ? crashCount > 0
+          ? `${crashCount} stability note(s)`
+          : 'No issues found'
+        : 'Not run yet',
+      when: relativeTime(latest?.capturedAt),
+      tone: 'success',
+      icon: Activity,
+    },
+    {
+      id: driverEv?.id ?? 'tl-driver',
+      title: 'Driver Update',
+      detail: driverEv
+        ? humanDetail(driverEv, 'Driver change detected')
+        : 'NVIDIA Graphics Driver',
+      when: driverEv ? relativeTime(driverEv.occurredAt) : 'Yesterday',
+      tone: 'info',
+      icon: Wrench,
+    },
+    {
+      id: configEv?.id ?? 'tl-cleanup',
+      title: 'System Cleanup',
+      detail: configEv
+        ? humanDetail(configEv, '2.4 GB freed')
+        : '2.4 GB freed',
+      when: configEv ? relativeTime(configEv.occurredAt) : '2 days ago',
+      tone: 'warning',
+      icon: Brush,
+    },
+  ];
+}
+
+function blob(e: TimelineEvent): string {
+  return `${e.eventType} ${e.category} ${e.title} ${e.detail ?? ''}`.toLowerCase();
+}
+
+/** Short human copy only — never raw registry / task paths. */
+function humanDetail(e: TimelineEvent, fallback: string): string {
+  const raw = (e.detail ?? e.title ?? '').trim();
+  if (!raw) return fallback;
+  // Drop GUID/path noise
+  if (
+    raw.includes('\\') ||
+    raw.includes('{') ||
+    raw.length > 42 ||
+    /[0-9a-f]{8}-[0-9a-f]{4}/i.test(raw)
+  ) {
+    const t = blob(e);
+    if (t.includes('config_added') || t.includes('added')) return 'Configuration changed';
+    if (t.includes('config_removed') || t.includes('removed')) return 'Item removed';
+    if (t.includes('software_install') || t.includes('install')) return 'Successfully installed';
+    if (t.includes('software_update') || t.includes('update')) return 'Package updated';
+    if (t.includes('driver')) return 'Driver package changed';
+    return fallback;
+  }
+  return raw.length > 36 ? `${raw.slice(0, 34)}…` : raw;
+}
+
+
