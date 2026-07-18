@@ -38,7 +38,10 @@ pub fn severity_from_risk_score(score: i64) -> &'static str {
 }
 
 /// Builds system/process findings from a process list (does not persist).
-pub fn build_system_findings(device_id: &str, processes: &[ProcessInfo]) -> Result<Vec<IntelligenceFinding>, CoreError> {
+pub fn build_system_findings(
+    device_id: &str,
+    processes: &[ProcessInfo],
+) -> Result<Vec<IntelligenceFinding>, CoreError> {
     let created_at = now_rfc3339()?;
     let mut findings = Vec::new();
 

@@ -33,10 +33,7 @@ const SKIP_DIR_MARKERS: &[&str] = &[
 /// Rebuilds the file portion of the search index for user-scoped roots.
 pub fn rebuild_file_index(conn: &Connection) -> Result<FileIndexStatus, CoreError> {
     // Remove previous file documents (leave software/config/etc.).
-    conn.execute(
-        "DELETE FROM search_index WHERE entity_type = 'file'",
-        [],
-    )?;
+    conn.execute("DELETE FROM search_index WHERE entity_type = 'file'", [])?;
 
     let roots = default_roots();
     let mut docs: Vec<SearchDocument> = Vec::new();
@@ -77,10 +74,7 @@ pub fn rebuild_file_index(conn: &Connection) -> Result<FileIndexStatus, CoreErro
         file_count: docs.len() as i64,
         root_count: roots.len() as i64,
         last_built_at: Some(built_at),
-        roots: roots
-            .iter()
-            .map(|p| p.display().to_string())
-            .collect(),
+        roots: roots.iter().map(|p| p.display().to_string()).collect(),
         everything_available: everything::everything_available(),
         search_backend: if everything::everything_available() {
             "hybrid".into()

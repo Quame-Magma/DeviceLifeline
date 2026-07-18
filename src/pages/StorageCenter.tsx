@@ -161,7 +161,9 @@ export function StorageCenter() {
             variant="secondary"
             size="sm"
             loading={cleanupLoading}
-            onClick={handleExecuteCleanup}
+            onClick={() => {
+              void handleExecuteCleanup();
+            }}
           >
             Execute cleanup
           </Button>

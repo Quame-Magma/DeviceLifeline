@@ -7,7 +7,6 @@
 //! always compiled, so non-Windows builds and unit tests have a deterministic
 //! source.
 
-
 use crate::error::CollectorError;
 use crate::models::RawCrashEvent;
 

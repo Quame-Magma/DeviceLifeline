@@ -839,7 +839,7 @@ function HealthTrendChart({
     series.length >= 2
       ? series
       : series.length === 1
-        ? [series[0]!, series[0]!]
+        ? [series[0], series[0]]
         : [50, 55, 52, 60, 58, 65, 70];
 
   const min = 0;
@@ -853,13 +853,13 @@ function HealthTrendChart({
   const line = pts
     .map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`)
     .join(' ');
-  const area = `${line} L${pts[pts.length - 1]![0]},${h - pad} L${pts[0]![0]},${h - pad} Z`;
+  const area = `${line} L${pts[pts.length - 1][0]},${h - pad} L${pts[0][0]},${h - pad} Z`;
 
   const labels =
     samples.length >= 2
       ? [
-          shortDay(samples[0]!.capturedAt),
-          shortDay(samples[Math.floor(samples.length / 2)]!.capturedAt),
+          shortDay(samples[0].capturedAt),
+          shortDay(samples[Math.floor(samples.length / 2)].capturedAt),
           'Today',
         ]
       : ['', '', 'Today'];
@@ -903,8 +903,8 @@ function HealthTrendChart({
         />
         {pts.length > 0 ? (
           <circle
-            cx={pts[pts.length - 1]![0]}
-            cy={pts[pts.length - 1]![1]}
+            cx={pts[pts.length - 1][0]}
+            cy={pts[pts.length - 1][1]}
             r="3.5"
             fill="#59d499"
           />
@@ -972,7 +972,7 @@ function shortDay(iso: string): string {
 
 function shortDrive(name: string): string {
   const m = name.match(/([A-Za-z]:)/);
-  return m ? m[1]! : name.slice(0, 8);
+  return m ? m[1] : name.slice(0, 8);
 }
 
 function truncate(s: string, n: number): string {

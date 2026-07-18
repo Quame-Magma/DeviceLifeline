@@ -196,7 +196,10 @@ Get-CimInstance Win32_Service | Select-Object -First 400 Name, DisplayName, Stat
                     .and_then(|x| x.as_str())
                     .unwrap_or("Unknown")
                     .to_string(),
-                start_type: v.get("startType").and_then(|x| x.as_str()).map(|s| s.into()),
+                start_type: v
+                    .get("startType")
+                    .and_then(|x| x.as_str())
+                    .map(|s| s.into()),
                 pid: v.get("pid").and_then(|x| x.as_u64()).map(|n| n as u32),
                 path: v.get("path").and_then(|x| x.as_str()).map(|s| s.into()),
                 account: v.get("account").and_then(|x| x.as_str()).map(|s| s.into()),

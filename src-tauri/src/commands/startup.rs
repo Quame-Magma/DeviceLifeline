@@ -9,9 +9,7 @@ use crate::AppState;
 
 /// Live inventory of Run keys, Startup folders, tasks, and services.
 #[tauri::command]
-pub fn list_startup_entries(
-    _state: State<'_, AppState>,
-) -> Result<Vec<StartupEntry>, CoreError> {
+pub fn list_startup_entries(_state: State<'_, AppState>) -> Result<Vec<StartupEntry>, CoreError> {
     startup::list_startup_entries()
 }
 

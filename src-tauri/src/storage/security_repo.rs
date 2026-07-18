@@ -31,7 +31,10 @@ pub fn insert_findings(conn: &Connection, findings: &[SecurityFinding]) -> Resul
     Ok(())
 }
 
-pub fn list_findings(conn: &Connection, include_dismissed: bool) -> Result<Vec<SecurityFinding>, CoreError> {
+pub fn list_findings(
+    conn: &Connection,
+    include_dismissed: bool,
+) -> Result<Vec<SecurityFinding>, CoreError> {
     let sql = if include_dismissed {
         "SELECT id, device_id, created_at, category, severity, title, summary, evidence,
                 confidence, path, process_name, dismissed

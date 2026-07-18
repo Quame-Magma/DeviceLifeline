@@ -35,11 +35,11 @@ export function CleanupCenter() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial scan only
   }, []);
 
-  const candidates = preview?.candidates ?? [];
   const filtered = useMemo(() => {
+    const candidates = preview?.candidates ?? [];
     if (selected.size === 0) return candidates;
     return candidates.filter((c) => selected.has(c.category));
-  }, [candidates, selected]);
+  }, [preview?.candidates, selected]);
 
   const { pageItems, pagination } = usePaginatedItems(filtered);
 
@@ -162,7 +162,9 @@ export function CleanupCenter() {
             size="sm"
             loading={acting}
             disabled={!preview || selected.size === 0}
-            onClick={handleExecute}
+            onClick={() => {
+              void handleExecute();
+            }}
           >
             Clean selected
           </Button>

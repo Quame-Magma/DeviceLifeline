@@ -5,8 +5,15 @@ use rusqlite::{params, Connection};
 use crate::error::CoreError;
 use crate::models::DriverInfo;
 
-pub fn replace_drivers(conn: &Connection, device_id: &str, drivers: &[DriverInfo]) -> Result<(), CoreError> {
-    conn.execute("DELETE FROM drivers WHERE device_id = ?1", params![device_id])?;
+pub fn replace_drivers(
+    conn: &Connection,
+    device_id: &str,
+    drivers: &[DriverInfo],
+) -> Result<(), CoreError> {
+    conn.execute(
+        "DELETE FROM drivers WHERE device_id = ?1",
+        params![device_id],
+    )?;
     for d in drivers {
         let reasons = serde_json::to_string(&d.risk_reasons).unwrap_or_else(|_| "[]".into());
         conn.execute(
@@ -44,8 +51,7 @@ pub fn list_drivers(conn: &Connection) -> Result<Vec<DriverInfo>, CoreError> {
     )?;
     let rows = stmt.query_map([], |row| {
         let reasons_json: String = row.get(14)?;
-        let risk_reasons: Vec<String> =
-            serde_json::from_str(&reasons_json).unwrap_or_default();
+        let risk_reasons: Vec<String> = serde_json::from_str(&reasons_json).unwrap_or_default();
         let signed: i64 = row.get(9)?;
         Ok(DriverInfo {
             id: row.get(0)?,

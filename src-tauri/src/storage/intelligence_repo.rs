@@ -8,7 +8,10 @@ use crate::error::CoreError;
 use crate::models::IntelligenceFinding;
 
 /// Inserts a batch of intelligence findings.
-pub fn insert_findings(conn: &Connection, findings: &[IntelligenceFinding]) -> Result<(), CoreError> {
+pub fn insert_findings(
+    conn: &Connection,
+    findings: &[IntelligenceFinding],
+) -> Result<(), CoreError> {
     for finding in findings {
         conn.execute(
             "INSERT INTO intelligence_findings

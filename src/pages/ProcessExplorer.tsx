@@ -527,7 +527,9 @@ export function ProcessExplorer() {
                   variant="danger"
                   size="sm"
                   loading={killing}
-                  onClick={handleEndProcess}
+                  onClick={() => {
+                    void handleEndProcess();
+                  }}
                   className="w-full"
                 >
                   End process
@@ -536,7 +538,9 @@ export function ProcessExplorer() {
                   variant="secondary"
                   size="sm"
                   loading={killing}
-                  onClick={handleEndProcessTree}
+                  onClick={() => {
+                    void handleEndProcessTree();
+                  }}
                   className="w-full"
                 >
                   End process tree

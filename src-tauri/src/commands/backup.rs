@@ -33,9 +33,7 @@ pub fn create_backup_schedule(
 }
 
 #[tauri::command]
-pub fn list_backup_schedules(
-    state: State<'_, AppState>,
-) -> Result<Vec<BackupSchedule>, CoreError> {
+pub fn list_backup_schedules(state: State<'_, AppState>) -> Result<Vec<BackupSchedule>, CoreError> {
     let conn = state.conn()?;
     backup::list_backup_schedules(&conn)
 }

@@ -32,9 +32,7 @@ pub fn preview_gpu_driver_clean(
 
 /// Create a System Restore point specifically for the GPU clean wizard gate.
 #[tauri::command]
-pub fn create_gpu_clean_restore_point(
-    state: State<'_, AppState>,
-) -> Result<VaultEntry, CoreError> {
+pub fn create_gpu_clean_restore_point(state: State<'_, AppState>) -> Result<VaultEntry, CoreError> {
     let conn = state.conn()?;
     drivers::create_gpu_clean_restore_point(&conn)
 }

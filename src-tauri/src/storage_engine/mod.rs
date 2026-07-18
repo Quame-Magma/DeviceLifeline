@@ -315,10 +315,7 @@ fn resolve_roots(root_path: Option<String>) -> Vec<PathBuf> {
         }
         #[cfg(windows)]
         {
-            let local_temp = home
-                .join("AppData")
-                .join("Local")
-                .join("Temp");
+            let local_temp = home.join("AppData").join("Local").join("Temp");
             if local_temp.is_dir() && !roots.iter().any(|r| r == &local_temp) {
                 roots.push(local_temp);
             }
@@ -460,14 +457,20 @@ fn categorize(path: &Path, name: &str, size: u64, is_directory: bool) -> String 
 
     if has_extension(
         &lower_name,
-        &[".mp4", ".mkv", ".avi", ".mov", ".mp3", ".wav", ".flac", ".jpg", ".jpeg", ".png", ".gif", ".webp"],
+        &[
+            ".mp4", ".mkv", ".avi", ".mov", ".mp3", ".wav", ".flac", ".jpg", ".jpeg", ".png",
+            ".gif", ".webp",
+        ],
     ) {
         return "media".to_string();
     }
 
     if has_extension(
         &lower_name,
-        &[".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".md", ".rtf", ".csv"],
+        &[
+            ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".md", ".rtf",
+            ".csv",
+        ],
     ) {
         return "document".to_string();
     }
@@ -505,7 +508,11 @@ fn build_storage_findings(
             severity: SEVERITY_WARNING.to_string(),
             title: format!("{} large file(s) found", large.len()),
             summary: "Files over 100 MB may be reclaimable storage.".to_string(),
-            evidence: format!("Largest: {}. Scan root: {}.", names.join("; "), scan.root_path),
+            evidence: format!(
+                "Largest: {}. Scan root: {}.",
+                names.join("; "),
+                scan.root_path
+            ),
             confidence: 70,
             suggested_action: Some(
                 "Review large files in Storage Intelligence before deleting.".to_string(),
@@ -579,7 +586,9 @@ mod tests {
         assert!(should_skip_path(Path::new(
             r"C:\Users\me\AppData\Roaming\Google\Chrome\User Data\Default"
         )));
-        assert!(!should_skip_path(Path::new(r"C:\Users\me\Downloads\file.pdf")));
+        assert!(!should_skip_path(Path::new(
+            r"C:\Users\me\Downloads\file.pdf"
+        )));
     }
 
     #[test]
@@ -605,10 +614,8 @@ mod tests {
 
     #[test]
     fn scan_storage_on_temp_fixture() {
-        let dir = std::env::temp_dir().join(format!(
-            "devicelifeline_scan_test_{}",
-            uuid::Uuid::new_v4()
-        ));
+        let dir =
+            std::env::temp_dir().join(format!("devicelifeline_scan_test_{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&dir).expect("mkdir");
         let file_path = dir.join("sample.txt");
         {

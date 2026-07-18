@@ -32,7 +32,9 @@ pub fn dismiss_security_finding(
     let conn = state.conn()?;
     let n = security_repo::dismiss(&conn, &finding_id)?;
     if n == 0 {
-        return Err(CoreError::NotFound(format!("security finding {finding_id}")));
+        return Err(CoreError::NotFound(format!(
+            "security finding {finding_id}"
+        )));
     }
     Ok(())
 }

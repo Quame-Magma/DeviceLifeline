@@ -12,9 +12,7 @@ use time::{Duration, OffsetDateTime};
 
 use crate::dna::snapshot::now_rfc3339;
 use crate::error::CoreError;
-use crate::models::{
-    ActionAudit, BackupSchedule, ShadowRestoreResult, VolumeShadow,
-};
+use crate::models::{ActionAudit, BackupSchedule, ShadowRestoreResult, VolumeShadow};
 use crate::storage::{action_repo, backup_repo, device_repo};
 
 /// Creates a VSS snapshot for `volume` (e.g. `C:\`) and records it.
@@ -245,11 +243,18 @@ fn create_shadow_os(volume: &str) -> (String, Option<String>, String, String) {
             .output()
         {
             let text = String::from_utf8_lossy(&output.stdout);
-            let line = text.lines().map(str::trim).find(|l| !l.is_empty()).unwrap_or("");
+            let line = text
+                .lines()
+                .map(str::trim)
+                .find(|l| !l.is_empty())
+                .unwrap_or("");
             if let Some(rest) = line.strip_prefix("OK|") {
                 let mut parts = rest.splitn(2, '|');
                 let id = parts.next().unwrap_or("").to_string();
-                let obj = parts.next().map(|s| s.to_string()).filter(|s| !s.is_empty());
+                let obj = parts
+                    .next()
+                    .map(|s| s.to_string())
+                    .filter(|s| !s.is_empty());
                 if !id.is_empty() {
                     return (
                         id,
@@ -265,7 +270,10 @@ fn create_shadow_os(volume: &str) -> (String, Option<String>, String, String) {
                 return mock_shadow(volume, Some(msg));
             }
         }
-        mock_shadow(volume, Some("VSS create failed; recorded lab shadow".into()))
+        mock_shadow(
+            volume,
+            Some("VSS create failed; recorded lab shadow".into()),
+        )
     }
     #[cfg(not(windows))]
     {

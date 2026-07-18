@@ -11,10 +11,8 @@ use rusqlite::Connection;
 
 use crate::error::CoreError;
 use crate::models::{FileIndexStatus, SearchHit};
-use crate::storage::{
-    crash_repo, device_repo, intelligence_repo, search_repo, timeline_repo,
-};
 use crate::storage::search_repo::SearchDocument;
+use crate::storage::{crash_repo, device_repo, intelligence_repo, search_repo, timeline_repo};
 
 /// Maximum hits returned by a search query.
 const DEFAULT_SEARCH_LIMIT: i64 = 50;
@@ -23,10 +21,7 @@ const DEFAULT_SEARCH_LIMIT: i64 = 50;
 /// File paths are rebuilt via [`rebuild_all`] or [`file_index::rebuild_file_index`].
 pub fn rebuild_index(conn: &Connection) -> Result<i64, CoreError> {
     // Preserve file docs if present: only clear non-file, then re-add metadata.
-    conn.execute(
-        "DELETE FROM search_index WHERE entity_type != 'file'",
-        [],
-    )?;
+    conn.execute("DELETE FROM search_index WHERE entity_type != 'file'", [])?;
     let mut docs: Vec<SearchDocument> = Vec::new();
 
     // Latest DNA snapshot software + config.

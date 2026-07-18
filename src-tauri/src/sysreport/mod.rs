@@ -17,7 +17,11 @@ pub fn build_inventory_report() -> Result<SystemInventoryReport, CoreError> {
     sys.refresh_all();
 
     // OS
-    rows.push(row("Operating System", "Name", System::name().unwrap_or_else(|| "Unknown".into())));
+    rows.push(row(
+        "Operating System",
+        "Name",
+        System::name().unwrap_or_else(|| "Unknown".into()),
+    ));
     rows.push(row(
         "Operating System",
         "Version",
@@ -187,7 +191,10 @@ fn bench_cpu() -> BenchmarkResult {
     let mut acc: u64 = 0;
     let mut f: f64 = 1.000001;
     for i in 0..25_000_000u64 {
-        acc = acc.wrapping_mul(1664525).wrapping_add(i).wrapping_add(1013904223);
+        acc = acc
+            .wrapping_mul(1664525)
+            .wrapping_add(i)
+            .wrapping_add(1013904223);
         f = f.sin().cos().abs() + 1.0000001;
     }
     let ms = start.elapsed().as_millis() as i64;

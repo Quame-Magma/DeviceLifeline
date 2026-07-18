@@ -109,11 +109,7 @@ pub fn list_schedules(
     Ok(out)
 }
 
-pub fn set_schedule_enabled(
-    conn: &Connection,
-    id: &str,
-    enabled: bool,
-) -> Result<(), CoreError> {
+pub fn set_schedule_enabled(conn: &Connection, id: &str, enabled: bool) -> Result<(), CoreError> {
     conn.execute(
         "UPDATE backup_schedules SET enabled = ?1 WHERE id = ?2",
         params![if enabled { 1 } else { 0 }, id],

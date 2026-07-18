@@ -3,9 +3,7 @@
 use tauri::State;
 
 use crate::error::CoreError;
-use crate::models::{
-    LogicalDrive, StorageFolderNode, StorageItem, StorageScan, StorageScanResult,
-};
+use crate::models::{LogicalDrive, StorageFolderNode, StorageItem, StorageScan, StorageScanResult};
 use crate::storage::storage_repo;
 use crate::storage_engine;
 use crate::AppState;
@@ -65,8 +63,6 @@ pub async fn get_volume_map(
 
 /// Lists mounted logical drives for disk pickers (volume map, VSS, schedules).
 #[tauri::command]
-pub fn list_logical_drives(
-    _state: State<'_, AppState>,
-) -> Result<Vec<LogicalDrive>, CoreError> {
+pub fn list_logical_drives(_state: State<'_, AppState>) -> Result<Vec<LogicalDrive>, CoreError> {
     storage_engine::drives::list_logical_drives()
 }

@@ -5,7 +5,6 @@
 //! `#[cfg(windows)]`; on other platforms the module compiles empty and
 //! [`default_installer`](super::default_installer) uses the mock instead.
 
-
 #[cfg(windows)]
 use super::Installer;
 #[cfg(windows)]

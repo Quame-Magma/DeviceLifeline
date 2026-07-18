@@ -88,10 +88,7 @@ pub fn score_process(input: &ProcessRiskInput<'_>) -> ProcessRisk {
         reasons.push(format!("Elevated CPU ({:.0}%)", input.cpu_usage));
     }
 
-    let path_empty = input
-        .path
-        .map(|p| p.trim().is_empty())
-        .unwrap_or(true);
+    let path_empty = input.path.map(|p| p.trim().is_empty()).unwrap_or(true);
     if path_empty && !is_system_like_name(input.name) {
         score += 20;
         reasons.push("Empty executable path".to_string());
@@ -139,10 +136,7 @@ fn looks_like_user_app(path: Option<&str>) -> bool {
 
 fn basename_lower(name: &str) -> String {
     let trimmed = name.trim();
-    let base = trimmed
-        .rsplit(['\\', '/'])
-        .next()
-        .unwrap_or(trimmed);
+    let base = trimmed.rsplit(['\\', '/']).next().unwrap_or(trimmed);
     base.to_lowercase()
 }
 

@@ -214,10 +214,7 @@ impl LlmProvider {
             ]
         });
 
-        let url = format!(
-            "{}/chat/completions",
-            self.base_url.trim_end_matches('/')
-        );
+        let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
 
         let resp = ureq::post(&url)
             .set("Authorization", &format!("Bearer {}", self.api_key))
@@ -230,9 +227,7 @@ impl LlmProvider {
             return Err(format!("HTTP {}", resp.status()));
         }
 
-        let value: serde_json::Value = resp
-            .into_json()
-            .map_err(|e| format!("parse error: {e}"))?;
+        let value: serde_json::Value = resp.into_json().map_err(|e| format!("parse error: {e}"))?;
 
         let content = value
             .pointer("/choices/0/message/content")
@@ -275,9 +270,7 @@ impl LlmProvider {
             return Err(format!("HTTP {}", resp.status()));
         }
 
-        let value: serde_json::Value = resp
-            .into_json()
-            .map_err(|e| format!("parse error: {e}"))?;
+        let value: serde_json::Value = resp.into_json().map_err(|e| format!("parse error: {e}"))?;
 
         let content = value
             .pointer("/candidates/0/content/parts/0/text")
@@ -372,7 +365,8 @@ mod tests {
 
     #[test]
     fn parse_array() {
-        let raw = r#"[{"title":"T","cause":"C","evidence":"E","confidence":80,"suggestedAction":"A"}]"#;
+        let raw =
+            r#"[{"title":"T","cause":"C","evidence":"E","confidence":80,"suggestedAction":"A"}]"#;
         let f = parse_findings_json(raw).unwrap();
         assert_eq!(f.len(), 1);
         assert_eq!(f[0].title, "T");

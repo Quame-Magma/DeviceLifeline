@@ -55,12 +55,7 @@ pub fn uninstall_app(
         .quiet_uninstall_string
         .clone()
         .or_else(|| app.uninstall_string.clone())
-        .ok_or_else(|| {
-            CoreError::Internal(format!(
-                "no uninstall string for '{}'",
-                app.name
-            ))
-        })?;
+        .ok_or_else(|| CoreError::Internal(format!("no uninstall string for '{}'", app.name)))?;
 
     let preview = serde_json::json!({
         "appId": app.id,
@@ -371,7 +366,11 @@ fn is_leftover_path_allowed(path: &str) -> bool {
         return false;
     }
     leftover_search_roots().iter().any(|root| {
-        let r = root.display().to_string().to_ascii_lowercase().replace('/', "\\");
+        let r = root
+            .display()
+            .to_string()
+            .to_ascii_lowercase()
+            .replace('/', "\\");
         s.starts_with(&r)
     })
 }
@@ -440,7 +439,10 @@ fn windows_list_apps() -> Vec<InstalledApp> {
                 .ok()
                 .map(|v| v as i64);
             out.push(InstalledApp {
-                id: format!("app:{hive_label}:{subkey_name}", hive_label = hive_tag(*hive)),
+                id: format!(
+                    "app:{hive_label}:{subkey_name}",
+                    hive_label = hive_tag(*hive)
+                ),
                 name,
                 version,
                 publisher: entry.get_value("Publisher").ok(),
@@ -495,7 +497,9 @@ mod tests {
     #[test]
     fn name_tokens_filters_noise() {
         let t = name_tokens("Microsoft Visual Studio Code");
-        assert!(t.iter().any(|x| x == "visual" || x == "studio" || x == "code"));
+        assert!(t
+            .iter()
+            .any(|x| x == "visual" || x == "studio" || x == "code"));
         assert!(!t.iter().any(|x| x == "microsoft"));
     }
 

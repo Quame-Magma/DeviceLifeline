@@ -359,7 +359,9 @@ export function SoftwareLifecycle() {
                     variant="primary"
                     size="sm"
                     loading={uninstallActing}
-                    onClick={handleRemoveLeftovers}
+                    onClick={() => {
+                      void handleRemoveLeftovers();
+                    }}
                   >
                     Remove leftovers
                   </Button>
@@ -413,7 +415,9 @@ export function SoftwareLifecycle() {
                               variant="primary"
                               size="sm"
                               loading={uninstallActing}
-                              onClick={() => handleUninstall(app.id, app.name)}
+                              onClick={() => {
+                                void handleUninstall(app.id, app.name);
+                              }}
                             >
                               Uninstall
                             </Button>

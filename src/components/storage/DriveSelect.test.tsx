@@ -45,7 +45,7 @@ describe('pickDefaultDrive', () => {
 
 describe('driveOptionLabel', () => {
   it('includes letter, label, and free space', () => {
-    const label = driveOptionLabel(sample[1]!);
+    const label = driveOptionLabel(sample[1]);
     expect(label).toContain('C:\\');
     expect(label).toContain('Windows');
     expect(label).toContain('free');

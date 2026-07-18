@@ -65,11 +65,32 @@ pub fn detect_intent(query: &str) -> QueryIntent {
     let q = query.to_lowercase();
 
     // Order matters: more specific intents before general "slow".
-    if contains_any(&q, &["crash", "bsod", "blue screen", "restart", "reboot loop", "hang", "frozen"])
-    {
+    if contains_any(
+        &q,
+        &[
+            "crash",
+            "bsod",
+            "blue screen",
+            "restart",
+            "reboot loop",
+            "hang",
+            "frozen",
+        ],
+    ) {
         return QueryIntent::Crash;
     }
-    if contains_any(&q, &["disk", "storage", "space", "full drive", "hard drive", "ssd", "cleanup"]) {
+    if contains_any(
+        &q,
+        &[
+            "disk",
+            "storage",
+            "space",
+            "full drive",
+            "hard drive",
+            "ssd",
+            "cleanup",
+        ],
+    ) {
         return QueryIntent::Disk;
     }
     if contains_any(&q, &["memory", "ram", "swap", "paging"]) {
@@ -83,13 +104,23 @@ pub fn detect_intent(query: &str) -> QueryIntent {
     }
     if contains_any(
         &q,
-        &["network", "wifi", "wi-fi", "internet", "offline", "latency", "dns", "ethernet"],
+        &[
+            "network", "wifi", "wi-fi", "internet", "offline", "latency", "dns", "ethernet",
+        ],
     ) {
         return QueryIntent::Network;
     }
     if contains_any(
         &q,
-        &["slow", "sluggish", "lag", "laggy", "performance", "unresponsive", "stutter"],
+        &[
+            "slow",
+            "sluggish",
+            "lag",
+            "laggy",
+            "performance",
+            "unresponsive",
+            "stutter",
+        ],
     ) {
         return QueryIntent::Slow;
     }
@@ -249,12 +280,14 @@ fn top_process_finding(context: &DiagnosisContext, intent: QueryIntent) -> Optio
 
     Some(FindingDraft {
         title,
-        cause: "A small set of processes often accounts for perceived slowness or resource pressure."
-            .to_string(),
+        cause:
+            "A small set of processes often accounts for perceived slowness or resource pressure."
+                .to_string(),
         evidence: format!("Top processes by resource use: {top}.{mem_note}"),
         confidence,
-        suggested_action: "Inspect these processes in Process Intelligence; close or update unexpected ones."
-            .to_string(),
+        suggested_action:
+            "Inspect these processes in Process Intelligence; close or update unexpected ones."
+                .to_string(),
     })
 }
 
@@ -305,7 +338,13 @@ impl DiagnosisProvider for HeuristicProvider {
                     if !context.top_process_names.is_empty() {
                         format!(
                             "; top processes: {}",
-                            context.top_process_names.iter().take(3).cloned().collect::<Vec<_>>().join(", ")
+                            context
+                                .top_process_names
+                                .iter()
+                                .take(3)
+                                .cloned()
+                                .collect::<Vec<_>>()
+                                .join(", ")
                         )
                     } else {
                         String::new()
@@ -380,7 +419,13 @@ impl DiagnosisProvider for HeuristicProvider {
                     if !context.top_process_names.is_empty() {
                         format!(
                             " Top processes: {}.",
-                            context.top_process_names.iter().take(3).cloned().collect::<Vec<_>>().join(", ")
+                            context
+                                .top_process_names
+                                .iter()
+                                .take(3)
+                                .cloned()
+                                .collect::<Vec<_>>()
+                                .join(", ")
                         )
                     } else {
                         String::new()
@@ -445,23 +490,19 @@ impl DiagnosisProvider for HeuristicProvider {
 
         if let Some(finding) = recent_change_finding(context) {
             let mut finding = finding;
-            if intent == QueryIntent::Startup
-                && finding.evidence.to_lowercase().contains("startup")
+            if intent == QueryIntent::Startup && finding.evidence.to_lowercase().contains("startup")
             {
                 finding.confidence = intent_boost(finding.confidence, true);
                 finding.title = "Recent startup-related change".to_string();
             }
-            if intent == QueryIntent::Network
-                && finding.title.to_lowercase().contains("network")
-            {
+            if intent == QueryIntent::Network && finding.title.to_lowercase().contains("network") {
                 finding.confidence = intent_boost(finding.confidence, true);
             }
             findings.push(finding);
         } else if intent == QueryIntent::Startup {
             findings.push(FindingDraft {
                 title: "Startup performance review".to_string(),
-                cause: "Startup slowness is often driven by login apps and services."
-                    .to_string(),
+                cause: "Startup slowness is often driven by login apps and services.".to_string(),
                 evidence: format!(
                     "No recent config changes captured; software inventory has {} item(s).",
                     context.software_count
@@ -554,7 +595,9 @@ mod tests {
             ..Default::default()
         };
         let findings = HeuristicProvider::new().diagnose("", &context);
-        assert!(findings.iter().any(|f| f.title.contains("memory") || f.title.contains("Memory")));
+        assert!(findings
+            .iter()
+            .any(|f| f.title.contains("memory") || f.title.contains("Memory")));
     }
 
     #[test]
@@ -578,7 +621,9 @@ mod tests {
             ..Default::default()
         };
         let findings = HeuristicProvider::new().diagnose("", &context);
-        assert!(findings.iter().any(|f| f.title.contains("disk") || f.title.contains("Disk") || f.title.contains("space")));
+        assert!(findings.iter().any(|f| f.title.contains("disk")
+            || f.title.contains("Disk")
+            || f.title.contains("space")));
     }
 
     #[test]
@@ -634,9 +679,9 @@ mod tests {
         };
         let findings = HeuristicProvider::new().diagnose("why slow?", &context);
         assert!(findings.iter().any(|f| f.evidence.contains("chrome.exe")));
-        assert!(findings
-            .iter()
-            .any(|f| f.title.contains("process") || f.title.contains("slowdown") || f.evidence.contains("Top processes")));
+        assert!(findings.iter().any(|f| f.title.contains("process")
+            || f.title.contains("slowdown")
+            || f.evidence.contains("Top processes")));
     }
 
     #[test]
@@ -646,6 +691,8 @@ mod tests {
             ..Default::default()
         };
         let findings = HeuristicProvider::new().diagnose("why crash?", &context);
-        assert!(findings.iter().any(|f| f.title.to_lowercase().contains("crash")));
+        assert!(findings
+            .iter()
+            .any(|f| f.title.to_lowercase().contains("crash")));
     }
 }

@@ -35,18 +35,14 @@ fn agent_loop(interval: Duration) {
         let _ = std::fs::create_dir_all(parent);
     }
     println!("DeviceLifeline agent starting; db={}", path.display());
-    println!(
-        "elevated={}",
-        devicelifeline_lib::elevation::is_elevated()
-    );
+    println!("elevated={}", devicelifeline_lib::elevation::is_elevated());
 
     loop {
         match db::open(&path) {
             Ok(conn) => {
-                if let Err(e) = health::scheduler::maybe_sample(
-                    &conn,
-                    health::scheduler::DEFAULT_INTERVAL_SECS,
-                ) {
+                if let Err(e) =
+                    health::scheduler::maybe_sample(&conn, health::scheduler::DEFAULT_INTERVAL_SECS)
+                {
                     eprintln!("health sample error: {e}");
                 }
                 match device_repo::ensure_local_device(&conn) {
@@ -129,16 +125,15 @@ fn service_main(_args: Vec<std::ffi::OsString>) {
     let running = Arc::new(AtomicBool::new(true));
     let running_handler = running.clone();
 
-    let status_handle = service_control_handler::register("DeviceLifelineAgent", move |event| {
-        match event {
+    let status_handle =
+        service_control_handler::register("DeviceLifelineAgent", move |event| match event {
             ServiceControl::Stop | ServiceControl::Shutdown => {
                 running_handler.store(false, Ordering::SeqCst);
                 ServiceControlHandlerResult::NoError
             }
             ServiceControl::Interrogate => ServiceControlHandlerResult::NoError,
             _ => ServiceControlHandlerResult::NotImplemented,
-        }
-    });
+        });
 
     if let Ok(handle) = status_handle {
         let _ = handle.set_service_status(ServiceStatus {

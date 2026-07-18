@@ -125,7 +125,9 @@ fn apply_toggle(entry: &StartupEntry, enabled: bool) -> Result<String, String> {
         "startup_folder" => toggle_startup_folder(entry, enabled),
         "scheduled_task" => toggle_task(entry, enabled),
         "service" | "driver" => toggle_service(entry, enabled),
-        "wmi" => Err("WMI persistence disable requires manual investigation; not auto-deleted".into()),
+        "wmi" => {
+            Err("WMI persistence disable requires manual investigation; not auto-deleted".into())
+        }
         other => Err(format!("unsupported category: {other}")),
     }
 }
@@ -145,15 +147,14 @@ fn toggle_run_key(entry: &StartupEntry, enabled: bool) -> Result<String, String>
     if enabled {
         // Re-enable: prefer restoring from .DeviceLifelineDisabled sibling value.
         let disabled_name = format!("{}.DeviceLifelineDisabled", entry.name);
-        let cmd: String = key
-            .get_value(&disabled_name)
-            .or_else(|_| {
-                entry
-                    .command
-                    .clone()
-                    .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "no command"))
-            })
-            .map_err(|e| format!("missing original command: {e}"))?;
+        let cmd: String =
+            key.get_value(&disabled_name)
+                .or_else(|_| {
+                    entry.command.clone().ok_or_else(|| {
+                        std::io::Error::new(std::io::ErrorKind::NotFound, "no command")
+                    })
+                })
+                .map_err(|e| format!("missing original command: {e}"))?;
         key.set_value(&entry.name, &cmd)
             .map_err(|e| format!("set value: {e}"))?;
         let _ = key.delete_value(&disabled_name);
@@ -166,7 +167,10 @@ fn toggle_run_key(entry: &StartupEntry, enabled: bool) -> Result<String, String>
         let _ = key.set_value(&disabled_name, &cmd);
         key.delete_value(&entry.name)
             .map_err(|e| format!("delete value: {e}"))?;
-        Ok(format!("Disabled Run value '{}' (saved for re-enable)", entry.name))
+        Ok(format!(
+            "Disabled Run value '{}' (saved for re-enable)",
+            entry.name
+        ))
     }
 }
 
@@ -264,10 +268,7 @@ fn toggle_service(entry: &StartupEntry, enabled: bool) -> Result<String, String>
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     if output.status.success() || stdout.to_lowercase().contains("success") {
-        Ok(format!(
-            "Set service '{}' start={start_type}",
-            entry.name
-        ))
+        Ok(format!("Set service '{}' start={start_type}", entry.name))
     } else {
         Err(format!("sc config failed: {stdout} {stderr}"))
     }
@@ -984,8 +985,9 @@ fn collect_bho_and_shell(out: &mut Vec<StartupEntry>) {
                 category: "explorer".into(),
                 name,
                 command: Some(value.to_string()),
-                location: r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\ShellExecuteHooks"
-                    .into(),
+                location:
+                    r"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\ShellExecuteHooks"
+                        .into(),
                 enabled: true,
                 scope: "machine".into(),
                 publisher: None,

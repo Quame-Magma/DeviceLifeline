@@ -17,7 +17,10 @@ pub fn list_entries(conn: &Connection) -> Result<Vec<VaultEntry>, CoreError> {
 }
 
 /// Creates a Windows System Restore point (VSS-backed) when available.
-pub fn create_restore_point(conn: &Connection, description: Option<String>) -> Result<VaultEntry, CoreError> {
+pub fn create_restore_point(
+    conn: &Connection,
+    description: Option<String>,
+) -> Result<VaultEntry, CoreError> {
     let device = device_repo::ensure_local_device(conn)?;
     let desc = description.unwrap_or_else(|| "DeviceLifeline checkpoint".into());
     let created_at = now_rfc3339()?;
@@ -57,8 +60,8 @@ pub fn create_dna_vault_backup(conn: &mut Connection) -> Result<VaultEntry, Core
 
     let file_name = format!("dna-vault-{}.dlsetup.json", snapshot.id);
     let path = vault_dir.join(&file_name);
-    let json = serde_json::to_string_pretty(&bundle)
-        .map_err(|e| CoreError::Internal(e.to_string()))?;
+    let json =
+        serde_json::to_string_pretty(&bundle).map_err(|e| CoreError::Internal(e.to_string()))?;
     fs::write(&path, &json).map_err(|e| CoreError::Internal(e.to_string()))?;
 
     let entry = VaultEntry {
@@ -79,10 +82,7 @@ pub fn create_dna_vault_backup(conn: &mut Connection) -> Result<VaultEntry, Core
 
 /// Creates a recursive directory image (file-level) of `source` into the vault.
 /// This is a practical disk-image alternative for user data folders (not a block device image).
-pub fn create_directory_image(
-    conn: &Connection,
-    source: String,
-) -> Result<VaultEntry, CoreError> {
+pub fn create_directory_image(conn: &Connection, source: String) -> Result<VaultEntry, CoreError> {
     let device = device_repo::ensure_local_device(conn)?;
     let src = PathBuf::from(&source);
     if !src.exists() {
@@ -217,7 +217,8 @@ fn copy_tree(
                 errors.push(format!("{}: {e}", target.display()));
                 continue;
             }
-            let (c, b, mut errs) = copy_tree(&path, &target, depth + 1, max_depth, max_files - copied)?;
+            let (c, b, mut errs) =
+                copy_tree(&path, &target, depth + 1, max_depth, max_files - copied)?;
             copied += c;
             bytes += b;
             errors.append(&mut errs);

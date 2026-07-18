@@ -14,9 +14,7 @@ use rusqlite::Connection;
 use crate::actions::{self, RISK_DESTRUCTIVE, RISK_SAFE};
 use crate::dna::snapshot::now_rfc3339;
 use crate::error::CoreError;
-use crate::models::{
-    CleanupCandidate, CleanupCategorySummary, CleanupPreview, CleanupResult,
-};
+use crate::models::{CleanupCandidate, CleanupCategorySummary, CleanupPreview, CleanupResult};
 
 const MAX_CANDIDATES: usize = 8_000;
 const MAX_DEPTH: u32 = 6;
@@ -45,7 +43,10 @@ pub fn scan_cleanup_preview(conn: &Connection) -> Result<CleanupPreview, CoreErr
         "cleanup_scan_preview",
         RISK_SAFE,
         "Cleanup scan preview",
-        Some(&format!("{total_count} item(s), {} MB", total_bytes / (1024 * 1024))),
+        Some(&format!(
+            "{total_count} item(s), {} MB",
+            total_bytes / (1024 * 1024)
+        )),
         "completed",
         Some(&json),
     );
@@ -174,7 +175,10 @@ pub fn execute_cleanup(
 
     // Special actions from the *requested* category list (not only file-derived).
     for (name, runner) in [
-        ("recycle_bin", run_special_recycle_bin as fn() -> Result<String, String>),
+        (
+            "recycle_bin",
+            run_special_recycle_bin as fn() -> Result<String, String>,
+        ),
         ("clipboard", run_special_clipboard),
         ("dns_cache", run_special_dns_flush),
         ("registry_mru", run_special_registry_mru),
@@ -364,10 +368,7 @@ fn category_roots() -> Vec<(&'static str, PathBuf)> {
                 .join("Windows")
                 .join("DeliveryOptimization"),
         ));
-        roots.push((
-            "directx_shader_cache",
-            local.join("D3DSCache"),
-        ));
+        roots.push(("directx_shader_cache", local.join("D3DSCache")));
         roots.push((
             "notification_history",
             local
@@ -379,7 +380,10 @@ fn category_roots() -> Vec<(&'static str, PathBuf)> {
         for browser in [
             local.join("Google").join("Chrome").join("User Data"),
             local.join("Microsoft").join("Edge").join("User Data"),
-            local.join("BraveSoftware").join("Brave-Browser").join("User Data"),
+            local
+                .join("BraveSoftware")
+                .join("Brave-Browser")
+                .join("User Data"),
             local.join("Vivaldi").join("User Data"),
         ] {
             push_chromium_profile_caches(&browser, &mut roots);
@@ -401,9 +405,7 @@ fn category_roots() -> Vec<(&'static str, PathBuf)> {
             let r = PathBuf::from(roaming);
             roots.push((
                 "recent_documents",
-                r.join("Microsoft")
-                    .join("Windows")
-                    .join("Recent"),
+                r.join("Microsoft").join("Windows").join("Recent"),
             ));
             roots.push((
                 "recent_documents",
@@ -525,11 +527,31 @@ fn collect_browser_privacy_files(out: &mut Vec<CleanupCandidate>, id: &mut u64) 
     let chromium_bases = [
         local.join("Google").join("Chrome").join("User Data"),
         local.join("Microsoft").join("Edge").join("User Data"),
-        local.join("BraveSoftware").join("Brave-Browser").join("User Data"),
+        local
+            .join("BraveSoftware")
+            .join("Brave-Browser")
+            .join("User Data"),
     ];
-    let history_names = ["History", "History-journal", "Visited Links", "Top Sites", "Top Sites-journal"];
-    let cookie_names = ["Cookies", "Cookies-journal", "Network/Cookies", "Network/Cookies-journal"];
-    let session_names = ["Current Session", "Current Tabs", "Last Session", "Last Tabs", "Sessions"];
+    let history_names = [
+        "History",
+        "History-journal",
+        "Visited Links",
+        "Top Sites",
+        "Top Sites-journal",
+    ];
+    let cookie_names = [
+        "Cookies",
+        "Cookies-journal",
+        "Network/Cookies",
+        "Network/Cookies-journal",
+    ];
+    let session_names = [
+        "Current Session",
+        "Current Tabs",
+        "Last Session",
+        "Last Tabs",
+        "Sessions",
+    ];
     let form_names = ["Web Data", "Web Data-journal"]; // autofill (passwords live here too — labeled privacy)
 
     for base in chromium_bases {
@@ -632,7 +654,10 @@ fn walk_collect(
         if let Ok(rd) = fs::read_dir(path) {
             for e in rd.flatten() {
                 let p = e.path();
-                if p.extension().map(|x| x.eq_ignore_ascii_case("pf")).unwrap_or(false) {
+                if p.extension()
+                    .map(|x| x.eq_ignore_ascii_case("pf"))
+                    .unwrap_or(false)
+                {
                     push_file(out, id, category, &p, files_in_root);
                 }
             }
@@ -758,30 +783,140 @@ fn next_id(id: &mut u64) -> u64 {
 fn summarize_categories(candidates: &[CleanupCandidate]) -> Vec<CleanupCategorySummary> {
     // Classic CCleaner-style categories. risk: safe | privacy | advanced
     let meta: &[(&str, &str, &str, &str)] = &[
-        ("user_temp", "Temporary files (user)", "TEMP and Local\\Temp", "safe"),
-        ("windows_temp", "Temporary files (Windows)", "%WINDIR%\\Temp", "safe"),
-        ("inet_cache", "Internet temporary files", "INetCache", "safe"),
-        ("browser_cache", "Browser cache", "Chrome/Edge/Brave/Firefox cache, GPU/shader caches", "safe"),
-        ("browser_history", "Browser history", "History / places.sqlite (closes browsers first)", "privacy"),
-        ("browser_cookies", "Browser cookies", "Cookies DBs — signs you out of sites", "privacy"),
-        ("browser_sessions", "Browser sessions", "Open tabs / session restore files", "privacy"),
-        ("browser_form_data", "Form history / autofill DBs", "Web Data / formhistory (may include saved form fields)", "privacy"),
-        ("thumbnail_cache", "Thumbnail cache", "Explorer thumbcache_*.db", "safe"),
-        ("recent_documents", "Recent documents & jump lists", "Recent folder + AutomaticDestinations", "privacy"),
-        ("prefetch", "Windows Prefetch", "%WINDIR%\\Prefetch (may slightly slow next launch)", "advanced"),
-        ("memory_dumps", "Memory dumps", "Minidump + MEMORY.DMP", "safe"),
+        (
+            "user_temp",
+            "Temporary files (user)",
+            "TEMP and Local\\Temp",
+            "safe",
+        ),
+        (
+            "windows_temp",
+            "Temporary files (Windows)",
+            "%WINDIR%\\Temp",
+            "safe",
+        ),
+        (
+            "inet_cache",
+            "Internet temporary files",
+            "INetCache",
+            "safe",
+        ),
+        (
+            "browser_cache",
+            "Browser cache",
+            "Chrome/Edge/Brave/Firefox cache, GPU/shader caches",
+            "safe",
+        ),
+        (
+            "browser_history",
+            "Browser history",
+            "History / places.sqlite (closes browsers first)",
+            "privacy",
+        ),
+        (
+            "browser_cookies",
+            "Browser cookies",
+            "Cookies DBs — signs you out of sites",
+            "privacy",
+        ),
+        (
+            "browser_sessions",
+            "Browser sessions",
+            "Open tabs / session restore files",
+            "privacy",
+        ),
+        (
+            "browser_form_data",
+            "Form history / autofill DBs",
+            "Web Data / formhistory (may include saved form fields)",
+            "privacy",
+        ),
+        (
+            "thumbnail_cache",
+            "Thumbnail cache",
+            "Explorer thumbcache_*.db",
+            "safe",
+        ),
+        (
+            "recent_documents",
+            "Recent documents & jump lists",
+            "Recent folder + AutomaticDestinations",
+            "privacy",
+        ),
+        (
+            "prefetch",
+            "Windows Prefetch",
+            "%WINDIR%\\Prefetch (may slightly slow next launch)",
+            "advanced",
+        ),
+        (
+            "memory_dumps",
+            "Memory dumps",
+            "Minidump + MEMORY.DMP",
+            "safe",
+        ),
         ("font_cache", "Font cache", "Windows font cache", "safe"),
-        ("directx_shader_cache", "DirectX shader cache", "D3DSCache", "safe"),
-        ("windows_error_reports", "Windows Error Reporting", "WER queues", "safe"),
-        ("delivery_optimization", "Delivery Optimization", "Update peer cache", "safe"),
-        ("windows_update_cache", "Update delivery cache", "ProgramData DeliveryOptimization", "safe"),
-        ("windows_update_downloads", "Windows Update downloads", "SoftwareDistribution\\Download", "advanced"),
-        ("windows_logs", "Windows logs", "CBS logs older than 1 hour", "safe"),
-        ("windows_defender_history", "Defender scan history", "Windows Defender History", "safe"),
-        ("notification_history", "Notification history", "Windows Notifications", "safe"),
-        ("office_temp", "Office recent/temp", "Office Recent and app folders (temp-like)", "privacy"),
+        (
+            "directx_shader_cache",
+            "DirectX shader cache",
+            "D3DSCache",
+            "safe",
+        ),
+        (
+            "windows_error_reports",
+            "Windows Error Reporting",
+            "WER queues",
+            "safe",
+        ),
+        (
+            "delivery_optimization",
+            "Delivery Optimization",
+            "Update peer cache",
+            "safe",
+        ),
+        (
+            "windows_update_cache",
+            "Update delivery cache",
+            "ProgramData DeliveryOptimization",
+            "safe",
+        ),
+        (
+            "windows_update_downloads",
+            "Windows Update downloads",
+            "SoftwareDistribution\\Download",
+            "advanced",
+        ),
+        (
+            "windows_logs",
+            "Windows logs",
+            "CBS logs older than 1 hour",
+            "safe",
+        ),
+        (
+            "windows_defender_history",
+            "Defender scan history",
+            "Windows Defender History",
+            "safe",
+        ),
+        (
+            "notification_history",
+            "Notification history",
+            "Windows Notifications",
+            "safe",
+        ),
+        (
+            "office_temp",
+            "Office recent/temp",
+            "Office Recent and app folders (temp-like)",
+            "privacy",
+        ),
         ("user_cache", "User .cache", "Home .cache", "safe"),
-        ("recycle_bin", "Recycle Bin", "Empty Recycle Bin on all drives", "safe"),
+        (
+            "recycle_bin",
+            "Recycle Bin",
+            "Empty Recycle Bin on all drives",
+            "safe",
+        ),
         ("clipboard", "Clipboard", "Clear Windows clipboard", "safe"),
         ("dns_cache", "DNS cache", "Flush DNS resolver cache", "safe"),
         (
@@ -792,12 +927,7 @@ fn summarize_categories(candidates: &[CleanupCandidate]) -> Vec<CleanupCategoryS
         ),
     ];
 
-    let always_show = [
-        "recycle_bin",
-        "clipboard",
-        "dns_cache",
-        "registry_mru",
-    ];
+    let always_show = ["recycle_bin", "clipboard", "dns_cache", "registry_mru"];
 
     let mut out = Vec::new();
     for (id, label, desc, risk) in meta {
@@ -806,12 +936,12 @@ fn summarize_categories(candidates: &[CleanupCandidate]) -> Vec<CleanupCategoryS
             continue;
         }
         let total_bytes: i64 = items.iter().map(|c| c.size_bytes).sum();
-        let item_count = if always_show.contains(id) && items.iter().all(|i| is_virtual_candidate(i))
-        {
-            1
-        } else {
-            items.len() as i64
-        };
+        let item_count =
+            if always_show.contains(id) && items.iter().all(|i| is_virtual_candidate(i)) {
+                1
+            } else {
+                items.len() as i64
+            };
         out.push(CleanupCategorySummary {
             id: (*id).into(),
             label: (*label).into(),
@@ -982,7 +1112,9 @@ fn run_special_registry_mru() -> Result<String, String> {
 }
 
 // Keep legacy wrappers used by intelligence commands.
-pub fn propose_safe_cleanup_preview(conn: &Connection) -> Result<crate::models::ActionAudit, CoreError> {
+pub fn propose_safe_cleanup_preview(
+    conn: &Connection,
+) -> Result<crate::models::ActionAudit, CoreError> {
     let preview = scan_cleanup_preview(conn)?;
     let detail = format!(
         "Dry-run cleanup: {} item(s), {} MB across {} categories.",
@@ -1000,7 +1132,12 @@ pub fn propose_safe_cleanup_preview(conn: &Connection) -> Result<crate::models::
         "previewed",
         Some(&json),
     )?;
-    actions::complete_action(conn, &action.id, "completed", Some("Dry-run only; no files deleted."))?;
+    actions::complete_action(
+        conn,
+        &action.id,
+        "completed",
+        Some("Dry-run only; no files deleted."),
+    )?;
     action.status = "completed".into();
     action.result_message = Some("Dry-run only; no files deleted.".into());
     action.finished_at = Some(now_rfc3339()?);

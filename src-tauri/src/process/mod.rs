@@ -201,7 +201,9 @@ fn terminate_pid(pid: u32, name: &str, tree: bool) -> KillOutcome {
         if tree {
             args.push("/T".to_string());
         }
-        let output = crate::process_win::silent_command("taskkill").args(&args).output();
+        let output = crate::process_win::silent_command("taskkill")
+            .args(&args)
+            .output();
         match output {
             Ok(out) if out.status.success() => KillOutcome {
                 success: true,
@@ -306,10 +308,7 @@ fn collect_all_processes() -> Result<Vec<ProcessInfo>, CoreError> {
     // Map pid -> name for parent resolution.
     let mut names: HashMap<u32, String> = HashMap::new();
     for (pid, proc_) in sys.processes() {
-        names.insert(
-            pid.as_u32(),
-            proc_.name().to_string_lossy().to_string(),
-        );
+        names.insert(pid.as_u32(), proc_.name().to_string_lossy().to_string());
     }
 
     // Children counts.
@@ -383,8 +382,7 @@ fn collect_all_processes() -> Result<Vec<ProcessInfo>, CoreError> {
 }
 
 fn build_forest(processes: &[ProcessInfo]) -> Vec<ProcessTreeNode> {
-    let by_pid: HashMap<u32, ProcessInfo> =
-        processes.iter().cloned().map(|p| (p.pid, p)).collect();
+    let by_pid: HashMap<u32, ProcessInfo> = processes.iter().cloned().map(|p| (p.pid, p)).collect();
     let mut children_map: HashMap<u32, Vec<u32>> = HashMap::new();
     let mut roots: Vec<u32> = Vec::new();
 
@@ -415,11 +413,7 @@ fn build_forest(processes: &[ProcessInfo]) -> Vec<ProcessTreeNode> {
                 }
             }
         }
-        children.sort_by(|a, b| {
-            b.process
-                .memory_bytes
-                .cmp(&a.process.memory_bytes)
-        });
+        children.sort_by(|a, b| b.process.memory_bytes.cmp(&a.process.memory_bytes));
         Some(ProcessTreeNode { process, children })
     }
 
@@ -429,11 +423,7 @@ fn build_forest(processes: &[ProcessInfo]) -> Vec<ProcessTreeNode> {
             forest.push(node);
         }
     }
-    forest.sort_by(|a, b| {
-        b.process
-            .memory_bytes
-            .cmp(&a.process.memory_bytes)
-    });
+    forest.sort_by(|a, b| b.process.memory_bytes.cmp(&a.process.memory_bytes));
     forest
 }
 

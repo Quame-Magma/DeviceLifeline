@@ -143,8 +143,6 @@ fn collect_store_apps(
     seen: &mut std::collections::HashSet<(String, Option<String>)>,
     items: &mut Vec<RawSoftware>,
 ) {
-    
-
     let output = match crate::process_win::silent_command("powershell")
         .args([
             "-NoProfile",

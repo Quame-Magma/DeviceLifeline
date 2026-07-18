@@ -45,7 +45,10 @@ fn score_driver(d: &mut DriverInfo) {
     let status = d.status.as_deref().unwrap_or("").to_lowercase();
     if status.contains("error") || status.contains("problem") || status == "degraded" {
         score -= 40;
-        reasons.push(format!("Device status: {}", d.status.as_deref().unwrap_or("?")));
+        reasons.push(format!(
+            "Device status: {}",
+            d.status.as_deref().unwrap_or("?")
+        ));
     }
     let name_l = d.name.to_lowercase();
     if name_l.contains("generic") && name_l.contains("display") {
@@ -165,7 +168,10 @@ Get-CimInstance Win32_PnPSignedDriver |
                 device_id: device_id.into(),
                 captured_at: captured_at.into(),
                 name,
-                device_class: v.get("deviceClass").and_then(|x| x.as_str()).map(|s| s.into()),
+                device_class: v
+                    .get("deviceClass")
+                    .and_then(|x| x.as_str())
+                    .map(|s| s.into()),
                 manufacturer: v
                     .get("manufacturer")
                     .and_then(|x| x.as_str())
@@ -231,7 +237,9 @@ pub fn preview_gpu_driver_clean(
                 || (x.instance_id.is_some() && x.instance_id == t.instance_id)
         }) {
             targets.push(t);
-        } else if let Some(existing) = targets.iter_mut().find(|x| x.name.eq_ignore_ascii_case(&t.name))
+        } else if let Some(existing) = targets
+            .iter_mut()
+            .find(|x| x.name.eq_ignore_ascii_case(&t.name))
         {
             if existing.instance_id.is_none() {
                 existing.instance_id = t.instance_id.clone();
@@ -257,7 +265,8 @@ pub fn preview_gpu_driver_clean(
         "Reboot after clean, then install the offline vendor package.".into(),
     ];
     if targets.is_empty() && packages.is_empty() {
-        warnings.push("No display/GPU packages matched. Scan drivers or pick another vendor.".into());
+        warnings
+            .push("No display/GPU packages matched. Scan drivers or pick another vendor.".into());
     }
 
     let plan = GpuCleanPlan {
@@ -432,11 +441,10 @@ pub fn execute_gpu_driver_clean(
 }
 
 /// Creates a restore point titled for GPU clean (wrapper for wizard gate).
-pub fn create_gpu_clean_restore_point(conn: &Connection) -> Result<crate::models::VaultEntry, CoreError> {
-    vault::create_restore_point(
-        conn,
-        Some("DeviceLifeline: before GPU driver clean".into()),
-    )
+pub fn create_gpu_clean_restore_point(
+    conn: &Connection,
+) -> Result<crate::models::VaultEntry, CoreError> {
+    vault::create_restore_point(conn, Some("DeviceLifeline: before GPU driver clean".into()))
 }
 
 fn normalize_vendor(v: Option<&str>) -> String {
@@ -462,7 +470,11 @@ fn is_display_gpu_driver(d: &DriverInfo) -> bool {
             || name.contains("geforce")
             || name.contains("radeon")
             || name.contains("amd ")
-            || (name.contains("intel") && (name.contains("graphics") || name.contains("arc") || name.contains("uhd") || name.contains("iris")))
+            || (name.contains("intel")
+                && (name.contains("graphics")
+                    || name.contains("arc")
+                    || name.contains("uhd")
+                    || name.contains("iris")))
             || mfr.contains("nvidia")
             || mfr.contains("advanced micro devices")
             || mfr.contains("amd")
@@ -631,7 +643,8 @@ fn pnputil_remove_device(instance_id: &str) -> Result<(), String> {
         // Only accept plausible PnP instance paths (no free-form shell).
         let id = instance_id.trim();
         if id.is_empty()
-            || id.contains('&') && !id.to_ascii_uppercase().contains("VEN_")
+            || id.contains('&')
+                && !id.to_ascii_uppercase().contains("VEN_")
                 && !id.to_ascii_uppercase().contains("DISPLAY")
                 && !id.to_ascii_uppercase().starts_with("PCI\\")
                 && !id.to_ascii_uppercase().starts_with("SWD\\")
@@ -667,7 +680,9 @@ fn pnputil_remove_device(instance_id: &str) -> Result<(), String> {
     }
     #[cfg(not(windows))]
     {
-        Err(format!("pnputil not available (would remove {instance_id})"))
+        Err(format!(
+            "pnputil not available (would remove {instance_id})"
+        ))
     }
 }
 
@@ -691,8 +706,22 @@ fn stop_service(name: &str) -> Result<(), String> {
 
 fn vendor_gpu_services(vendor: &str) -> Vec<String> {
     let all = [
-        ("nvidia", &["NVDisplay.ContainerLocalSystem", "nvlddmkm", "NvContainerLocalSystem"][..]),
-        ("amd", &["amdkmdag", "AMD Crash Defender Service", "AMD External Events Utility"][..]),
+        (
+            "nvidia",
+            &[
+                "NVDisplay.ContainerLocalSystem",
+                "nvlddmkm",
+                "NvContainerLocalSystem",
+            ][..],
+        ),
+        (
+            "amd",
+            &[
+                "amdkmdag",
+                "AMD Crash Defender Service",
+                "AMD External Events Utility",
+            ][..],
+        ),
         ("intel", &["igfxCUIService2.0.0.0", "igfxCUIService"][..]),
     ];
     let mut out = Vec::new();

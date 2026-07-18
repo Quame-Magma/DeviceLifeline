@@ -180,7 +180,9 @@ export function RecoveryVault() {
             variant="primary"
             size="sm"
             loading={acting}
-            onClick={handleDirectoryImage}
+            onClick={() => {
+              void handleDirectoryImage();
+            }}
           >
             Directory image
           </Button>

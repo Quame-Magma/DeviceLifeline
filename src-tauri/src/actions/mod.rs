@@ -68,8 +68,7 @@ pub fn complete_action(
     result_message: Option<&str>,
 ) -> Result<(), CoreError> {
     let finished_at = now_rfc3339()?;
-    let updated =
-        action_repo::complete_action(conn, id, status, result_message, &finished_at)?;
+    let updated = action_repo::complete_action(conn, id, status, result_message, &finished_at)?;
     if updated == 0 {
         return Err(CoreError::NotFound(format!("action {id}")));
     }
@@ -130,11 +129,7 @@ mod tests {
         let action = propose_safe_cleanup_preview(&conn).expect("preview");
         assert_eq!(action.risk_tier, RISK_SAFE);
         assert_eq!(action.action_type, "safe_cleanup_preview");
-        assert!(action
-            .preview
-            .as_deref()
-            .unwrap_or("")
-            .contains("dryRun"));
+        assert!(action.preview.as_deref().unwrap_or("").contains("dryRun"));
         assert_eq!(action.status, "completed");
     }
 

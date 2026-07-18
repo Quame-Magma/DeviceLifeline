@@ -34,9 +34,8 @@ impl DbPool {
     pub fn open(path: impl Into<PathBuf>) -> Result<Self, CoreError> {
         let path = path.into();
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| {
-                CoreError::Internal(format!("create data dir: {e}"))
-            })?;
+            std::fs::create_dir_all(parent)
+                .map_err(|e| CoreError::Internal(format!("create data dir: {e}")))?;
         }
         // Bootstrap migrations once with a dedicated connection.
         {

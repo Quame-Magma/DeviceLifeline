@@ -249,7 +249,9 @@ export function StartupCenter() {
                             variant="secondary"
                             size="sm"
                             loading={acting}
-                            onClick={() => handleToggle(entry)}
+                            onClick={() => {
+                              void handleToggle(entry);
+                            }}
                           >
                             {entry.enabled ? 'Disable' : 'Enable'}
                           </Button>

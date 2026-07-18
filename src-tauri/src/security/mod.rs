@@ -160,7 +160,11 @@ fn scan_persistence_from_config(
                     "critical",
                     format!("Persistence from temp path: {}", item.name),
                     "Startup or scheduled task points at a temporary location.",
-                    format!("kind={} path={}", item.kind, item.path.as_deref().unwrap_or("?")),
+                    format!(
+                        "kind={} path={}",
+                        item.kind,
+                        item.path.as_deref().unwrap_or("?")
+                    ),
                     88,
                     item.path.clone(),
                     Some(item.name.clone()),

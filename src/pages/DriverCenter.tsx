@@ -208,7 +208,9 @@ export function DriverCenter() {
               size="sm"
               loading={cleaning}
               disabled={!plan || !restoreOk || !allChecked || !elevated}
-              onClick={handleExecute}
+              onClick={() => {
+                void handleExecute();
+              }}
             >
               3 · Execute clean
             </Button>

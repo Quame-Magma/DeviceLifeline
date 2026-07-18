@@ -6,15 +6,15 @@
 
 use crate::error::CoreError;
 use crate::models::{
-    MemoryRegion, ProcessDeepDetail, ProcessHandle, ProcessInfo, ProcessTokenInfo,
-    TokenPrivilege, WaitChainNode,
+    MemoryRegion, ProcessDeepDetail, ProcessHandle, ProcessInfo, ProcessTokenInfo, TokenPrivilege,
+    WaitChainNode,
 };
 use crate::process::{self, enrich};
 
 /// Full deep detail for a PID.
 pub fn get_process_deep(pid: u32) -> Result<ProcessDeepDetail, CoreError> {
-    let mut process = process::get_process(pid)?
-        .ok_or_else(|| CoreError::NotFound(format!("process {pid}")))?;
+    let mut process =
+        process::get_process(pid)?.ok_or_else(|| CoreError::NotFound(format!("process {pid}")))?;
 
     // Ensure modules/threads enrichment already applied by get_process.
     let e = enrich::enrich_process(pid);
@@ -433,7 +433,14 @@ try {{
     );
 
     let output = crate::process_win::silent_command("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", &script])
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &script,
+        ])
         .output();
 
     let mut notes = Vec::new();
@@ -546,10 +553,7 @@ try {{
                                 });
                             }
                         }
-                        elevated = t
-                            .get("elevated")
-                            .and_then(|x| x.as_bool())
-                            .unwrap_or(false);
+                        elevated = t.get("elevated").and_then(|x| x.as_bool()).unwrap_or(false);
                         token = Some(ProcessTokenInfo {
                             user: t.get("user").and_then(|x| x.as_str()).map(|s| s.into()),
                             integrity: t

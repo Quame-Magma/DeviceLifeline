@@ -22,7 +22,7 @@ export function SystemReport() {
     void loadReport();
   }, [loadReport]);
 
-  const rows = report?.rows ?? [];
+  const rows = useMemo(() => report?.rows ?? [], [report?.rows]);
   const { pageItems, pagination } = usePaginatedItems(rows);
 
   const sections = useMemo(() => {

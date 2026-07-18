@@ -25,10 +25,7 @@ pub fn rebuild_usn_index(
     let vol = volume.unwrap_or_else(|| "C:".into());
     let vol = normalize_volume(&vol);
 
-    conn.execute(
-        "DELETE FROM search_index WHERE entity_type = 'file'",
-        [],
-    )?;
+    conn.execute("DELETE FROM search_index WHERE entity_type = 'file'", [])?;
 
     let mut docs = Vec::new();
     let mut source = "walk";

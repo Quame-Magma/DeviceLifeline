@@ -68,14 +68,7 @@ pub fn sample_hardware(device_id: &str) -> Result<HardwareSample, CoreError> {
     }
 
     if let Some(t) = cpu_temp_c {
-        ensure_sensor(
-            &mut sensors,
-            "CPU package",
-            t,
-            "°C",
-            "sysinfo/WMI",
-            "cpu",
-        );
+        ensure_sensor(&mut sensors, "CPU package", t, "°C", "sysinfo/WMI", "cpu");
     }
     if let Some(t) = gpu_temp_c {
         ensure_sensor(&mut sensors, "GPU", t, "°C", "sysinfo/WMI", "gpu");
@@ -84,14 +77,7 @@ pub fn sample_hardware(device_id: &str) -> Result<HardwareSample, CoreError> {
         ensure_sensor(&mut sensors, "GPU load", u, "%", "PDH", "gpu");
     }
     if let Some(mhz) = cpu_clock_mhz {
-        ensure_sensor(
-            &mut sensors,
-            "CPU clock",
-            mhz,
-            "MHz",
-            "sysinfo",
-            "cpu",
-        );
+        ensure_sensor(&mut sensors, "CPU clock", mhz, "MHz", "sysinfo", "cpu");
     }
 
     let fan_rpm = sensors
@@ -474,7 +460,11 @@ fn sample_temps() -> (Option<f64>, Option<f64>, Vec<String>) {
             continue;
         }
         notes.push(format!("{}={temp:.1}C", c.label()));
-        if label.contains("gpu") || label.contains("nvidia") || label.contains("amd") || label.contains("radeon") {
+        if label.contains("gpu")
+            || label.contains("nvidia")
+            || label.contains("amd")
+            || label.contains("radeon")
+        {
             gpu_temps.push(temp);
         } else if label.contains("cpu")
             || label.contains("package")
@@ -541,7 +531,10 @@ if (-not $g -and $null -eq $usage) { '{}' | ConvertTo-Json; exit }
     }
     let text = String::from_utf8_lossy(&output.stdout);
     let v: serde_json::Value = serde_json::from_str(text.trim()).ok()?;
-    let name = v.get("name").and_then(|x| x.as_str()).map(|s| s.to_string());
+    let name = v
+        .get("name")
+        .and_then(|x| x.as_str())
+        .map(|s| s.to_string());
     let vram = v.get("vram").and_then(|x| x.as_i64());
     let usage = v.get("usage").and_then(|x| x.as_f64());
     Some((name, usage, None, vram))
@@ -702,9 +695,18 @@ $out | ConvertTo-Json -Compress -Depth 6
                 sample_id: String::new(),
                 disk_name: name.clone(),
                 model: Some(name),
-                serial: v.get("serial").and_then(|x| x.as_str()).map(|s| s.to_string()),
-                media_type: v.get("media").and_then(|x| x.as_str()).map(|s| s.to_string()),
-                health_status: v.get("health").and_then(|x| x.as_str()).map(|s| s.to_string()),
+                serial: v
+                    .get("serial")
+                    .and_then(|x| x.as_str())
+                    .map(|s| s.to_string()),
+                media_type: v
+                    .get("media")
+                    .and_then(|x| x.as_str())
+                    .map(|s| s.to_string()),
+                health_status: v
+                    .get("health")
+                    .and_then(|x| x.as_str())
+                    .map(|s| s.to_string()),
                 temperature_c: v.get("temp").and_then(|x| x.as_f64()),
                 power_on_hours: v.get("powerOnHours").and_then(|x| x.as_i64()),
                 wear_pct: v.get("wear").and_then(|x| x.as_f64()),
@@ -734,7 +736,10 @@ fn parse_smart_attrs(v: Option<&serde_json::Value>) -> Vec<SmartAttribute> {
                 value: a.get("value").and_then(|x| x.as_str()).map(|s| s.into()),
                 raw: a.get("raw").and_then(|x| x.as_str()).map(|s| s.into()),
                 worst: a.get("worst").and_then(|x| x.as_str()).map(|s| s.into()),
-                threshold: a.get("threshold").and_then(|x| x.as_str()).map(|s| s.into()),
+                threshold: a
+                    .get("threshold")
+                    .and_then(|x| x.as_str())
+                    .map(|s| s.into()),
                 status: a.get("status").and_then(|x| x.as_str()).map(|s| s.into()),
             })
         })

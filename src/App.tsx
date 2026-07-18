@@ -23,7 +23,7 @@ import { Settings } from './pages/Settings';
 import { loadPreferences, type StartPage } from './lib/preferences';
 
 function resolveStartView(): View {
-  const start = loadPreferences().startPage as StartPage;
+  const start = loadPreferences().startPage;
   const allowed: StartPage[] = [
     'dashboard',
     'health',

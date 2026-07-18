@@ -54,13 +54,7 @@ pub fn volume_map(volume: Option<String>) -> Result<StorageFolderNode, CoreError
     let deadline = Instant::now() + MAP_DEADLINE;
     let mut files_seen = 0usize;
     let mut timed_out = false;
-    let mut node = map_volume_dir(
-        &root,
-        0,
-        &mut files_seen,
-        &deadline,
-        &mut timed_out,
-    );
+    let mut node = map_volume_dir(&root, 0, &mut files_seen, &deadline, &mut timed_out);
     // Root always reports 100% of itself.
     node.pct_of_parent = 100.0;
     Ok(node)
@@ -170,8 +164,7 @@ fn map_volume_dir(
             file_count += 1;
         } else if child_meta.is_dir() {
             if depth < MAX_DEPTH {
-                let node =
-                    map_volume_dir(&child, depth + 1, files_seen, deadline, timed_out);
+                let node = map_volume_dir(&child, depth + 1, files_seen, deadline, timed_out);
                 size_bytes += node.size_bytes;
                 file_count += node.file_count;
                 if node.size_bytes > 0 {
@@ -255,9 +248,7 @@ mod tests {
 
     #[test]
     fn skips_system_volume_paths() {
-        assert!(should_skip_volume_path(Path::new(
-            r"C:\$Recycle.Bin"
-        )));
+        assert!(should_skip_volume_path(Path::new(r"C:\$Recycle.Bin")));
         assert!(should_skip_volume_path(Path::new(
             r"C:\Windows\WinSxS\manifests"
         )));
@@ -273,8 +264,7 @@ mod tests {
     fn volume_map_respects_deadline_and_caps() {
         // Map temp dir; must return promptly even if large.
         let start = Instant::now();
-        let node = volume_map(Some(std::env::temp_dir().display().to_string()))
-            .expect("map");
+        let node = volume_map(Some(std::env::temp_dir().display().to_string())).expect("map");
         assert!(start.elapsed() < Duration::from_secs(15));
         assert!(!node.path.is_empty());
     }

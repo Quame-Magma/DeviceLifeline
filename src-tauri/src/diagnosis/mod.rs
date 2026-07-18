@@ -181,8 +181,8 @@ mod tests {
         // elsewhere), so compare to the captured snapshot's own count.
         let snapshot = capture_snapshot(&mut conn).expect("capture snapshot");
 
-        let context = assemble_context(&conn, Some("why is my pc slow?"))
-            .expect("assemble context");
+        let context =
+            assemble_context(&conn, Some("why is my pc slow?")).expect("assemble context");
         assert_eq!(context.software_count, snapshot.software_count);
         assert!(context.health_score.is_none());
         assert!(context.recent_crash_categories.is_empty());
