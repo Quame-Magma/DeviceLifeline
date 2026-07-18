@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Bell, ChevronDown, Search, Settings } from 'lucide-react';
+import { Bell, Search, Settings } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import type { View } from './Sidebar';
 import {
@@ -103,16 +103,6 @@ export function AppShell({ activeView, onNavigate, children }: AppShellProps) {
 
   const modKey = isMacPlatform() ? '⌘' : 'Ctrl';
 
-  function avatarInitial(): string {
-    try {
-      const n = localStorage.getItem('devicelifeline.displayName')?.trim();
-      if (n) return n.charAt(0).toUpperCase();
-    } catch {
-      /* ignore */
-    }
-    return 'A';
-  }
-
   return (
     <div className="app-backdrop flex h-screen overflow-hidden bg-canvas">
       <Sidebar
@@ -180,23 +170,6 @@ export function AppShell({ activeView, onNavigate, children }: AppShellProps) {
               ].join(' ')}
             >
               <Settings className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={() => onNavigate('settings')}
-              title="Account"
-              aria-label="Account menu"
-              className={[
-                'ml-0.5 flex h-9 items-center gap-1 rounded-full border border-hairline',
-                'bg-surface-elevated pl-0.5 pr-1.5 text-text-secondary',
-                'hover:border-hairline-strong hover:text-text-primary',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
-              ].join(' ')}
-            >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-subtle text-xs font-semibold text-accent">
-                {avatarInitial()}
-              </span>
-              <ChevronDown className="h-3.5 w-3.5 text-text-muted" aria-hidden />
             </button>
           </div>
         </header>

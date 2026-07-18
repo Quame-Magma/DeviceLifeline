@@ -7,7 +7,6 @@ import { usePaginatedItems } from '../hooks/use-pagination';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { EmptyState } from '../components/common/EmptyState';
-import { PageHeader } from '../components/common/PageHeader';
 import { Pagination } from '../components/common/Pagination';
 import { Spinner } from '../components/common/Spinner';
 import { StatRow, StatTile } from '../components/common/StatTile';
@@ -18,6 +17,7 @@ import {
 } from '../components/storage/DriveSelect';
 import { formatBytes, formatTimestamp } from '../lib/format';
 import type { VaultEntry, VolumeShadow } from '../types/device.types';
+import { PageShell } from '../components/layout/PageShell';
 
 function kindLabel(kind: string): string {
   const labels: Record<string, string> = {
@@ -34,7 +34,8 @@ function statusTone(
   const s = status.toLowerCase();
   if (s === 'failed' || s === 'error') return 'error';
   if (s === 'running' || s === 'pending') return 'warning';
-  if (s === 'completed' || s === 'success' || s === 'available') return 'success';
+  if (s === 'completed' || s === 'success' || s === 'available')
+    return 'success';
   return 'neutral';
 }
 
@@ -132,46 +133,42 @@ export function RecoveryVault() {
   }, [restoreDest]);
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="Vault"
-        description="Restore points, DNA backups, directory images, and Macrium-class volume shadows."
-        actions={
-          <>
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={acting}
-              onClick={() => void createRestorePoint()}
-            >
-              Restore point
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={acting}
-              onClick={() => void createDnaBackup()}
-            >
-              DNA backup
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              loading={acting}
-              onClick={handleDirectoryImage}
-            >
-              Directory image
-            </Button>
-          </>
-        }
-      />
-
+    <PageShell
+      title="Vault"
+      description="Restore points, DNA backups, and volume shadows."
+      actions={
+        <>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={acting}
+            onClick={() => void createRestorePoint()}
+          >
+            Restore point
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={acting}
+            onClick={() => void createDnaBackup()}
+          >
+            DNA backup
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            loading={acting}
+            onClick={handleDirectoryImage}
+          >
+            Directory image
+          </Button>
+        </>
+      }
+    >
       {error ? (
         <AlertBanner title="Vault / backup unavailable" message={error} />
       ) : null}
-      {message && !error ? (
-        <AlertBanner title={message} tone="info" />
-      ) : null}
+      {message && !error ? <AlertBanner title={message} tone="info" /> : null}
 
       <StatRow columns={4}>
         <StatTile label="Vault entries" value={entries.length} />
@@ -305,14 +302,10 @@ export function RecoveryVault() {
                         </StatusPill>
                       </td>
                       <td className="text-xs">
-                        {sch.lastRunAt
-                          ? formatTimestamp(sch.lastRunAt)
-                          : '—'}
+                        {sch.lastRunAt ? formatTimestamp(sch.lastRunAt) : '—'}
                       </td>
                       <td className="text-xs">
-                        {sch.nextRunAt
-                          ? formatTimestamp(sch.nextRunAt)
-                          : '—'}
+                        {sch.nextRunAt ? formatTimestamp(sch.nextRunAt) : '—'}
                       </td>
                       <td>
                         <div className="flex gap-1">
@@ -448,14 +441,17 @@ export function RecoveryVault() {
           <Pagination pagination={entryPages} itemLabel="entries" />
         </section>
       )}
-    </div>
+    </PageShell>
   );
 }
 
 function ShadowRow({ shadow }: { shadow: VolumeShadow }) {
   return (
     <tr>
-      <td className="max-w-[180px] truncate font-mono text-xs" title={shadow.shadowId}>
+      <td
+        className="max-w-[180px] truncate font-mono text-xs"
+        title={shadow.shadowId}
+      >
         {shadow.shadowId}
       </td>
       <td className="font-mono text-xs">{shadow.volume}</td>
@@ -466,7 +462,9 @@ function ShadowRow({ shadow }: { shadow: VolumeShadow }) {
         {shadow.deviceObject ?? '—'}
       </td>
       <td>
-        <StatusPill tone={statusTone(shadow.status)}>{shadow.status}</StatusPill>
+        <StatusPill tone={statusTone(shadow.status)}>
+          {shadow.status}
+        </StatusPill>
       </td>
       <td className="text-xs">{formatTimestamp(shadow.createdAt)}</td>
     </tr>

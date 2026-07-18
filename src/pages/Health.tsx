@@ -4,9 +4,7 @@ import { formatPercent, formatTimestamp } from '../lib/format';
 import { usePaginatedItems } from '../hooks/use-pagination';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
-import { Card } from '../components/common/Card';
 import { EmptyState } from '../components/common/EmptyState';
-import { PageHeader } from '../components/common/PageHeader';
 import { Pagination } from '../components/common/Pagination';
 import { Spinner } from '../components/common/Spinner';
 import { StatRow, StatTile } from '../components/common/StatTile';
@@ -15,6 +13,7 @@ import { ResourceUsageBars } from '../components/health/ResourceUsageBars';
 import { HealthSampleList } from '../components/health/HealthSampleList';
 import { HealthAlertList } from '../components/health/HealthAlertList';
 import { buildHealthInsight } from '../components/health/insights';
+import { PageShell } from '../components/layout/PageShell';
 
 export function Health() {
   const {
@@ -40,22 +39,20 @@ export function Health() {
   }, []);
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="Health"
-        description="CPU, memory, and disk pressure on this PC."
-        actions={
-          <Button
-            variant="primary"
-            size="sm"
-            loading={sampling}
-            onClick={() => void collectSample()}
-          >
-            {sampling ? 'Sampling…' : 'Sample now'}
-          </Button>
-        }
-      />
-
+    <PageShell
+      title="Health"
+      description="CPU, memory, and disk pressure on this PC."
+      actions={
+        <Button
+          variant="primary"
+          size="sm"
+          loading={sampling}
+          onClick={() => void collectSample()}
+        >
+          {sampling ? 'Sampling…' : 'Sample now'}
+        </Button>
+      }
+    >
       {error ? (
         <AlertBanner
           title="Could not load health"
@@ -89,7 +86,35 @@ export function Health() {
             const insight = buildHealthInsight(latest, alerts);
             return (
               <>
-                {/* Status first — primary health story */}
+                {/* Hero — same density as Overview PC Health */}
+                <section className="panel overflow-hidden">
+                  <div className="grid gap-5 p-5 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center lg:gap-8 lg:p-6">
+                    <div className="flex justify-center lg:justify-start">
+                      <HealthScoreGauge score={latest.healthScore} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                        Status · {formatTimestamp(latest.capturedAt)}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-text-primary cause-semibold">
+                        {insight.summary}
+                      </p>
+                      <p className="mt-1 text-sm text-text-muted">
+                        {insight.primaryConcern}
+                      </p>
+                      <div className="mt-4">
+                        <ResourceUsageBars sample={latest} />
+                      </div>
+                      <p className="mt-4 rounded-control border border-hairline bg-surface-elevated px-3 py-2 text-xs text-text-secondary">
+                        <span className="font-medium text-text-primary">
+                          Next:{' '}
+                        </span>
+                        {insight.recommendedAction}
+                      </p>
+                    </div>
+                  </div>
+                </section>
+
                 <StatRow columns={3}>
                   <StatTile label="Status" value={insight.status} />
                   <StatTile
@@ -97,33 +122,14 @@ export function Health() {
                     value={formatPercent(latest.cpuUsage)}
                   />
                   <StatTile
-                    label="Sampled"
-                    value={formatTimestamp(latest.capturedAt)}
+                    label="Memory"
+                    value={formatPercent(
+                      latest.memoryTotal > 0
+                        ? (latest.memoryUsed / latest.memoryTotal) * 100
+                        : 0,
+                    )}
                   />
                 </StatRow>
-
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-[auto_1fr]">
-                  <Card padding="lg" className="flex justify-center">
-                    <HealthScoreGauge score={latest.healthScore} />
-                  </Card>
-                  <Card padding="lg">
-                    <p className="text-sm font-semibold text-text-primary">
-                      {insight.summary}
-                    </p>
-                    <p className="mt-2 text-xs text-text-muted">
-                      {insight.primaryConcern}
-                    </p>
-                    <div className="mt-4">
-                      <ResourceUsageBars sample={latest} />
-                    </div>
-                    <p className="mt-4 rounded-control border border-hairline bg-surface-elevated px-3 py-2 text-xs text-text-secondary">
-                      <span className="font-medium text-text-primary">
-                        Next:{' '}
-                      </span>
-                      {insight.recommendedAction}
-                    </p>
-                  </Card>
-                </div>
 
                 <section className="panel">
                   <div className="panel-header">
@@ -132,13 +138,10 @@ export function Health() {
                       {samples.length} on this device
                     </p>
                   </div>
-                  <div className="p-4">
+                  <div className="panel-body">
                     <HealthSampleList samples={pageSamples} />
                   </div>
-                  <Pagination
-                    pagination={samplePages}
-                    itemLabel="samples"
-                  />
+                  <Pagination pagination={samplePages} itemLabel="samples" />
                 </section>
               </>
             );
@@ -153,18 +156,15 @@ export function Health() {
             <p className="panel-title">Open alerts</p>
             <p className="panel-subtitle">{alerts.length} need attention</p>
           </div>
-          <div className="p-4">
+          <div className="panel-body">
             <HealthAlertList
               alerts={pageAlerts}
               onAcknowledge={(id) => void acknowledge(id)}
             />
           </div>
-          <Pagination
-            pagination={alertPages}
-            itemLabel="alerts"
-          />
+          <Pagination pagination={alertPages} itemLabel="alerts" />
         </section>
       ) : null}
-    </div>
+    </PageShell>
   );
 }

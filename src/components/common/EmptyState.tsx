@@ -32,9 +32,11 @@ export function EmptyState({
           {icon}
         </span>
       ) : null}
-      <h3 className="text-base font-semibold text-text-primary">{heading}</h3>
+      <h3 className="text-base font-semibold text-text-primary cause-semibold">
+        {heading}
+      </h3>
       {body ? (
-        <p className="max-w-sm text-sm leading-relaxed text-text-secondary">
+        <p className="max-w-sm text-sm leading-relaxed text-text-muted">
           {body}
         </p>
       ) : null}

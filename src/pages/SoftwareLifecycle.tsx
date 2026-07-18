@@ -7,7 +7,6 @@ import { usePaginatedItems } from '../hooks/use-pagination';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { EmptyState } from '../components/common/EmptyState';
-import { PageHeader } from '../components/common/PageHeader';
 import { Pagination } from '../components/common/Pagination';
 import { SegmentedControl } from '../components/common/SegmentedControl';
 import { Spinner } from '../components/common/Spinner';
@@ -16,6 +15,7 @@ import { StatusPill } from '../components/common/StatusPill';
 import { SoftwareInventoryTable } from '../components/device/SoftwareInventoryTable';
 import { formatBytes, formatTimestamp } from '../lib/format';
 import type { SoftwareUpdate } from '../types/device.types';
+import { PageShell } from '../components/layout/PageShell';
 
 type Tab = 'inventory' | 'updates' | 'uninstall';
 
@@ -73,7 +73,8 @@ export function SoftwareLifecycle() {
   const snapshot = snapshots.find((s) => s.id === selectedSnapshotId);
   const withVersion = inventory.filter((item) => item.version).length;
   const available = useMemo(
-    () => updates.filter((u) => u.status === 'available' || u.status === 'failed'),
+    () =>
+      updates.filter((u) => u.status === 'available' || u.status === 'failed'),
     [updates],
   );
   const { pageItems, pagination } = usePaginatedItems(available);
@@ -142,79 +143,87 @@ export function SoftwareLifecycle() {
   };
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="Software"
-        description="Updates, inventory baseline, and Revo-class uninstall + leftover cleanup."
-        actions={
-          <>
-            <SegmentedControl
-              ariaLabel="Software view"
-              value={tab}
-              onChange={setTab}
-              options={
-                [
-                  { id: 'updates', label: 'Updates' },
-                  { id: 'inventory', label: 'Inventory' },
-                  { id: 'uninstall', label: 'Uninstall' },
-                ] as const
-              }
-            />
-            {tab === 'inventory' ? (
-              <>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={loadingSnapshots || loadingInventory}
-                  onClick={() => void loadSnapshots()}
-                >
-                  <RefreshCcw className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  Refresh
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  loading={capturing}
-                  onClick={() => void capture()}
-                >
-                  Capture baseline
-                </Button>
-              </>
-            ) : tab === 'uninstall' ? (
+    <PageShell
+      title="Software"
+      description="Updates, inventory, and uninstall with leftover cleanup."
+      actions={
+        <>
+          <SegmentedControl
+            ariaLabel="Software view"
+            value={tab}
+            onChange={setTab}
+            options={
+              [
+                { id: 'updates', label: 'Updates' },
+                { id: 'inventory', label: 'Inventory' },
+                { id: 'uninstall', label: 'Uninstall' },
+              ] as const
+            }
+          />
+          {tab === 'inventory' ? (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={loadingSnapshots || loadingInventory}
+                onClick={() => void loadSnapshots()}
+              >
+                <RefreshCcw
+                  className="h-4 w-4"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+                Refresh
+              </Button>
               <Button
                 variant="primary"
                 size="sm"
-                loading={appsLoading}
-                onClick={() => void loadApps()}
+                loading={capturing}
+                onClick={() => void capture()}
               >
-                Refresh apps
+                Capture baseline
               </Button>
-            ) : (
-              <>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  loading={updatesLoading}
-                  onClick={() => void loadUpdates()}
-                >
-                  <RefreshCcw className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                  Reload
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  loading={updatesLoading}
-                  onClick={() => void scanUpdates()}
-                >
-                  Scan updates
-                </Button>
-              </>
-            )}
-          </>
-        }
-      />
-
-      {error ? <AlertBanner title="Software unavailable" message={error} /> : null}
+            </>
+          ) : tab === 'uninstall' ? (
+            <Button
+              variant="primary"
+              size="sm"
+              loading={appsLoading}
+              onClick={() => void loadApps()}
+            >
+              Refresh apps
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={updatesLoading}
+                onClick={() => void loadUpdates()}
+              >
+                <RefreshCcw
+                  className="h-4 w-4"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+                Reload
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                loading={updatesLoading}
+                onClick={() => void scanUpdates()}
+              >
+                Scan updates
+              </Button>
+            </>
+          )}
+        </>
+      }
+    >
+      {error ? (
+        <AlertBanner title="Software unavailable" message={error} />
+      ) : null}
       {uninstallMessage && !uninstallError ? (
         <AlertBanner title={uninstallMessage} tone="info" />
       ) : null}
@@ -269,7 +278,9 @@ export function SoftwareLifecycle() {
             <section className="panel">
               <div className="panel-header">
                 <p className="panel-title">Inventory</p>
-                <p className="panel-subtitle">From latest Device DNA baseline</p>
+                <p className="panel-subtitle">
+                  From latest Device DNA baseline
+                </p>
               </div>
               {loadingInventory ? (
                 <div className="flex justify-center py-16">
@@ -495,7 +506,7 @@ export function SoftwareLifecycle() {
           </section>
         </>
       )}
-    </div>
+    </PageShell>
   );
 }
 
@@ -524,7 +535,9 @@ function UpdateRow({
           {update.name}
         </span>
         {update.publisher ? (
-          <span className="block text-2xs text-text-muted">{update.publisher}</span>
+          <span className="block text-2xs text-text-muted">
+            {update.publisher}
+          </span>
         ) : null}
       </td>
       <td className="font-mono text-xs">{update.currentVersion ?? '—'}</td>

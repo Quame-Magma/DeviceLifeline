@@ -3,12 +3,12 @@ import { useDeviceDna } from '../hooks/use-device-dna';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { EmptyState } from '../components/common/EmptyState';
-import { PageHeader } from '../components/common/PageHeader';
 import { SegmentedControl } from '../components/common/SegmentedControl';
 import { Spinner } from '../components/common/Spinner';
 import { SnapshotList } from '../components/device/SnapshotList';
 import { SoftwareInventoryTable } from '../components/device/SoftwareInventoryTable';
 import { ConfigItemsTable } from '../components/device/ConfigItemsTable';
+import { PageShell } from '../components/layout/PageShell';
 
 type DetailTab = 'software' | 'config';
 
@@ -42,23 +42,21 @@ export function DeviceDNA() {
     activeTab === 'software' ? loadingInventory : loadingConfig;
 
   return (
-    <div className="page-shell flex min-h-0 flex-1 flex-col">
-      <PageHeader
-        title="Baseline"
-        description="Restore-relevant apps, extensions, tools, and system configuration."
-        compact
-        actions={
-          <Button
-            variant="primary"
-            size="sm"
-            loading={capturing}
-            onClick={() => void capture()}
-          >
-            {capturing ? 'Capturing…' : 'Capture snapshot'}
-          </Button>
-        }
-      />
-
+    <PageShell
+      title="Baseline"
+      description="Restore-relevant apps, extensions, tools, and system configuration."
+      actions={
+        <Button
+          variant="primary"
+          size="sm"
+          loading={capturing}
+          onClick={() => void capture()}
+        >
+          {capturing ? 'Capturing…' : 'Capture snapshot'}
+        </Button>
+      }
+      className="flex min-h-0 flex-1 flex-col"
+    >
       {error ? (
         <AlertBanner
           title="Something went wrong"
@@ -142,6 +140,6 @@ export function DeviceDNA() {
           )}
         </section>
       </div>
-    </div>
+    </PageShell>
   );
 }

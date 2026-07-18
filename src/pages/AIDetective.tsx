@@ -5,12 +5,12 @@ import { useIntelligence } from '../hooks/use-intelligence';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { EmptyState } from '../components/common/EmptyState';
-import { PageHeader } from '../components/common/PageHeader';
 import { Spinner } from '../components/common/Spinner';
 import { StatusPill } from '../components/common/StatusPill';
 import { FindingCard } from '../components/diagnosis/FindingCard';
 import { DiagnosisContextViewer } from '../components/diagnosis/DiagnosisContextViewer';
 import { DiagnosisHistory } from '../components/diagnosis/DiagnosisHistory';
+import { PageShell } from '../components/layout/PageShell';
 
 const EXAMPLE_QUERIES = [
   'Why is my computer slow?',
@@ -54,25 +54,21 @@ export function AIDetective() {
     : 'Checking…';
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="Copilot"
-        description="Ask about this PC — answers come from local telemetry."
-        actions={
-          <StatusPill
-            tone={copilotStatus?.llmConfigured ? 'info' : 'neutral'}
-          >
-            {statusLabel}
-          </StatusPill>
-        }
-      />
-
+    <PageShell
+      title="Copilot"
+      description="Ask about this PC — answers come from local telemetry."
+      actions={
+        <StatusPill tone={copilotStatus?.llmConfigured ? 'info' : 'neutral'}>
+          {statusLabel}
+        </StatusPill>
+      }
+    >
       {error ? (
         <AlertBanner title="Something went wrong" message={error} />
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_220px]">
-        <div className="min-w-0 space-y-4">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_240px]">
+        <div className="min-w-0 space-y-3">
           <div className="panel p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
               <input
@@ -119,7 +115,7 @@ export function AIDetective() {
                       key={example}
                       type="button"
                       onClick={() => handleAsk(example)}
-                      className="rounded-control border border-hairline bg-surface px-3 py-1.5 text-xs text-text-secondary hover:border-hairline-strong hover:text-text-primary"
+                      className="rounded-control border border-hairline bg-surface-card px-3 py-1.5 text-xs text-text-secondary hover:border-hairline-strong hover:text-text-primary"
                     >
                       {example}
                     </button>
@@ -133,7 +129,7 @@ export function AIDetective() {
                 <p className="panel-title">Answer</p>
                 <p className="panel-subtitle">{current.query}</p>
               </div>
-              <div className="space-y-4 p-4">
+              <div className="panel-body space-y-4">
                 <p className="text-sm leading-relaxed text-text-secondary">
                   {current.summary}
                 </p>
@@ -161,6 +157,6 @@ export function AIDetective() {
           </div>
         </aside>
       </div>
-    </div>
+    </PageShell>
   );
 }

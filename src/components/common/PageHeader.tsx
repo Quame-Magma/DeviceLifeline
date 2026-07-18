@@ -10,7 +10,8 @@ interface PageHeaderProps {
 }
 
 /**
- * Page title block — title + optional description + actions. No loud section chrome.
+ * Page title block matching Overview:
+ * text-xl/2xl title, short muted subtitle, actions top-right — same flex gap as greeting row.
  */
 export function PageHeader({
   title,
@@ -19,29 +20,22 @@ export function PageHeader({
   compact = false,
 }: PageHeaderProps) {
   return (
-    <header
-      className={[
-        'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between',
-        compact ? 'mb-4' : 'mb-5',
-      ].join(' ')}
-    >
+    <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0 max-w-2xl">
         <h1
           className={[
-            'font-semibold tracking-tight text-text-primary',
-            compact ? 'text-lg' : 'text-xl',
+            'font-semibold tracking-tight text-text-primary cause-semibold',
+            compact ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl',
           ].join(' ')}
         >
           {title}
         </h1>
         {description ? (
-          <p className="mt-1 text-sm leading-relaxed text-text-muted">
-            {description}
-          </p>
+          <p className="mt-1 text-sm text-text-muted">{description}</p>
         ) : null}
       </div>
       {actions ? (
-        <div className="flex flex-shrink-0 flex-wrap items-center gap-2">
+        <div className="flex flex-shrink-0 flex-wrap items-center gap-2 self-start">
           {actions}
         </div>
       ) : null}

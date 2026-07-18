@@ -16,11 +16,16 @@ export function CrashSummary({ events }: CrashSummaryProps) {
   const errors = countBy('error');
   const warnings = countBy('warning');
 
-  const categoryCounts = events.reduce<Record<string, number>>((counts, event) => {
-    counts[event.category] = (counts[event.category] ?? 0) + 1;
-    return counts;
-  }, {});
-  const topCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0];
+  const categoryCounts = events.reduce<Record<string, number>>(
+    (counts, event) => {
+      counts[event.category] = (counts[event.category] ?? 0) + 1;
+      return counts;
+    },
+    {},
+  );
+  const topCategory = Object.entries(categoryCounts).sort(
+    (a, b) => b[1] - a[1],
+  )[0];
 
   const verdict =
     events.length === 0
@@ -46,7 +51,7 @@ export function CrashSummary({ events }: CrashSummaryProps) {
     {
       key: 'total',
       label: `${events.length} total`,
-      className: 'bg-surface text-text-secondary border-surface-border',
+      className: 'bg-surface-elevated text-text-secondary border-hairline',
     },
     {
       key: 'critical',
@@ -62,12 +67,12 @@ export function CrashSummary({ events }: CrashSummaryProps) {
     {
       key: 'warning',
       label: `${warnings} warning`,
-      className: 'bg-surface text-text-secondary border-surface-border',
+      className: 'bg-surface-elevated text-text-secondary border-hairline',
     },
   ];
 
   return (
-    <div className="rounded-card border border-surface-border bg-surface-card p-4 shadow-card">
+    <div className="panel p-4">
       <div className="flex flex-wrap items-center gap-2">
         {chips.map((chip) => (
           <span
@@ -87,7 +92,9 @@ export function CrashSummary({ events }: CrashSummaryProps) {
           <p className="text-2xs font-semibold uppercase tracking-wide text-text-muted">
             Readout
           </p>
-          <p className="mt-1 text-sm font-medium text-text-primary">{verdict}</p>
+          <p className="mt-1 text-sm font-medium text-text-primary">
+            {verdict}
+          </p>
         </div>
         <div>
           <p className="text-2xs font-semibold uppercase tracking-wide text-text-muted">

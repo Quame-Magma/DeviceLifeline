@@ -6,7 +6,6 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from 'lucide-react';
-import { PageHeader } from '../components/common/PageHeader';
 import { Button } from '../components/common/Button';
 import { StatusPill } from '../components/common/StatusPill';
 import {
@@ -27,6 +26,7 @@ import {
 } from '../lib/preferences';
 import { APP_NAME, APP_TAGLINE } from '../lib/constants';
 import { BlurFade } from '../components/motion/BlurFade';
+import { PageShell } from '../components/layout/PageShell';
 
 const START_PAGE_OPTIONS: { value: StartPage; label: string }[] = [
   { value: 'dashboard', label: 'Overview' },
@@ -86,19 +86,14 @@ export function Settings() {
   const llmReady = copilotStatus?.llmConfigured === true;
 
   return (
-    <div className="page-shell page-section max-w-3xl">
-      <BlurFade>
-        <PageHeader
-          title="Settings"
-          description="Appearance, Copilot status, privileges, and about."
-          actions={
-            savedFlash ? (
-              <StatusPill tone="success">Saved</StatusPill>
-            ) : undefined
-          }
-        />
-      </BlurFade>
-
+    <PageShell
+      title="Settings"
+      description="Appearance, Copilot status, privileges, and about."
+      actions={
+        savedFlash ? <StatusPill tone="success">Saved</StatusPill> : undefined
+      }
+      wide={false}
+    >
       <BlurFade delayMs={40}>
         <SettingsSection
           icon={SlidersHorizontal}
@@ -275,11 +270,7 @@ export function Settings() {
       </BlurFade>
 
       <BlurFade delayMs={130}>
-        <SettingsSection
-          icon={Monitor}
-          title="About"
-          description={APP_TAGLINE}
-        >
+        <SettingsSection icon={Monitor} title="About" description={APP_TAGLINE}>
           <SettingsRow label="Application" description="Product name">
             <span className="text-sm text-text-secondary">{APP_NAME}</span>
           </SettingsRow>
@@ -315,6 +306,6 @@ export function Settings() {
         Preferences stay on this PC in local storage. API keys are never written
         by the Settings UI.
       </p>
-    </div>
+    </PageShell>
   );
 }

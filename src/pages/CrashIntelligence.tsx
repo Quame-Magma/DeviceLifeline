@@ -2,10 +2,10 @@ import { useEffect } from 'react';
 import { useCrash } from '../hooks/use-crash';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
-import { PageHeader } from '../components/common/PageHeader';
 import { Spinner } from '../components/common/Spinner';
 import { CrashSummary } from '../components/crash/CrashSummary';
 import { CrashEventList } from '../components/crash/CrashEventList';
+import { PageShell } from '../components/layout/PageShell';
 
 export function CrashIntelligence() {
   const { events, scanning, loading, error, loadCrashEvents, scanCrashEvents } =
@@ -17,22 +17,20 @@ export function CrashIntelligence() {
   }, []);
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="Crashes"
-        description="BSODs, app hangs, and unexpected shutdowns with plain-English causes."
-        actions={
-          <Button
-            variant="primary"
-            size="sm"
-            loading={scanning}
-            onClick={() => void scanCrashEvents()}
-          >
-            {scanning ? 'Scanning…' : 'Scan event log'}
-          </Button>
-        }
-      />
-
+    <PageShell
+      title="Crashes"
+      description="BSODs, app hangs, and unexpected shutdowns with plain-English causes."
+      actions={
+        <Button
+          variant="primary"
+          size="sm"
+          loading={scanning}
+          onClick={() => void scanCrashEvents()}
+        >
+          {scanning ? 'Scanning…' : 'Scan event log'}
+        </Button>
+      }
+    >
       {error ? (
         <AlertBanner
           title="Could not load crashes"
@@ -46,7 +44,7 @@ export function CrashIntelligence() {
           <Spinner label="Loading crash history…" />
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
+        <>
           <CrashSummary events={events} />
           <section className="panel">
             <div className="panel-header">
@@ -57,12 +55,12 @@ export function CrashIntelligence() {
                   : `${events.length} recorded`}
               </p>
             </div>
-            <div className="p-4">
+            <div className="panel-body">
               <CrashEventList events={events} />
             </div>
           </section>
-        </div>
+        </>
       )}
-    </div>
+    </PageShell>
   );
 }

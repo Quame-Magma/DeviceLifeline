@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { useDeviceDna } from '../hooks/use-device-dna';
 import { AlertBanner } from '../components/common/AlertBanner';
-import { PageHeader } from '../components/common/PageHeader';
 import { Spinner } from '../components/common/Spinner';
 import { TimelineEventList } from '../components/timeline/TimelineEventList';
+import { PageShell } from '../components/layout/PageShell';
 
 export function Timeline() {
   const { timelineEvents, loadingTimeline, error, loadTimeline } =
@@ -15,12 +15,10 @@ export function Timeline() {
   }, []);
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="Timeline"
-        description="Software and config changes between consecutive baselines."
-      />
-
+    <PageShell
+      title="Timeline"
+      description="Software and config changes between consecutive baselines."
+    >
       {error ? (
         <AlertBanner
           title="Could not load timeline"
@@ -41,11 +39,11 @@ export function Timeline() {
               {timelineEvents.length} events from Device DNA diffs
             </p>
           </div>
-          <div className="p-4">
+          <div className="panel-body">
             <TimelineEventList events={timelineEvents} />
           </div>
         </section>
       )}
-    </div>
+    </PageShell>
   );
 }

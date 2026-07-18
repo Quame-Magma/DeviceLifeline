@@ -5,11 +5,10 @@ import { useStorage } from '../hooks/use-storage';
 import { usePaginatedItems } from '../hooks/use-pagination';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
-import { Card } from '../components/common/Card';
 import { EmptyState } from '../components/common/EmptyState';
-import { PageHeader } from '../components/common/PageHeader';
 import { Pagination } from '../components/common/Pagination';
 import { Spinner } from '../components/common/Spinner';
+import { StatRow, StatTile } from '../components/common/StatTile';
 import { StatusPill } from '../components/common/StatusPill';
 import { DiskTreemap } from '../components/storage/DiskTreemap';
 import {
@@ -18,6 +17,7 @@ import {
 } from '../components/storage/DriveSelect';
 import { formatBytes, formatTimestamp } from '../lib/format';
 import type { StorageFolderNode, StorageItem } from '../types/device.types';
+import { PageShell } from '../components/layout/PageShell';
 
 function categoryLabel(category: string): string {
   const labels: Record<string, string> = {
@@ -139,47 +139,45 @@ export function StorageCenter() {
   const folderChildren = folderMap?.children ?? [];
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="Storage"
-        description="WizTree-class folder maps and treemaps, large files, and safe cleanup."
-        actions={
-          <>
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={cleanupLoading}
-              onClick={handlePreviewCleanup}
-            >
-              Preview cleanup
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={cleanupLoading}
-              onClick={handleExecuteCleanup}
-            >
-              Execute cleanup
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              loading={scanning}
-              onClick={() => void runScan()}
-            >
-              {!scanning && (
-                <Radar
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                  strokeWidth={1.75}
-                />
-              )}
-              {scanning ? 'Scanning...' : 'Scan storage'}
-            </Button>
-          </>
-        }
-      />
-
+    <PageShell
+      title="Storage"
+      description="Folder maps, large files, and safe cleanup."
+      actions={
+        <>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={cleanupLoading}
+            onClick={handlePreviewCleanup}
+          >
+            Preview cleanup
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={cleanupLoading}
+            onClick={handleExecuteCleanup}
+          >
+            Execute cleanup
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            loading={scanning}
+            onClick={() => void runScan()}
+          >
+            {!scanning && (
+              <Radar
+                aria-hidden="true"
+                className="h-4 w-4"
+                strokeWidth={1.75}
+              />
+            )}
+            {scanning ? 'Scanning...' : 'Scan storage'}
+          </Button>
+        </>
+      }
+    >
       {error ? (
         <AlertBanner title="Storage unavailable" message={error} />
       ) : null}
@@ -187,41 +185,38 @@ export function StorageCenter() {
         <AlertBanner title="Cleanup unavailable" message={cleanupError} />
       ) : null}
 
-      <Card padding="md">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                Folder map
-              </p>
-              <p className="mt-0.5 text-sm text-text-muted">
-                Pick a disk for a volume map, or optionally set a folder root
-                for a narrower map. Volume maps are capped (~12s) so the UI
-                stays responsive.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={mapping}
-                onClick={handleBuildMap}
-              >
-                {mapping ? 'Building...' : 'Build map'}
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={mapping}
-                onClick={handleVolumeMap}
-              >
-                {mapping
-                  ? 'Building...'
-                  : `Volume map (${volumeRoot.replace(/\\$/, '') || 'disk'})`}
-              </Button>
-            </div>
+      <section className="panel">
+        <div className="panel-header flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="panel-title">Folder map</p>
+            <p className="panel-subtitle">
+              Pick a disk for a volume map, or set a folder root for a narrower
+              map. Volume maps are capped (~12s) so the UI stays responsive.
+            </p>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={mapping}
+              onClick={handleBuildMap}
+            >
+              {mapping ? 'Building...' : 'Build map'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={mapping}
+              onClick={handleVolumeMap}
+            >
+              {mapping
+                ? 'Building...'
+                : `Volume map (${volumeRoot.replace(/\\$/, '') || 'disk'})`}
+            </Button>
+          </div>
+        </div>
 
+        <div className="panel-body space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <label
               htmlFor="volume-map-root"
@@ -260,112 +255,117 @@ export function StorageCenter() {
               className="field min-w-0 flex-1 font-mono"
             />
           </div>
-        </div>
 
-        {mapping && !folderMap ? (
-          <div className="mt-4 flex items-center justify-center py-8">
-            <Spinner label="Building folder map..." />
-          </div>
-        ) : !folderMap ? (
-          <p className="mt-4 text-sm text-text-secondary">
-            Build a map or volume map to see relative folder sizes.
-          </p>
-        ) : (
-          <div className="mt-4 space-y-3">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-text-primary">
-                  {folderMap.name || folderMap.path}
-                </p>
-                <p
-                  className="truncate font-mono text-2xs text-text-muted"
-                  title={folderMap.path}
-                >
-                  {folderMap.path}
+          {mapping && !folderMap ? (
+            <div className="flex items-center justify-center py-8">
+              <Spinner label="Building folder map..." />
+            </div>
+          ) : !folderMap ? (
+            <p className="text-sm text-text-secondary">
+              Build a map or volume map to see relative folder sizes.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-text-primary">
+                    {folderMap.name || folderMap.path}
+                  </p>
+                  <p
+                    className="truncate font-mono text-2xs text-text-muted"
+                    title={folderMap.path}
+                  >
+                    {folderMap.path}
+                  </p>
+                </div>
+                <p className="text-sm tabular-nums text-text-secondary">
+                  {formatBytes(folderMap.sizeBytes)} ·{' '}
+                  {folderMap.fileCount.toLocaleString()} files
                 </p>
               </div>
-              <p className="text-sm tabular-nums text-text-secondary">
-                {formatBytes(folderMap.sizeBytes)} ·{' '}
-                {folderMap.fileCount.toLocaleString()} files
-              </p>
+              {folderChildren.length === 0 ? (
+                <p className="text-sm text-text-secondary">
+                  No child folders returned for this root.
+                </p>
+              ) : (
+                <>
+                  <DiskTreemap root={folderMap} height={300} />
+                  <ul className="space-y-2">
+                    {folderChildren.map((child) => (
+                      <FolderMapRow key={child.path} node={child} depth={0} />
+                    ))}
+                  </ul>
+                </>
+              )}
             </div>
-            {folderChildren.length === 0 ? (
-              <p className="text-sm text-text-secondary">
-                No child folders returned for this root.
-              </p>
-            ) : (
-              <>
-                <DiskTreemap root={folderMap} height={300} />
-                <ul className="space-y-2">
-                  {folderChildren.map((child) => (
-                    <FolderMapRow key={child.path} node={child} depth={0} />
-                  ))}
-                </ul>
-              </>
-            )}
-          </div>
-        )}
-      </Card>
+          )}
+        </div>
+      </section>
 
       {(preview || cleanupResult) && (
-        <Card padding="md">
-          <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-            Safe cleanup
-          </p>
-          {preview && (
-            <div className="mt-2">
-              <p className="text-sm font-medium text-text-primary">
-                {preview.title}
-              </p>
-              {preview.detail && (
-                <p className="mt-1 text-sm text-text-secondary">
-                  {preview.detail}
+        <section className="panel">
+          <div className="panel-header">
+            <p className="panel-title">Safe cleanup</p>
+            <p className="panel-subtitle">
+              Preview and results from temp/cache cleanup
+            </p>
+          </div>
+          <div className="panel-body space-y-3">
+            {preview && (
+              <div>
+                <p className="text-sm font-medium text-text-primary">
+                  {preview.title}
                 </p>
-              )}
-              {preview.preview && (
-                <pre className="mt-2 max-h-40 overflow-auto rounded border border-hairline bg-surface p-3 text-2xs text-text-secondary scrollbar-thin">
-                  {preview.preview}
-                </pre>
-              )}
-              <p className="mt-2 text-2xs text-text-muted">
-                Status: {preview.status}
-                {preview.finishedAt
-                  ? ` · ${formatTimestamp(preview.finishedAt)}`
-                  : ` · ${formatTimestamp(preview.createdAt)}`}
-              </p>
-            </div>
-          )}
-          {cleanupResult && (
-            <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <p className="text-sm text-text-secondary">
-                Deleted{' '}
-                <span className="font-semibold text-text-primary">
-                  {cleanupResult.deletedCount}
-                </span>{' '}
-                items
-              </p>
-              <p className="text-sm text-text-secondary">
-                Freed{' '}
-                <span className="font-semibold text-text-primary">
-                  {formatBytes(cleanupResult.deletedBytes)}
-                </span>
-              </p>
-              <p className="text-sm text-text-secondary">
-                Failed{' '}
-                <span className="font-semibold text-text-primary">
-                  {cleanupResult.failedCount}
-                </span>
-              </p>
-            </div>
-          )}
-          {cleanupResult && cleanupResult.errors.length > 0 && (
-            <ul className="mt-2 list-inside list-disc text-2xs text-status-error">
-              {cleanupResult.errors.slice(0, 5).map((err) => (
-                <li key={err}>{err}</li>
-              ))}
-            </ul>
-          )}
-        </Card>
+                {preview.detail && (
+                  <p className="mt-1 text-sm text-text-secondary">
+                    {preview.detail}
+                  </p>
+                )}
+                {preview.preview && (
+                  <pre className="mt-2 max-h-40 overflow-auto rounded border border-hairline bg-surface-elevated p-3 text-2xs text-text-secondary scrollbar-thin">
+                    {preview.preview}
+                  </pre>
+                )}
+                <p className="mt-2 text-2xs text-text-muted">
+                  Status: {preview.status}
+                  {preview.finishedAt
+                    ? ` · ${formatTimestamp(preview.finishedAt)}`
+                    : ` · ${formatTimestamp(preview.createdAt)}`}
+                </p>
+              </div>
+            )}
+            {cleanupResult && (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <p className="text-sm text-text-secondary">
+                  Deleted{' '}
+                  <span className="font-semibold text-text-primary">
+                    {cleanupResult.deletedCount}
+                  </span>{' '}
+                  items
+                </p>
+                <p className="text-sm text-text-secondary">
+                  Freed{' '}
+                  <span className="font-semibold text-text-primary">
+                    {formatBytes(cleanupResult.deletedBytes)}
+                  </span>
+                </p>
+                <p className="text-sm text-text-secondary">
+                  Failed{' '}
+                  <span className="font-semibold text-text-primary">
+                    {cleanupResult.failedCount}
+                  </span>
+                </p>
+              </div>
+            )}
+            {cleanupResult && cleanupResult.errors.length > 0 && (
+              <ul className="list-inside list-disc text-2xs text-status-error">
+                {cleanupResult.errors.slice(0, 5).map((err) => (
+                  <li key={err}>{err}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
       )}
 
       {loading && !scan ? (
@@ -390,87 +390,71 @@ export function StorageCenter() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-            <Card padding="sm">
-              <p className="text-2xs font-semibold uppercase tracking-wide text-text-muted">
-                Total scanned
-              </p>
-              <p className="mt-1 text-xl font-semibold text-text-primary">
-                {formatBytes(scan.totalBytes)}
-              </p>
-            </Card>
-            <Card padding="sm">
-              <p className="text-2xs font-semibold uppercase tracking-wide text-text-muted">
-                Files
-              </p>
-              <p className="mt-1 text-xl font-semibold text-text-primary">
-                {scan.fileCount.toLocaleString()}
-              </p>
-            </Card>
-            <Card padding="sm">
-              <p className="text-2xs font-semibold uppercase tracking-wide text-text-muted">
-                Directories
-              </p>
-              <p className="mt-1 text-xl font-semibold text-text-primary">
-                {scan.dirCount.toLocaleString()}
-              </p>
-            </Card>
-            <Card padding="sm">
-              <p className="text-2xs font-semibold uppercase tracking-wide text-text-muted">
-                Status
-              </p>
-              <div className="mt-1">
+          <StatRow columns={4}>
+            <StatTile
+              label="Total scanned"
+              value={formatBytes(scan.totalBytes)}
+            />
+            <StatTile label="Files" value={scan.fileCount.toLocaleString()} />
+            <StatTile
+              label="Directories"
+              value={scan.dirCount.toLocaleString()}
+            />
+            <StatTile
+              label="Status"
+              value={
                 <StatusPill tone={scanStatusTone(scan.status)}>
                   {scan.status}
                 </StatusPill>
-              </div>
-              <p className="mt-1.5 text-2xs text-text-muted">
-                {scan.finishedAt
+              }
+              hint={
+                scan.finishedAt
                   ? formatTimestamp(scan.finishedAt)
-                  : formatTimestamp(scan.createdAt)}
-              </p>
-            </Card>
-          </div>
+                  : formatTimestamp(scan.createdAt)
+              }
+            />
+          </StatRow>
 
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[280px_1fr]">
-            <Card padding="md">
-              <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                Category breakdown
-              </p>
-              {categoryBreakdown.length === 0 ? (
-                <p className="mt-3 text-sm text-text-secondary">
-                  No categorized items in this scan.
-                </p>
-              ) : (
-                <ul className="mt-3 space-y-2">
-                  {categoryBreakdown.map((row) => (
-                    <li
-                      key={row.category}
-                      className="flex items-start justify-between gap-3 border-b border-hairline pb-2 last:border-b-0 last:pb-0"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-text-primary">
-                          {categoryLabel(row.category)}
-                        </p>
-                        <p className="text-2xs text-text-muted">
-                          {row.count} item{row.count === 1 ? '' : 's'}
-                        </p>
-                      </div>
-                      <span className="flex-shrink-0 text-sm tabular-nums text-text-secondary">
-                        {formatBytes(row.bytes)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
+            <section className="panel">
+              <div className="panel-header">
+                <p className="panel-title">Category breakdown</p>
+                <p className="panel-subtitle">By size in this scan</p>
+              </div>
+              <div className="panel-body">
+                {categoryBreakdown.length === 0 ? (
+                  <p className="text-sm text-text-secondary">
+                    No categorized items in this scan.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {categoryBreakdown.map((row) => (
+                      <li
+                        key={row.category}
+                        className="flex items-start justify-between gap-3 border-b border-hairline pb-2 last:border-b-0 last:pb-0"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-text-primary">
+                            {categoryLabel(row.category)}
+                          </p>
+                          <p className="text-2xs text-text-muted">
+                            {row.count} item{row.count === 1 ? '' : 's'}
+                          </p>
+                        </div>
+                        <span className="flex-shrink-0 text-sm tabular-nums text-text-secondary">
+                          {formatBytes(row.bytes)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
 
-            <Card padding="none">
-              <div className="border-b border-hairline px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                  Largest files
-                </p>
-                <p className="mt-0.5 text-xs text-text-muted">
+            <section className="panel">
+              <div className="panel-header">
+                <p className="panel-title">Largest files</p>
+                <p className="panel-subtitle">
                   {largeFiles.length} files · 10 per page
                 </p>
               </div>
@@ -483,7 +467,7 @@ export function StorageCenter() {
                 <>
                   <div className="overflow-auto scrollbar-thin">
                     <table className="data-table">
-                      <thead className="sticky top-0 z-10 bg-surface">
+                      <thead className="sticky top-0 z-10 bg-surface-card">
                         <tr>
                           <th>Name</th>
                           <th>Category</th>
@@ -500,11 +484,11 @@ export function StorageCenter() {
                   <Pagination pagination={largeFilePages} itemLabel="files" />
                 </>
               )}
-            </Card>
+            </section>
           </div>
         </>
       )}
-    </div>
+    </PageShell>
   );
 }
 
@@ -524,8 +508,10 @@ function FolderMapRow({
       <button
         type="button"
         className={[
-          'w-full rounded-card border border-hairline bg-surface px-3 py-2 text-left transition-colors',
-          hasChildren ? 'cursor-pointer hover:bg-surface' : 'cursor-default',
+          'w-full rounded-card border border-hairline bg-surface-card px-3 py-2 text-left transition-colors',
+          hasChildren
+            ? 'cursor-pointer hover:bg-surface-card'
+            : 'cursor-default',
         ].join(' ')}
         style={{ marginLeft: depth > 0 ? `${depth * 12}px` : undefined }}
         onClick={() => {
@@ -554,7 +540,7 @@ function FolderMapRow({
             {formatBytes(node.sizeBytes)}
           </span>
         </div>
-        <div className="mt-2 h-2 overflow-hidden rounded bg-surface">
+        <div className="mt-2 h-2 overflow-hidden rounded bg-surface-card">
           <div
             className="h-full rounded bg-white/40"
             style={{ width: `${pct}%` }}

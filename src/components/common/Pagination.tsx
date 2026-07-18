@@ -38,7 +38,7 @@ export function Pagination({
   return (
     <div
       className={[
-        'flex flex-wrap items-center justify-between gap-3 border-t border-hairline px-3 py-2.5',
+        'flex flex-wrap items-center justify-between gap-3 border-t border-hairline px-panel-x py-3',
         className,
       ]
         .filter(Boolean)

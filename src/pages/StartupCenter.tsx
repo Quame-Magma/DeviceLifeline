@@ -5,13 +5,13 @@ import { usePaginatedItems } from '../hooks/use-pagination';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { EmptyState } from '../components/common/EmptyState';
-import { PageHeader } from '../components/common/PageHeader';
 import { Pagination } from '../components/common/Pagination';
 import { SegmentedControl } from '../components/common/SegmentedControl';
 import { Spinner } from '../components/common/Spinner';
 import { StatRow, StatTile } from '../components/common/StatTile';
 import { StatusPill } from '../components/common/StatusPill';
 import type { StartupEntry } from '../types/device.types';
+import { PageShell } from '../components/layout/PageShell';
 
 type CategoryFilter =
   | 'all'
@@ -115,28 +115,24 @@ export function StartupCenter() {
   };
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="Startup"
-        description="Full Autoruns-class map: logon, tasks, services, drivers, Winlogon, IFEO, AppInit, codecs, WMI, and more."
-        actions={
-          <Button
-            variant="primary"
-            size="sm"
-            loading={loading}
-            onClick={() => void load()}
-          >
-            Refresh
-          </Button>
-        }
-      />
-
+    <PageShell
+      title="Startup"
+      description="Logon, tasks, services, drivers, and other persistence."
+      actions={
+        <Button
+          variant="primary"
+          size="sm"
+          loading={loading}
+          onClick={() => void load()}
+        >
+          Refresh
+        </Button>
+      }
+    >
       {error ? (
         <AlertBanner title="Startup unavailable" message={error} />
       ) : null}
-      {message && !error ? (
-        <AlertBanner title={message} tone="info" />
-      ) : null}
+      {message && !error ? <AlertBanner title={message} tone="info" /> : null}
 
       <StatRow columns={3}>
         <StatTile label="Entries" value={entries.length} />
@@ -162,7 +158,7 @@ export function StartupCenter() {
           />
         </div>
 
-        <div className="px-4 pb-2">
+        <div className="px-panel-x pb-2">
           <SegmentedControl
             ariaLabel="Startup category"
             value={filter}
@@ -260,6 +256,6 @@ export function StartupCenter() {
           </>
         )}
       </section>
-    </div>
+    </PageShell>
   );
 }

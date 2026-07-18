@@ -109,8 +109,12 @@ const config: Config = {
         content: '74rem',
       },
       spacing: {
-        page: '1.5rem',
-        'page-lg': '2rem',
+        /* Outer page gutter — close to sidebar wall, not a floating island */
+        page: '1rem',
+        'page-lg': '1.25rem',
+        /* Inner card padding — text should not hug panel edges */
+        'panel-x': '1.25rem',
+        'panel-y': '1rem',
         'sidebar-expanded': '220px',
         'sidebar-collapsed': '72px',
       },

@@ -5,11 +5,11 @@ import { usePaginatedItems } from '../hooks/use-pagination';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { EmptyState } from '../components/common/EmptyState';
-import { PageHeader } from '../components/common/PageHeader';
 import { Pagination } from '../components/common/Pagination';
 import { Spinner } from '../components/common/Spinner';
 import { StatRow, StatTile } from '../components/common/StatTile';
 import { formatBytes } from '../lib/format';
+import { PageShell } from '../components/layout/PageShell';
 
 /**
  * Classic CCleaner-class cleanup: temp/cache, browser privacy, Windows junk,
@@ -49,7 +49,8 @@ export function CleanupCenter() {
 
   const handleExecute = () => {
     const privacy = preview?.categories.filter(
-      (c) => selected.has(c.id) && (c.risk === 'privacy' || c.risk === 'advanced'),
+      (c) =>
+        selected.has(c.id) && (c.risk === 'privacy' || c.risk === 'advanced'),
     );
     const warn =
       privacy && privacy.length > 0
@@ -65,49 +66,47 @@ export function CleanupCenter() {
   };
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="Cleanup"
-        description="Classic CCleaner coverage: temp, caches, browser history/cookies, Recycle Bin, Prefetch, dumps, DNS, clipboard, registry recent lists. Safe categories selected by default."
-        actions={
-          <>
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={loading}
-              onClick={() => void scan()}
-            >
-              Scan
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={!preview}
-              onClick={selectSafeOnly}
-            >
-              Safe only
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={!preview}
-              onClick={selectAll}
-            >
-              Select all
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              loading={acting}
-              disabled={!preview || selected.size === 0}
-              onClick={handleExecute}
-            >
-              Clean selected
-            </Button>
-          </>
-        }
-      />
-
+    <PageShell
+      title="Cleanup"
+      description="Temp, caches, browser data, Recycle Bin, and Windows junk."
+      actions={
+        <>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={loading}
+            onClick={() => void scan()}
+          >
+            Scan
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={!preview}
+            onClick={selectSafeOnly}
+          >
+            Safe only
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={!preview}
+            onClick={selectAll}
+          >
+            Select all
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            loading={acting}
+            disabled={!preview || selected.size === 0}
+            onClick={handleExecute}
+          >
+            Clean selected
+          </Button>
+        </>
+      }
+    >
       {error ? (
         <AlertBanner title="Cleanup issue" message={error} tone="warning" />
       ) : null}
@@ -134,7 +133,7 @@ export function CleanupCenter() {
         />
       ) : null}
       {acting ? (
-        <div className="flex items-center gap-3 rounded-card border border-hairline bg-surface-elevated px-4 py-3 text-sm text-text-secondary">
+        <div className="flex items-center gap-3 rounded-card border border-hairline bg-surface-elevated px-panel-x py-panel-y text-sm text-text-secondary">
           <Spinner size="sm" label="Cleaning" />
           <span>
             Cleaning selected categories… this can take up to a minute. Leave
@@ -156,8 +155,8 @@ export function CleanupCenter() {
         <div className="panel-header">
           <p className="panel-title">Categories</p>
           <p className="panel-subtitle">
-            Safe = default · Privacy/advanced = opt-in (history, cookies, Prefetch,
-            registry MRU)
+            Safe = default · Privacy/advanced = opt-in (history, cookies,
+            Prefetch, registry MRU)
           </p>
         </div>
         {loading && !preview ? (
@@ -175,7 +174,7 @@ export function CleanupCenter() {
             {preview.categories.map((cat) => (
               <li
                 key={cat.id}
-                className="flex items-start gap-3 px-4 py-3 text-sm"
+                className="flex items-start gap-3 px-panel-x py-3 text-sm"
               >
                 <input
                   type="checkbox"
@@ -209,10 +208,12 @@ export function CleanupCenter() {
       <section className="panel">
         <div className="panel-header">
           <p className="panel-title">Evidence (sample files)</p>
-          <p className="panel-subtitle">What would be deleted from selected categories</p>
+          <p className="panel-subtitle">
+            What would be deleted from selected categories
+          </p>
         </div>
         {filtered.length === 0 ? (
-          <p className="px-4 pb-4 text-sm text-text-secondary">
+          <p className="panel-body text-sm text-text-secondary">
             No file-level candidates in the selected categories.
           </p>
         ) : (
@@ -250,6 +251,6 @@ export function CleanupCenter() {
           </>
         )}
       </section>
-    </div>
+    </PageShell>
   );
 }

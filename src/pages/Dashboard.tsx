@@ -110,8 +110,12 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   } = useDeviceDna();
   const { latest, samples, alerts, loadHealth, collectSample, sampling } =
     useHealth();
-  const { events: crashes, loadCrashEvents, scanCrashEvents, scanning } =
-    useCrash();
+  const {
+    events: crashes,
+    loadCrashEvents,
+    scanCrashEvents,
+    scanning,
+  } = useCrash();
   const {
     latest: hardware,
     loadHardware,
@@ -186,8 +190,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   }, [historyAsc, score]);
 
   const lastCheckAt = latest?.capturedAt ?? null;
-  const openFindingCount =
-    findings.length || intelligence?.openFindings || 0;
+  const openFindingCount = findings.length || intelligence?.openFindings || 0;
 
   const go = (view: View) => () => onNavigate?.(view);
 
@@ -235,12 +238,17 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   const timelineItems = useMemo(
     () =>
-      buildTimelineItems(timelineEvents, latest, crashes.length, snapshots.length),
+      buildTimelineItems(
+        timelineEvents,
+        latest,
+        crashes.length,
+        snapshots.length,
+      ),
     [timelineEvents, latest, crashes.length, snapshots.length],
   );
 
   return (
-    <div className="page-shell page-section !max-w-[1400px]">
+    <div className="page-shell page-section">
       {/* Greeting */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -337,7 +345,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               onClick={() => void runCheck()}
             >
               {!checking ? (
-                <Play className="h-3.5 w-3.5" strokeWidth={2} fill="currentColor" />
+                <Play
+                  className="h-3.5 w-3.5"
+                  strokeWidth={2}
+                  fill="currentColor"
+                />
               ) : null}
               Run smart check
             </Button>
@@ -350,9 +362,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         <ResourceTile
           icon={Cpu}
           label="CPU"
-          value={
-            latest ? formatPercent(latest.cpuUsage) : '—'
-          }
+          value={latest ? formatPercent(latest.cpuUsage) : '—'}
           detail={
             latest
               ? latest.cpuUsage < 50
@@ -383,9 +393,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               ? `${formatBytes(latest.memoryUsed)} / ${formatBytes(latest.memoryTotal)}`
               : '—'
           }
-          detail={
-            memPct !== null ? `${Math.round(memPct)}% used` : 'No sample'
-          }
+          detail={memPct !== null ? `${Math.round(memPct)}% used` : 'No sample'}
           detailTone={
             memPct === null
               ? 'muted'
@@ -406,9 +414,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               ? `Storage (${shortDrive(latest.diskName)})`
               : 'Storage'
           }
-          value={
-            diskUsedPct !== null ? `${Math.round(diskUsedPct)}%` : '—'
-          }
+          value={diskUsedPct !== null ? `${Math.round(diskUsedPct)}%` : '—'}
           detail={
             diskFreePct !== null && latest
               ? `${Math.round(diskFreePct)}% free · ${formatBytes(latest.diskTotal - latest.diskUsed)}`
@@ -518,11 +524,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
-          <p className="px-4 pb-2 text-2xs text-text-muted">
+          <p className="px-panel-x pb-2 text-2xs text-text-muted">
             Issues that need your attention
           </p>
           {findings.length === 0 ? (
-            <p className="px-4 pb-5 text-sm text-text-muted">
+            <p className="px-panel-x pb-5 text-sm text-text-muted">
               No open findings. Run a smart check to refresh intelligence.
             </p>
           ) : (
@@ -588,7 +594,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
       {/* System timeline — exact mock: 4-node horizontal rail, short labels only */}
       <section className="panel">
-        <div className="flex items-start justify-between gap-3 px-5 pb-1 pt-4">
+        <div className="flex items-start justify-between gap-3 px-panel-x pb-1 pt-panel-y">
           <div>
             <p className="text-sm font-semibold text-text-primary cause-semibold">
               System timeline
@@ -606,7 +612,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             <ChevronRight className="h-3.5 w-3.5" />
           </button>
         </div>
-        <div className="px-5 pb-5 pt-5">
+        <div className="px-panel-x pb-5 pt-5">
           <div className="relative">
             {/* Rail through vertical center of 36px icon circles */}
             <div
@@ -695,7 +701,7 @@ function FindingRow({
       <button
         type="button"
         onClick={onOpen}
-        className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-elevated/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/20"
+        className="panel-row flex w-full items-start gap-3 text-left transition-colors hover:bg-surface-elevated/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/20"
       >
         <span className={`mt-1.5 h-2 w-2 flex-shrink-0 rounded-full ${dot}`} />
         <div className="min-w-0 flex-1">
@@ -740,7 +746,7 @@ function QuickAction({
       <button
         type="button"
         onClick={onClick}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface-elevated/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/20"
+        className="panel-row flex w-full items-center gap-3 text-left transition-colors hover:bg-surface-elevated/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/20"
       >
         <span
           className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-control border border-hairline bg-surface-elevated ${color}`}
@@ -756,7 +762,9 @@ function QuickAction({
               </span>
             ) : null}
           </p>
-          <p className="mt-0.5 line-clamp-1 text-xs text-text-muted">{detail}</p>
+          <p className="mt-0.5 line-clamp-1 text-xs text-text-muted">
+            {detail}
+          </p>
         </div>
         <ChevronRight className="h-4 w-4 flex-shrink-0 text-text-muted" />
       </button>
@@ -796,7 +804,7 @@ function ResourceTile({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-card border border-hairline bg-surface-card p-3 text-left transition-colors hover:border-hairline-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+      className="rounded-card border border-hairline bg-surface-card px-panel-x py-panel-y text-left transition-colors hover:border-hairline-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
     >
       <div className="flex items-center gap-1.5 text-text-muted">
         <Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
@@ -842,7 +850,9 @@ function HealthTrendChart({
     const y = h - pad - ((v - min) / (max - min)) * (h - pad * 2);
     return [x, y] as const;
   });
-  const line = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`).join(' ');
+  const line = pts
+    .map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`)
+    .join(' ');
   const area = `${line} L${pts[pts.length - 1]![0]},${h - pad} L${pts[0]![0]},${h - pad} Z`;
 
   const labels =
@@ -1061,11 +1071,21 @@ function buildTimelineItems(
   });
   const driverEv = events.find((e) => {
     const t = blob(e);
-    return t.includes('driver') || t.includes('gpu') || t.includes('nvidia') || t.includes('amd');
+    return (
+      t.includes('driver') ||
+      t.includes('gpu') ||
+      t.includes('nvidia') ||
+      t.includes('amd')
+    );
   });
   const configEv = events.find((e) => {
     const t = blob(e);
-    return t.includes('config') || t.includes('startup') || t.includes('service') || t.includes('task');
+    return (
+      t.includes('config') ||
+      t.includes('startup') ||
+      t.includes('service') ||
+      t.includes('task')
+    );
   });
 
   return [
@@ -1108,9 +1128,7 @@ function buildTimelineItems(
     {
       id: configEv?.id ?? 'tl-cleanup',
       title: 'System Cleanup',
-      detail: configEv
-        ? humanDetail(configEv, '2.4 GB freed')
-        : '2.4 GB freed',
+      detail: configEv ? humanDetail(configEv, '2.4 GB freed') : '2.4 GB freed',
       when: configEv ? relativeTime(configEv.occurredAt) : '2 days ago',
       tone: 'warning',
       icon: Brush,
@@ -1134,14 +1152,16 @@ function humanDetail(e: TimelineEvent, fallback: string): string {
     /[0-9a-f]{8}-[0-9a-f]{4}/i.test(raw)
   ) {
     const t = blob(e);
-    if (t.includes('config_added') || t.includes('added')) return 'Configuration changed';
-    if (t.includes('config_removed') || t.includes('removed')) return 'Item removed';
-    if (t.includes('software_install') || t.includes('install')) return 'Successfully installed';
-    if (t.includes('software_update') || t.includes('update')) return 'Package updated';
+    if (t.includes('config_added') || t.includes('added'))
+      return 'Configuration changed';
+    if (t.includes('config_removed') || t.includes('removed'))
+      return 'Item removed';
+    if (t.includes('software_install') || t.includes('install'))
+      return 'Successfully installed';
+    if (t.includes('software_update') || t.includes('update'))
+      return 'Package updated';
     if (t.includes('driver')) return 'Driver package changed';
     return fallback;
   }
   return raw.length > 36 ? `${raw.slice(0, 34)}…` : raw;
 }
-
-

@@ -106,8 +106,13 @@
     @apply bg-black/60;
   }
 
+  /*
+   * Page chrome:
+   * - Small left gutter so content sits near the sidebar wall
+   * - Left-aligned (no mx-auto floating column)
+   */
   .page-shell {
-    @apply mx-auto w-full max-w-content px-page py-6 lg:px-page-lg lg:py-8;
+    @apply w-full max-w-[1400px] py-5 pl-page pr-page lg:py-6 lg:pl-page-lg lg:pr-page-lg;
   }
 
   .content-canvas {
@@ -119,16 +124,17 @@
     );
   }
 
+  /* Inter-section rhythm */
   .page-section {
-    @apply space-y-6;
+    @apply space-y-3;
   }
 
   :root[data-density='comfortable'] .page-shell {
-    @apply py-8 lg:py-10;
+    @apply py-6 lg:py-8;
   }
 
   :root[data-density='comfortable'] .page-section {
-    @apply space-y-8;
+    @apply space-y-4;
   }
 
   :root[data-reduce-motion='true'] .anim-stagger > *,
@@ -192,7 +198,10 @@
     @apply field h-11 px-4;
   }
 
-  /* Data table shell */
+  /*
+   * Cards / panels / tables share one inner inset so text never hugs the border.
+   * panel-x = 1.25rem (20px), panel-y = 1rem (16px)
+   */
   .data-table {
     @apply w-full border-collapse text-sm;
   }
@@ -202,11 +211,11 @@
   }
 
   .data-table th {
-    @apply py-2.5 pr-3 text-left text-2xs font-medium uppercase tracking-wide text-text-muted;
+    @apply px-panel-x py-2.5 text-left text-2xs font-medium normal-case tracking-normal text-text-muted;
   }
 
   .data-table td {
-    @apply py-2.5 pr-3 text-text-secondary;
+    @apply px-panel-x py-3 text-text-secondary;
   }
 
   .data-table tbody tr {
@@ -226,7 +235,11 @@
   }
 
   .panel-header {
-    @apply border-b border-hairline px-4 py-3;
+    @apply border-b border-hairline px-panel-x py-panel-y;
+  }
+
+  .panel-body {
+    @apply px-panel-x py-panel-y;
   }
 
   .panel-title {
@@ -237,9 +250,22 @@
     @apply mt-0.5 text-2xs text-text-muted;
   }
 
-  /* Kill leftover “AI dashboard” table header shouting */
-  .data-table th {
-    @apply normal-case tracking-normal font-medium text-text-muted;
+  /* List rows inside panels (findings, cleanup categories, etc.) */
+  .panel-row {
+    @apply px-panel-x py-3;
+  }
+
+  /* Metric grid — same gap as Overview resource tiles */
+  .metric-grid {
+    @apply grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4;
+  }
+
+  .metric-grid-5 {
+    @apply grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5;
+  }
+
+  .metric-grid-6 {
+    @apply grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6;
   }
 }
 

@@ -5,13 +5,13 @@ import { usePaginatedItems } from '../hooks/use-pagination';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { EmptyState } from '../components/common/EmptyState';
-import { PageHeader } from '../components/common/PageHeader';
 import { Pagination } from '../components/common/Pagination';
 import { Spinner } from '../components/common/Spinner';
 import { StatRow, StatTile } from '../components/common/StatTile';
 import { StatusPill } from '../components/common/StatusPill';
 import { formatTimestamp } from '../lib/format';
 import type { SearchResult } from '../types/device.types';
+import { PageShell } from '../components/layout/PageShell';
 
 function entityLabel(entityType: string): string {
   const labels: Record<string, string> = {
@@ -77,12 +77,10 @@ export function UniversalSearch() {
   const { pageItems, pagination } = usePaginatedItems(results);
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="Search"
-        description="Findings, software, config, crashes, timeline, and indexed files."
-      />
-
+    <PageShell
+      title="Search"
+      description="Findings, software, config, crashes, timeline, and indexed files."
+    >
       {error ? (
         <AlertBanner title="Search unavailable" message={error} />
       ) : null}
@@ -121,17 +119,13 @@ export function UniversalSearch() {
         <StatTile
           label="Files indexed"
           value={
-            fileIndexStatus
-              ? fileIndexStatus.fileCount.toLocaleString()
-              : '…'
+            fileIndexStatus ? fileIndexStatus.fileCount.toLocaleString() : '…'
           }
         />
         <StatTile
           label="Roots"
           value={
-            fileIndexStatus
-              ? fileIndexStatus.rootCount.toLocaleString()
-              : '…'
+            fileIndexStatus ? fileIndexStatus.rootCount.toLocaleString() : '…'
           }
         />
         <StatTile
@@ -141,7 +135,7 @@ export function UniversalSearch() {
         <StatTile label="Backend" value={searchBackend} />
       </StatRow>
 
-      <div className="panel flex flex-wrap items-center gap-2 px-4 py-3">
+      <div className="panel flex flex-wrap items-center gap-2 px-panel-x py-3">
         <span className="mr-auto text-2xs text-text-muted">
           Built{' '}
           {fileIndexStatus?.lastBuiltAt
@@ -223,7 +217,7 @@ export function UniversalSearch() {
           <Pagination pagination={pagination} itemLabel="results" />
         </section>
       )}
-    </div>
+    </PageShell>
   );
 }
 

@@ -5,13 +5,13 @@ import { useSetup } from '../hooks/use-setup';
 import { bundleToJson, setupFilename } from '../lib/setup';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
-import { PageHeader } from '../components/common/PageHeader';
 import { Spinner } from '../components/common/Spinner';
 import { EmptyState } from '../components/common/EmptyState';
 import { RestorePlanList } from '../components/restore/RestorePlanList';
 import { RestorePlanStepsTable } from '../components/restore/RestorePlanStepsTable';
 import { RestoreJobResult } from '../components/restore/RestoreJobResult';
 import type { RestoreRunMode } from '../api/tauri/restore';
+import { PageShell } from '../components/layout/PageShell';
 
 /**
  * Recovery Center page - Increment 4.
@@ -41,12 +41,16 @@ export function RecoveryCenter() {
     runRestore,
   } = useRecovery();
 
-  const { exporting, importing, error: setupError, exportSetup, importSetup } =
-    useSetup();
+  const {
+    exporting,
+    importing,
+    error: setupError,
+    exportSetup,
+    importSetup,
+  } = useSetup();
 
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('');
-  const [restoreMode, setRestoreMode] =
-    useState<RestoreRunMode>('dryRun');
+  const [restoreMode, setRestoreMode] = useState<RestoreRunMode>('dryRun');
   const [confirmRealInstall, setConfirmRealInstall] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -123,42 +127,40 @@ export function RecoveryCenter() {
     (!realInstallMode || confirmRealInstall);
 
   return (
-    <div className="page-shell flex min-h-0 flex-1 flex-col gap-4">
-      <PageHeader
-        title="Recovery"
-        description="Build and simulate restore plans from device baselines."
-        compact
-        actions={
-          <>
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={exporting}
-              onClick={() => void handleExport()}
-              disabled={!selectedSnapshotId || exporting}
-            >
-              Export
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={importing}
-              onClick={() => importInputRef.current?.click()}
-              disabled={importing}
-            >
-              Import
-            </Button>
-            <input
-              ref={importInputRef}
-              type="file"
-              accept=".dlsetup,application/json"
-              className="hidden"
-              onChange={handleImportFile}
-            />
-          </>
-        }
-      />
-
+    <PageShell
+      title="Recovery"
+      description="Build and simulate restore plans from device baselines."
+      actions={
+        <>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={exporting}
+            onClick={() => void handleExport()}
+            disabled={!selectedSnapshotId || exporting}
+          >
+            Export
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={importing}
+            onClick={() => importInputRef.current?.click()}
+            disabled={importing}
+          >
+            Import
+          </Button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".dlsetup,application/json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+        </>
+      }
+      className="flex min-h-0 flex-1 flex-col"
+    >
       {error ? (
         <AlertBanner title="Something went wrong" message={error} />
       ) : null}
@@ -166,7 +168,7 @@ export function RecoveryCenter() {
         <AlertBanner title="Setup import/export failed" message={setupError} />
       ) : null}
 
-      <div className="panel flex flex-wrap items-center gap-3 px-4 py-3">
+      <div className="panel flex flex-wrap items-center gap-3 px-panel-x py-3">
         <label
           htmlFor="snapshot-picker"
           className="whitespace-nowrap text-xs font-medium text-text-muted"
@@ -255,7 +257,9 @@ export function RecoveryCenter() {
                       type="checkbox"
                       checked={realInstallMode}
                       onChange={(event) => {
-                        setRestoreMode(event.target.checked ? 'install' : 'dryRun');
+                        setRestoreMode(
+                          event.target.checked ? 'install' : 'dryRun',
+                        );
                         setConfirmRealInstall(false);
                       }}
                       className="h-3.5 w-3.5 rounded border-surface-border text-text-primary focus:ring-white/25"
@@ -276,7 +280,8 @@ export function RecoveryCenter() {
                     </label>
                   ) : (
                     <p className="max-w-[300px] rounded border border-status-success/20 bg-status-success-bg px-2 py-1 text-xs text-status-success">
-                      Simulation mode records what would happen without changing this PC.
+                      Simulation mode records what would happen without changing
+                      this PC.
                     </p>
                   )}
                   <Button
@@ -322,6 +327,6 @@ export function RecoveryCenter() {
           )}
         </section>
       </div>
-    </div>
+    </PageShell>
   );
 }

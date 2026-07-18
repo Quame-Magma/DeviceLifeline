@@ -5,7 +5,6 @@ import { usePaginatedItems } from '../hooks/use-pagination';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { EmptyState } from '../components/common/EmptyState';
-import { PageHeader } from '../components/common/PageHeader';
 import { Pagination } from '../components/common/Pagination';
 import { SegmentedControl } from '../components/common/SegmentedControl';
 import { Spinner } from '../components/common/Spinner';
@@ -22,6 +21,7 @@ import type {
   ServiceInfo,
   WaitChainNode,
 } from '../types/device.types';
+import { PageShell } from '../components/layout/PageShell';
 
 type ViewMode = 'list' | 'tree' | 'services';
 
@@ -69,9 +69,7 @@ function optionalCount(value: number | null | undefined): string {
   return '-';
 }
 
-function serviceStatusTone(
-  status: string,
-): 'success' | 'neutral' | 'warning' {
+function serviceStatusTone(status: string): 'success' | 'neutral' | 'warning' {
   const normalized = status.toLowerCase();
   if (normalized.includes('run')) {
     return 'success';
@@ -209,49 +207,46 @@ export function ProcessExplorer() {
   const servicePages = usePaginatedItems(filteredServices);
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="Processes"
-        description="Running processes, trees, and Windows services."
-        compact
-        actions={
-          <>
-            <SegmentedControl
-              ariaLabel="Process view mode"
-              value={viewMode}
-              onChange={(id) => {
-                setViewMode(id);
-                if (id === 'services') {
-                  void loadServices();
-                }
-              }}
-              options={
-                [
-                  { id: 'list', label: 'List' },
-                  { id: 'tree', label: 'Tree' },
-                  { id: 'services', label: 'Services' },
-                ] as const
+    <PageShell
+      title="Processes"
+      description="Running processes, trees, and Windows services."
+      actions={
+        <>
+          <SegmentedControl
+            ariaLabel="Process view mode"
+            value={viewMode}
+            onChange={(id) => {
+              setViewMode(id);
+              if (id === 'services') {
+                void loadServices();
               }
-            />
-            <Button
-              variant="primary"
-              size="sm"
-              loading={loading}
-              onClick={handleRefresh}
-            >
-              {!loading && (
-                <RefreshCcw
-                  aria-hidden="true"
-                  className="h-4 w-4"
-                  strokeWidth={1.75}
-                />
-              )}
-              Refresh
-            </Button>
-          </>
-        }
-      />
-
+            }}
+            options={
+              [
+                { id: 'list', label: 'List' },
+                { id: 'tree', label: 'Tree' },
+                { id: 'services', label: 'Services' },
+              ] as const
+            }
+          />
+          <Button
+            variant="primary"
+            size="sm"
+            loading={loading}
+            onClick={handleRefresh}
+          >
+            {!loading && (
+              <RefreshCcw
+                aria-hidden="true"
+                className="h-4 w-4"
+                strokeWidth={1.75}
+              />
+            )}
+            Refresh
+          </Button>
+        </>
+      }
+    >
       {error ? (
         <AlertBanner title="Could not load process data" message={error} />
       ) : null}
@@ -267,8 +262,23 @@ export function ProcessExplorer() {
       </StatRow>
 
       <div className="grid min-h-0 grid-cols-1 gap-3 xl:grid-cols-[1fr_320px]">
-          <div className="panel flex min-h-0 flex-col">
-            <div className="border-b border-hairline px-3 py-2">
+        <div className="panel flex min-h-0 flex-col">
+          <div className="panel-header">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="panel-title">
+                  {viewMode === 'services'
+                    ? 'Services'
+                    : viewMode === 'tree'
+                      ? 'Process tree'
+                      : 'Process list'}
+                </p>
+                <p className="panel-subtitle">
+                  {viewMode === 'services'
+                    ? 'Windows services and start types'
+                    : 'Select a row for detail and end actions'}
+                </p>
+              </div>
               <input
                 type="search"
                 value={filter}
@@ -279,268 +289,265 @@ export function ProcessExplorer() {
                     : 'Filter processes…'
                 }
                 aria-label={
-                  viewMode === 'services' ? 'Filter services' : 'Filter processes'
+                  viewMode === 'services'
+                    ? 'Filter services'
+                    : 'Filter processes'
                 }
-                className="field"
+                className="field max-w-xs"
               />
             </div>
+          </div>
 
-            {loading &&
-            processes.length === 0 &&
-            tree.length === 0 &&
-            services.length === 0 ? (
-              <div className="flex items-center justify-center py-16">
-                <Spinner label="Loading process data..." />
-              </div>
-            ) : viewMode === 'list' ? (
-              processes.length === 0 ? (
-                <EmptyState
-                  heading="No process data"
-                  body="Refresh to sample running processes. Backend support is required for live listing."
-                  action={
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleRefresh}
-                    >
-                      Try again
-                    </Button>
-                  }
-                />
-              ) : filtered.length === 0 ? (
-                <EmptyState
-                  heading="No matches"
-                  body={`No processes match "${filter}".`}
-                />
-              ) : (
-                <div className="overflow-auto scrollbar-thin">
-                  <table className="data-table">
-                    <thead className="sticky top-0 z-10 bg-surface">
-                      <tr>
-                        <th>Name</th>
-                        <th className="text-right">PID</th>
-                        <th>Parent</th>
-                        <th className="text-right">CPU</th>
-                        <th className="text-right">Memory</th>
-                        <th className="text-right">Threads</th>
-                        <th className="text-right">Handles</th>
-                        <th>Risk</th>
-                        <th className="text-right">Children</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {processPages.pageItems.map((proc) => (
-                        <ProcessRow
-                          key={`${proc.pid}-${proc.name}`}
-                          process={proc}
-                          selected={selected?.pid === proc.pid}
-                          onSelect={() => handleSelect(proc)}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                  <Pagination
-                    pagination={processPages.pagination}
-                    itemLabel="processes"
-                  />
-                </div>
-              )
-            ) : viewMode === 'tree' ? (
-              tree.length === 0 ? (
-                <EmptyState
-                  heading="No process tree"
-                  body="Refresh to build the parent-child process forest."
-                  action={
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleRefresh}
-                    >
-                      Try again
-                    </Button>
-                  }
-                />
-              ) : (
-                <div className="overflow-auto p-2 scrollbar-thin">
-                  <ul className="space-y-0.5">
-                    {tree.map((node) => (
-                      <TreeNodeRow
-                        key={`tree-${node.process.pid}-${node.process.name}`}
-                        node={node}
-                        depth={0}
-                        filter={filter}
-                        selectedPid={selected?.pid ?? null}
-                        onSelect={handleSelect}
-                      />
-                    ))}
-                  </ul>
-                </div>
-              )
-            ) : services.length === 0 ? (
+          {loading &&
+          processes.length === 0 &&
+          tree.length === 0 &&
+          services.length === 0 ? (
+            <div className="flex items-center justify-center py-16">
+              <Spinner label="Loading process data..." />
+            </div>
+          ) : viewMode === 'list' ? (
+            processes.length === 0 ? (
               <EmptyState
-                heading="No services"
-                body="Refresh to inventory Windows services. Backend support is required."
+                heading="No process data"
+                body="Refresh to sample running processes. Backend support is required for live listing."
                 action={
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => void loadServices()}
-                  >
+                  <Button variant="secondary" size="sm" onClick={handleRefresh}>
                     Try again
                   </Button>
                 }
               />
-            ) : filteredServices.length === 0 ? (
+            ) : filtered.length === 0 ? (
               <EmptyState
                 heading="No matches"
-                body={`No services match "${filter}".`}
+                body={`No processes match "${filter}".`}
               />
             ) : (
               <div className="overflow-auto scrollbar-thin">
-                <table className="w-full border-collapse text-sm">
-                  <thead className="sticky top-0 z-10 bg-surface">
-                    <tr className="border-b border-surface-border">
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                        Name
-                      </th>
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                        Display
-                      </th>
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                        Status
-                      </th>
-                      <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                        Start
-                      </th>
-                      <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                        PID
-                      </th>
+                <table className="data-table">
+                  <thead className="sticky top-0 z-10 bg-surface-card">
+                    <tr>
+                      <th>Name</th>
+                      <th className="text-right">PID</th>
+                      <th>Parent</th>
+                      <th className="text-right">CPU</th>
+                      <th className="text-right">Memory</th>
+                      <th className="text-right">Threads</th>
+                      <th className="text-right">Handles</th>
+                      <th>Risk</th>
+                      <th className="text-right">Children</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {servicePages.pageItems.map((svc) => (
-                      <ServiceRow key={svc.name} service={svc} />
+                    {processPages.pageItems.map((proc) => (
+                      <ProcessRow
+                        key={`${proc.pid}-${proc.name}`}
+                        process={proc}
+                        selected={selected?.pid === proc.pid}
+                        onSelect={() => handleSelect(proc)}
+                      />
                     ))}
                   </tbody>
                 </table>
                 <Pagination
-                  pagination={servicePages.pagination}
-                  itemLabel="services"
+                  pagination={processPages.pagination}
+                  itemLabel="processes"
                 />
               </div>
-            )}
-          </div>
-
-          <div className="panel h-fit p-4">
-            <p className="text-xs font-semibold text-text-primary">
-              Process detail
-            </p>
-            {!selected ? (
-              <p className="mt-3 text-sm text-text-secondary">
-                Select a process to inspect path, command line, user, modules,
-                and risk reasons.
-              </p>
+            )
+          ) : viewMode === 'tree' ? (
+            tree.length === 0 ? (
+              <EmptyState
+                heading="No process tree"
+                body="Refresh to build the parent-child process forest."
+                action={
+                  <Button variant="secondary" size="sm" onClick={handleRefresh}>
+                    Try again
+                  </Button>
+                }
+              />
             ) : (
-              <div className="mt-3 space-y-3">
-                <div>
-                  <p className="text-sm font-semibold text-text-primary">
-                    {selected.name}
-                  </p>
-                  <p className="text-2xs text-text-muted">
-                    PID {selected.pid}
-                    {selected.status ? ` · ${selected.status}` : ''}
-                  </p>
-                </div>
-                <DetailField label="Path" value={selected.path ?? '-'} mono />
-                <DetailField label="Command" value={selected.cmd ?? '-'} mono />
-                <DetailField label="User" value={selected.user ?? '-'} />
-                <DetailField label="Parent" value={parentLabel(selected)} />
-                <div className="grid grid-cols-2 gap-3">
-                  <DetailField
-                    label="Threads"
-                    value={optionalCount(selected.threadCount)}
-                  />
-                  <DetailField
-                    label="Handles"
-                    value={optionalCount(selected.handleCount)}
-                  />
-                  <DetailField
-                    label="Working set"
-                    value={
-                      typeof selected.workingSetBytes === 'number'
-                        ? formatBytes(selected.workingSetBytes)
-                        : formatBytes(selected.memoryBytes)
-                    }
-                  />
-                  <DetailField
-                    label="Children"
-                    value={childrenLabel(selected)}
-                  />
-                </div>
-                <div>
-                  <p className="text-2xs font-semibold uppercase tracking-wide text-text-muted">
-                    Risk
-                  </p>
-                  <div className="mt-1">
-                    <StatusPill tone={riskTone(selected.riskScore)}>
-                      {`${riskLabel(selected.riskScore)} (${selected.riskScore})`}
-                    </StatusPill>
-                  </div>
-                  {selected.riskReasons.length > 0 ? (
-                    <ul className="mt-2 list-inside list-disc space-y-0.5 text-xs text-text-secondary">
-                      {selected.riskReasons.map((reason) => (
-                        <li key={reason}>{reason}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="mt-2 text-xs text-text-muted">
-                      No risk reasons recorded.
-                    </p>
-                  )}
-                </div>
-                <ModulesTable modules={selected.modules ?? []} />
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    loading={loadingDeep}
-                    onClick={handleLoadDeep}
-                    className="w-full"
-                  >
-                    Load deep detail
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    loading={killing}
-                    onClick={handleEndProcess}
-                    className="w-full"
-                  >
-                    End process
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    loading={killing}
-                    onClick={handleEndProcessTree}
-                    className="w-full"
-                  >
-                    End process tree
-                  </Button>
-                </div>
-                <p className="text-2xs text-text-muted">
-                  Full deep results may require running elevated. Protected or
-                  system processes may fail to end. Tree kill ends descendants
-                  as well.
+              <div className="overflow-auto p-2 scrollbar-thin">
+                <ul className="space-y-0.5">
+                  {tree.map((node) => (
+                    <TreeNodeRow
+                      key={`tree-${node.process.pid}-${node.process.name}`}
+                      node={node}
+                      depth={0}
+                      filter={filter}
+                      selectedPid={selected?.pid ?? null}
+                      onSelect={handleSelect}
+                    />
+                  ))}
+                </ul>
+              </div>
+            )
+          ) : services.length === 0 ? (
+            <EmptyState
+              heading="No services"
+              body="Refresh to inventory Windows services. Backend support is required."
+              action={
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void loadServices()}
+                >
+                  Try again
+                </Button>
+              }
+            />
+          ) : filteredServices.length === 0 ? (
+            <EmptyState
+              heading="No matches"
+              body={`No services match "${filter}".`}
+            />
+          ) : (
+            <div className="overflow-auto scrollbar-thin">
+              <table className="w-full border-collapse text-sm">
+                <thead className="sticky top-0 z-10 bg-surface-card">
+                  <tr className="border-b border-surface-border">
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      Name
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      Display
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      Status
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      Start
+                    </th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-text-secondary">
+                      PID
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {servicePages.pageItems.map((svc) => (
+                    <ServiceRow key={svc.name} service={svc} />
+                  ))}
+                </tbody>
+              </table>
+              <Pagination
+                pagination={servicePages.pagination}
+                itemLabel="services"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="panel h-fit">
+          <div className="panel-header">
+            <p className="panel-title">Process detail</p>
+            <p className="panel-subtitle">
+              {selected
+                ? `${selected.name} · PID ${selected.pid}`
+                : 'Select a row to inspect'}
+            </p>
+          </div>
+          {!selected ? (
+            <p className="p-4 text-sm text-text-secondary">
+              Select a process to inspect path, command line, user, modules, and
+              risk reasons.
+            </p>
+          ) : (
+            <div className="panel-body space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-text-primary">
+                  {selected.name}
                 </p>
-                {deep && deep.process.pid === selected.pid && (
-                  <DeepDetailSections deep={deep} />
+                <p className="text-2xs text-text-muted">
+                  PID {selected.pid}
+                  {selected.status ? ` · ${selected.status}` : ''}
+                </p>
+              </div>
+              <DetailField label="Path" value={selected.path ?? '-'} mono />
+              <DetailField label="Command" value={selected.cmd ?? '-'} mono />
+              <DetailField label="User" value={selected.user ?? '-'} />
+              <DetailField label="Parent" value={parentLabel(selected)} />
+              <div className="grid grid-cols-2 gap-3">
+                <DetailField
+                  label="Threads"
+                  value={optionalCount(selected.threadCount)}
+                />
+                <DetailField
+                  label="Handles"
+                  value={optionalCount(selected.handleCount)}
+                />
+                <DetailField
+                  label="Working set"
+                  value={
+                    typeof selected.workingSetBytes === 'number'
+                      ? formatBytes(selected.workingSetBytes)
+                      : formatBytes(selected.memoryBytes)
+                  }
+                />
+                <DetailField label="Children" value={childrenLabel(selected)} />
+              </div>
+              <div>
+                <p className="text-2xs font-semibold uppercase tracking-wide text-text-muted">
+                  Risk
+                </p>
+                <div className="mt-1">
+                  <StatusPill tone={riskTone(selected.riskScore)}>
+                    {`${riskLabel(selected.riskScore)} (${selected.riskScore})`}
+                  </StatusPill>
+                </div>
+                {selected.riskReasons.length > 0 ? (
+                  <ul className="mt-2 list-inside list-disc space-y-0.5 text-xs text-text-secondary">
+                    {selected.riskReasons.map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-xs text-text-muted">
+                    No risk reasons recorded.
+                  </p>
                 )}
               </div>
-            )}
-          </div>
+              <ModulesTable modules={selected.modules ?? []} />
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={loadingDeep}
+                  onClick={handleLoadDeep}
+                  className="w-full"
+                >
+                  Load deep detail
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  loading={killing}
+                  onClick={handleEndProcess}
+                  className="w-full"
+                >
+                  End process
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={killing}
+                  onClick={handleEndProcessTree}
+                  className="w-full"
+                >
+                  End process tree
+                </Button>
+              </div>
+              <p className="text-2xs text-text-muted">
+                Full deep results may require running elevated. Protected or
+                system processes may fail to end. Tree kill ends descendants as
+                well.
+              </p>
+              {deep && deep.process.pid === selected.pid && (
+                <DeepDetailSections deep={deep} />
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </PageShell>
   );
 }
 
@@ -557,7 +564,7 @@ function ModulesTable({ modules }: { modules: ProcessModule[] }) {
       ) : (
         <div className="mt-2 max-h-48 overflow-auto rounded border border-surface-border scrollbar-thin">
           <table className="w-full border-collapse text-2xs">
-            <thead className="sticky top-0 bg-surface">
+            <thead className="sticky top-0 bg-surface-card">
               <tr className="border-b border-surface-border">
                 <th className="px-2 py-1.5 text-left font-semibold uppercase tracking-wide text-text-secondary">
                   Name
@@ -649,18 +656,17 @@ function DeepDetailSections({ deep }: { deep: ProcessDeepDetail }) {
                 label="Elevated"
                 value={token.elevated || deep.elevated ? 'Yes' : 'No'}
               />
-              <DetailField
-                label="Integrity"
-                value={token.integrity ?? '-'}
-              />
+              <DetailField label="Integrity" value={token.integrity ?? '-'} />
             </div>
-            {token.user && <DetailField label="Token user" value={token.user} />}
+            {token.user && (
+              <DetailField label="Token user" value={token.user} />
+            )}
             {token.privileges.length === 0 ? (
               <p className="text-xs text-text-muted">No privileges returned.</p>
             ) : (
               <div className="max-h-40 overflow-auto rounded border border-surface-border scrollbar-thin">
                 <table className="w-full border-collapse text-2xs">
-                  <thead className="sticky top-0 bg-surface">
+                  <thead className="sticky top-0 bg-surface-card">
                     <tr className="border-b border-surface-border">
                       <th className="px-2 py-1.5 text-left font-semibold uppercase tracking-wide text-text-secondary">
                         Privilege
@@ -725,7 +731,7 @@ function DeepMemoryTable({
       ) : (
         <div className="mt-2 max-h-48 overflow-auto rounded border border-surface-border scrollbar-thin">
           <table className="w-full border-collapse text-2xs">
-            <thead className="sticky top-0 bg-surface">
+            <thead className="sticky top-0 bg-surface-card">
               <tr className="border-b border-surface-border">
                 <th className="px-2 py-1.5 text-left font-semibold uppercase tracking-wide text-text-secondary">
                   Base
@@ -794,7 +800,7 @@ function DeepWaitChainTable({ nodes }: { nodes: WaitChainNode[] }) {
       ) : (
         <div className="mt-2 max-h-40 overflow-auto rounded border border-surface-border scrollbar-thin">
           <table className="w-full border-collapse text-2xs">
-            <thead className="sticky top-0 bg-surface">
+            <thead className="sticky top-0 bg-surface-card">
               <tr className="border-b border-surface-border">
                 <th className="px-2 py-1.5 text-right font-semibold uppercase tracking-wide text-text-secondary">
                   Thread
@@ -864,7 +870,7 @@ function DeepHandlesTable({
       ) : (
         <div className="mt-2 max-h-40 overflow-auto rounded border border-surface-border scrollbar-thin">
           <table className="w-full border-collapse text-2xs">
-            <thead className="sticky top-0 bg-surface">
+            <thead className="sticky top-0 bg-surface-card">
               <tr className="border-b border-surface-border">
                 <th className="px-2 py-1.5 text-left font-semibold uppercase tracking-wide text-text-secondary">
                   Type
@@ -984,7 +990,10 @@ function ProcessRow({
       <td className="px-4 py-2.5 text-right tabular-nums text-text-secondary">
         {optionalCount(proc.handleCount)}
       </td>
-      <td className="px-4 py-2.5" title={proc.riskReasons.join('; ') || undefined}>
+      <td
+        className="px-4 py-2.5"
+        title={proc.riskReasons.join('; ') || undefined}
+      >
         <StatusPill tone={riskTone(proc.riskScore)}>
           {`${riskLabel(proc.riskScore)} (${proc.riskScore})`}
         </StatusPill>

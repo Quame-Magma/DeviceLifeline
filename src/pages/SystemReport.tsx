@@ -5,11 +5,11 @@ import { usePaginatedItems } from '../hooks/use-pagination';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { EmptyState } from '../components/common/EmptyState';
-import { PageHeader } from '../components/common/PageHeader';
 import { Pagination } from '../components/common/Pagination';
 import { Spinner } from '../components/common/Spinner';
 import { StatRow, StatTile } from '../components/common/StatTile';
 import { formatTimestamp } from '../lib/format';
+import { PageShell } from '../components/layout/PageShell';
 
 /**
  * AIDA64-class system inventory report + light synthetic benchmarks.
@@ -44,40 +44,38 @@ export function SystemReport() {
   };
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="System report"
-        description="AIDA64-class inventory (OS, CPU, memory, disks, GPU, BIOS, network) plus light synthetic benchmarks."
-        actions={
-          <>
-            <Button
-              variant="secondary"
-              size="sm"
-              disabled={!report}
-              onClick={exportJson}
-            >
-              Export JSON
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={benching}
-              onClick={() => void runBench('all')}
-            >
-              {benching ? 'Benching…' : 'Run benches'}
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              loading={loading}
-              onClick={() => void loadReport()}
-            >
-              Refresh report
-            </Button>
-          </>
-        }
-      />
-
+    <PageShell
+      title="System report"
+      description="OS, hardware inventory, and light synthetic benchmarks."
+      actions={
+        <>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={!report}
+            onClick={exportJson}
+          >
+            Export JSON
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={benching}
+            onClick={() => void runBench('all')}
+          >
+            {benching ? 'Benching…' : 'Run benches'}
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            loading={loading}
+            onClick={() => void loadReport()}
+          >
+            Refresh report
+          </Button>
+        </>
+      }
+    >
       {error ? (
         <AlertBanner title="Report unavailable" message={error} />
       ) : null}
@@ -102,8 +100,8 @@ export function SystemReport() {
           <div className="panel-header">
             <p className="panel-title">Benchmarks</p>
             <p className="panel-subtitle">
-              Synthetic scores for comparison on this machine only — not SPECint /
-              CrystalDiskMark certified
+              Synthetic scores for comparison on this machine only — not SPECint
+              / CrystalDiskMark certified
             </p>
           </div>
           <div className="grid gap-3 p-4 sm:grid-cols-3">
@@ -172,6 +170,6 @@ export function SystemReport() {
           </>
         )}
       </section>
-    </div>
+    </PageShell>
   );
 }

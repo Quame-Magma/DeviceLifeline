@@ -9,13 +9,13 @@ interface CardProps extends HTMLAttributes<HTMLDivElement> {
 
 const paddingClasses = {
   none: '',
-  sm: 'p-3',
-  md: 'p-4',
-  lg: 'p-5',
+  sm: 'px-panel-x py-3',
+  md: 'px-panel-x py-panel-y',
+  lg: 'px-panel-x py-5',
 };
 
 /**
- * Solid surface card with hairline border. No glass, no lift shadow.
+ * Solid navy card matching Overview shell (hairline + surface-card).
  */
 export function Card({
   children,
@@ -27,8 +27,9 @@ export function Card({
   return (
     <div
       className={[
-        strong ? 'glass-panel-strong' : 'glass-panel',
-        'rounded-card transition-colors duration-150 ease-ray',
+        'rounded-card border border-hairline shadow-card',
+        strong ? 'bg-surface-elevated' : 'bg-surface-card',
+        'transition-colors duration-150 ease-ray',
         'hover:border-hairline-strong',
         paddingClasses[padding],
         className,

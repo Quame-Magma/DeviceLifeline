@@ -6,13 +6,13 @@ import { usePaginatedItems } from '../hooks/use-pagination';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { EmptyState } from '../components/common/EmptyState';
-import { PageHeader } from '../components/common/PageHeader';
 import { Pagination } from '../components/common/Pagination';
 import { Spinner } from '../components/common/Spinner';
 import { StatRow, StatTile } from '../components/common/StatTile';
 import { StatusPill } from '../components/common/StatusPill';
 import { formatTimestamp } from '../lib/format';
 import type { DriverInfo } from '../types/device.types';
+import { PageShell } from '../components/layout/PageShell';
 
 function healthTone(score: number): 'success' | 'warning' | 'error' {
   if (score < 40) return 'error';
@@ -85,28 +85,24 @@ export function DriverCenter() {
   };
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="Drivers"
-        description="Installed drivers with signature status, health scores, and guided GPU clean (DDU-class)."
-        actions={
-          <Button
-            variant="primary"
-            size="sm"
-            loading={scanning}
-            onClick={() => void scan()}
-          >
-            {scanning ? 'Scanning…' : 'Scan drivers'}
-          </Button>
-        }
-      />
-
+    <PageShell
+      title="Drivers"
+      description="Signature status, health scores, and guided GPU clean."
+      actions={
+        <Button
+          variant="primary"
+          size="sm"
+          loading={scanning}
+          onClick={() => void scan()}
+        >
+          {scanning ? 'Scanning…' : 'Scan drivers'}
+        </Button>
+      }
+    >
       {error ? (
         <AlertBanner title="Drivers / clean unavailable" message={error} />
       ) : null}
-      {message && !error ? (
-        <AlertBanner title={message} tone="info" />
-      ) : null}
+      {message && !error ? <AlertBanner title={message} tone="info" /> : null}
 
       <StatRow columns={3}>
         <StatTile label="Drivers" value={drivers.length} />
@@ -119,12 +115,11 @@ export function DriverCenter() {
         <div className="panel-header">
           <p className="panel-title">GPU driver clean (guided)</p>
           <p className="panel-subtitle">
-            Full guided DDU path: checklist → restore point → stop GPU services →
-            remove display devices → delete OEM packages · elevated + audited
+            Checklist → restore point → remove GPU packages · elevated + audited
           </p>
         </div>
 
-        <div className="space-y-4 p-4">
+        <div className="panel-body space-y-4">
           <div className="flex flex-wrap items-center gap-2">
             <label className="text-2xs font-semibold uppercase tracking-wide text-text-muted">
               Vendor
@@ -168,7 +163,10 @@ export function DriverCenter() {
                     setChecks(next);
                   }}
                 />
-                <label htmlFor={`gpu-check-${i}`} className="text-text-secondary">
+                <label
+                  htmlFor={`gpu-check-${i}`}
+                  className="text-text-secondary"
+                >
                   {label}
                 </label>
               </li>
@@ -237,9 +235,7 @@ export function DriverCenter() {
             <p className="text-xs text-text-secondary">
               Restore point: {restorePoint.title} ·{' '}
               <StatusPill
-                tone={
-                  restorePoint.status === 'completed' ? 'success' : 'error'
-                }
+                tone={restorePoint.status === 'completed' ? 'success' : 'error'}
               >
                 {restorePoint.status}
               </StatusPill>
@@ -308,7 +304,7 @@ export function DriverCenter() {
           </>
         )}
       </section>
-    </div>
+    </PageShell>
   );
 }
 

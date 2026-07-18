@@ -5,13 +5,13 @@ import { usePaginatedItems } from '../hooks/use-pagination';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { EmptyState } from '../components/common/EmptyState';
-import { PageHeader } from '../components/common/PageHeader';
 import { Pagination } from '../components/common/Pagination';
 import { Spinner } from '../components/common/Spinner';
 import { StatRow, StatTile } from '../components/common/StatTile';
 import { StatusPill } from '../components/common/StatusPill';
 import { formatTimestamp } from '../lib/format';
 import type { SecurityFinding } from '../types/device.types';
+import { PageShell } from '../components/layout/PageShell';
 
 function severityTone(
   severity: string,
@@ -48,22 +48,20 @@ export function SecurityCenter() {
   const { pageItems, pagination } = usePaginatedItems(findings);
 
   return (
-    <div className="page-shell page-section">
-      <PageHeader
-        title="Security"
-        description="Persistence, privilege, and suspicious activity findings."
-        actions={
-          <Button
-            variant="primary"
-            size="sm"
-            loading={scanning}
-            onClick={() => void scan()}
-          >
-            {scanning ? 'Scanning…' : 'Scan security'}
-          </Button>
-        }
-      />
-
+    <PageShell
+      title="Security"
+      description="Persistence, privilege, and suspicious activity findings."
+      actions={
+        <Button
+          variant="primary"
+          size="sm"
+          loading={scanning}
+          onClick={() => void scan()}
+        >
+          {scanning ? 'Scanning…' : 'Scan security'}
+        </Button>
+      }
+    >
       {error ? (
         <AlertBanner title="Security scan unavailable" message={error} />
       ) : null}
@@ -98,7 +96,9 @@ export function SecurityCenter() {
         <section className="panel">
           <div className="panel-header">
             <p className="panel-title">Findings</p>
-            <p className="panel-subtitle">Newest first · dismiss when resolved</p>
+            <p className="panel-subtitle">
+              Newest first · dismiss when resolved
+            </p>
           </div>
           <ul className="divide-y divide-hairline">
             {pageItems.map((finding) => (
@@ -113,7 +113,7 @@ export function SecurityCenter() {
           <Pagination pagination={pagination} itemLabel="findings" />
         </section>
       )}
-    </div>
+    </PageShell>
   );
 }
 
@@ -127,7 +127,7 @@ function FindingRow({
   onDismiss: () => void;
 }) {
   return (
-    <li className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-start sm:justify-between">
+    <li className="flex flex-col gap-3 px-panel-x py-3.5 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <StatusPill tone={severityTone(finding.severity)}>

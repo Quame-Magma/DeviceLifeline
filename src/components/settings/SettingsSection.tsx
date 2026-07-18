@@ -21,13 +21,13 @@ export function SettingsSection({
   children,
 }: SettingsSectionProps) {
   return (
-    <section className="overflow-hidden rounded-card border border-hairline bg-surface">
-      <header className="flex items-start gap-3 border-b border-hairline px-4 py-3.5">
-        <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control bg-surface-elevated text-text-secondary">
+    <section className="overflow-hidden rounded-card border border-hairline bg-surface-card shadow-card">
+      <header className="flex items-start gap-3 border-b border-hairline px-panel-x py-panel-y">
+        <span className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-control bg-accent-subtle text-accent">
           <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
         </span>
         <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold tracking-tight text-text-primary">
+          <h2 className="text-[15px] font-semibold tracking-tight text-text-primary cause-semibold">
             {title}
           </h2>
           {description ? (
@@ -57,7 +57,7 @@ export function SettingsRow({
   children,
 }: SettingsRowProps) {
   return (
-    <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+    <div className="panel-row flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
       <div className="min-w-0 sm:max-w-[55%]">
         <p className="text-sm font-medium text-text-primary">{label}</p>
         {description ? (
