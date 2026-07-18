@@ -500,8 +500,12 @@ fn sample_gpu() -> (Option<String>, Option<f64>, Option<i64>, Option<i64>) {
     (None, None, None, None)
 }
 
+/// (name, usage_pct, vram_used, vram_total)
 #[cfg(windows)]
-fn windows_gpu_via_powershell() -> Option<(Option<String>, Option<f64>, Option<i64>, Option<i64>)> {
+type GpuPowerShellSample = (Option<String>, Option<f64>, Option<i64>, Option<i64>);
+
+#[cfg(windows)]
+fn windows_gpu_via_powershell() -> Option<GpuPowerShellSample> {
     // Name/VRAM from VideoController; usage from PDH GPU Engine counters.
     let script = r#"
 $ErrorActionPreference='SilentlyContinue'
@@ -543,7 +547,7 @@ if (-not $g -and $null -eq $usage) { '{}' | ConvertTo-Json; exit }
 fn sample_smart() -> Result<Vec<SmartReading>, CoreError> {
     #[cfg(windows)]
     {
-        return Ok(windows_smart_via_powershell());
+        Ok(windows_smart_via_powershell())
     }
     #[cfg(not(windows))]
     {

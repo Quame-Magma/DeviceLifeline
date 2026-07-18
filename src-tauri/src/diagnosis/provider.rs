@@ -568,7 +568,7 @@ impl DiagnosisProvider for HeuristicProvider {
         }
 
         // Prefer intent-matched findings first (stable secondary by confidence).
-        findings.sort_by(|a, b| b.confidence.cmp(&a.confidence));
+        findings.sort_by_key(|b| std::cmp::Reverse(b.confidence));
         findings
     }
 }

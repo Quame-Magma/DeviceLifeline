@@ -109,7 +109,7 @@ pub fn scan_storage(
     }
 
     // Keep largest items for persistence.
-    discovered.sort_by(|a, b| b.size_bytes.cmp(&a.size_bytes));
+    discovered.sort_by_key(|b| std::cmp::Reverse(b.size_bytes));
     discovered.truncate(TOP_ITEMS_PERSIST);
 
     let items: Vec<StorageItem> = discovered
@@ -279,7 +279,7 @@ fn map_directory(
         }
     }
 
-    children.sort_by(|a, b| b.size_bytes.cmp(&a.size_bytes));
+    children.sort_by_key(|b| std::cmp::Reverse(b.size_bytes));
     children.truncate(40);
     let parent_size = size_bytes.max(1);
     for child in &mut children {

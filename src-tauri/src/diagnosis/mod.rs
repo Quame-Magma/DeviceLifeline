@@ -89,10 +89,7 @@ pub fn assemble_context(
     // Live process summary for "slow" / resource attribution. Best-effort: if
     // process sampling fails, leave fields empty rather than aborting diagnosis.
     let (top_process_names, top_process_memory_pct) =
-        match process::top_process_summary(TOP_PROCESSES) {
-            Ok(pair) => pair,
-            Err(_) => (Vec::new(), None),
-        };
+        process::top_process_summary(TOP_PROCESSES).unwrap_or_default();
 
     let query_intent = query.map(|q| provider::detect_intent(q).as_str().to_string());
 

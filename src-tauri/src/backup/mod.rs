@@ -270,10 +270,7 @@ fn create_shadow_os(volume: &str) -> (String, Option<String>, String, String) {
                 return mock_shadow(volume, Some(msg));
             }
         }
-        mock_shadow(
-            volume,
-            Some("VSS create failed; recorded lab shadow".into()),
-        )
+        mock_shadow(volume, Some("VSS create failed; recorded lab shadow"))
     }
     #[cfg(not(windows))]
     {

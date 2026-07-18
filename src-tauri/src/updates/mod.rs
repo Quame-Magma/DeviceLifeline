@@ -15,7 +15,7 @@ pub fn scan_updates(conn: &Connection) -> Result<Vec<SoftwareUpdate>, CoreError>
     let device = device_repo::ensure_local_device(conn)?;
     let scanned_at = now_rfc3339()?;
     let mut updates = collect_upgrades(&device.id, &scanned_at);
-    updates.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    updates.sort_by_key(|a| a.name.to_lowercase());
     update_repo::replace_updates(conn, &device.id, &updates)?;
     Ok(updates)
 }

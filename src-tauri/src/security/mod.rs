@@ -214,6 +214,7 @@ fn scan_persistence_from_config(
     Ok(findings)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn finding(
     device_id: &str,
     created_at: &str,

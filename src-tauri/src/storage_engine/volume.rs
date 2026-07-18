@@ -191,7 +191,7 @@ fn map_volume_dir(
         }
     }
 
-    children.sort_by(|a, b| b.size_bytes.cmp(&a.size_bytes));
+    children.sort_by_key(|b| std::cmp::Reverse(b.size_bytes));
     children.truncate(MAX_CHILDREN);
     let parent = size_bytes.max(1);
     for c in &mut children {
@@ -213,7 +213,7 @@ fn should_skip_volume_path(path: &Path) -> bool {
         .file_name()
         .map(|n| n.to_string_lossy().to_lowercase())
         .unwrap_or_default();
-    if SKIP_NAMES.iter().any(|s| *s == name.as_str()) {
+    if SKIP_NAMES.contains(&name.as_str()) {
         return true;
     }
     let lower = path.to_string_lossy().to_lowercase().replace('/', "\\");

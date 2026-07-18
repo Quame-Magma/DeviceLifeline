@@ -31,6 +31,7 @@ pub fn insert_job(conn: &Connection, job: &BackgroundJob) -> Result<(), CoreErro
 }
 
 /// Updates progress / status fields for a running job.
+#[allow(clippy::too_many_arguments)]
 pub fn update_job(
     conn: &Connection,
     id: &str,

@@ -35,7 +35,7 @@ pub fn get_process_deep(pid: u32) -> Result<ProcessDeepDetail, CoreError> {
                     .into(),
             );
         }
-        return Ok(deep);
+        Ok(deep)
     }
 
     #[cfg(not(windows))]

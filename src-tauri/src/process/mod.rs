@@ -68,7 +68,7 @@ pub fn list_processes(top_n: Option<usize>) -> Result<ProcessSnapshot, CoreError
 /// Full process list (capped for safety) used for trees.
 pub fn list_all_processes(max: usize) -> Result<ProcessSnapshot, CoreError> {
     let mut processes = collect_all_processes()?;
-    processes.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+    processes.sort_by_key(|a| a.name.to_lowercase());
     if processes.len() > max {
         processes.truncate(max);
     }
@@ -413,7 +413,7 @@ fn build_forest(processes: &[ProcessInfo]) -> Vec<ProcessTreeNode> {
                 }
             }
         }
-        children.sort_by(|a, b| b.process.memory_bytes.cmp(&a.process.memory_bytes));
+        children.sort_by_key(|b| std::cmp::Reverse(b.process.memory_bytes));
         Some(ProcessTreeNode { process, children })
     }
 
@@ -423,7 +423,7 @@ fn build_forest(processes: &[ProcessInfo]) -> Vec<ProcessTreeNode> {
             forest.push(node);
         }
     }
-    forest.sort_by(|a, b| b.process.memory_bytes.cmp(&a.process.memory_bytes));
+    forest.sort_by_key(|b| std::cmp::Reverse(b.process.memory_bytes));
     forest
 }
 

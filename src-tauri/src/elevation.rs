@@ -79,7 +79,7 @@ pub fn request_elevation_relaunch() -> bool {
             // Elevated instance is starting; exit this non-elevated process.
             std::process::exit(0);
         }
-        return false;
+        false
     }
     #[cfg(not(windows))]
     {
