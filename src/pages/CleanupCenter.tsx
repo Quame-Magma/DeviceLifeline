@@ -1,15 +1,15 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useCleanup } from '../hooks/use-cleanup';
 import { usePaginatedItems } from '../hooks/use-pagination';
-import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { EmptyState } from '../components/common/EmptyState';
 import { Pagination } from '../components/common/Pagination';
 import { Spinner } from '../components/common/Spinner';
 import { StatRow, StatTile } from '../components/common/StatTile';
-import { formatBytes } from '../lib/format';
 import { PageShell } from '../components/layout/PageShell';
+import { confirmAction, toast } from '../lib/feedback';
+import { formatBytes } from '../lib/format';
 
 /**
  * Classic CCleaner-class cleanup: temp/cache, browser privacy, Windows junk,
@@ -47,21 +47,83 @@ export function CleanupCenter() {
     return filtered.reduce((s, c) => s + c.sizeBytes, 0);
   }, [filtered]);
 
-  const handleExecute = () => {
+  const lastResultKey = useRef<string | null>(null);
+  const lastErrorKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!result) return;
+    const key = `${result.deletedCount}-${result.deletedBytes}-${result.failedCount}-${result.action.resultMessage}`;
+    if (lastResultKey.current === key) return;
+    lastResultKey.current = key;
+
+    const detail = [
+      result.action.resultMessage,
+      result.failedCount > 0
+        ? `${result.failedCount} item(s) failed or were locked.`
+        : null,
+      result.errors?.[0] ? `Example: ${result.errors[0]}` : null,
+      result.categoriesCleaned?.length
+        ? `Categories: ${result.categoriesCleaned.join(', ')}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    if (result.deletedCount > 0) {
+      toast({
+        title: `Cleaned ${result.deletedCount} item(s)`,
+        description:
+          `${formatBytes(result.deletedBytes)} freed. ${detail}`.trim(),
+        tone: 'success',
+        duration: 7000,
+      });
+    } else {
+      toast({
+        title: 'Cleanup finished — nothing removed',
+        description: detail || 'Selected targets were empty or already clean.',
+        tone: 'warning',
+        duration: 6500,
+      });
+    }
+  }, [result]);
+
+  useEffect(() => {
+    if (!error) return;
+    if (lastErrorKey.current === error) return;
+    lastErrorKey.current = error;
+    toast({
+      title: 'Cleanup issue',
+      description: error,
+      tone: 'warning',
+    });
+  }, [error]);
+
+  const handleExecute = async () => {
     const privacy = preview?.categories.filter(
       (c) =>
         selected.has(c.id) && (c.risk === 'privacy' || c.risk === 'advanced'),
     );
-    const warn =
+    const privacyNote =
       privacy && privacy.length > 0
-        ? `\n\nIncludes privacy/advanced: ${privacy.map((c) => c.label).join(', ')}.\nClose browsers first if cleaning history/cookies.`
+        ? `\n\nIncludes privacy/advanced categories: ${privacy.map((c) => c.label).join(', ')}.\nClose browsers first if cleaning history or cookies.`
         : '';
-    const ok = window.confirm(
-      `Clean ${selected.size} category(ies) · ~${filtered.length} file item(s) (~${formatBytes(selectedBytes)})?` +
-        warn +
-        `\n\nDocuments/Desktop are never deleted. Continue?`,
-    );
+
+    const ok = await confirmAction({
+      title: 'Clean selected categories?',
+      description:
+        `About ${filtered.length} item(s) across ${selected.size} categor${selected.size === 1 ? 'y' : 'ies'} (~${formatBytes(selectedBytes)}).` +
+        privacyNote +
+        `\n\nDocuments and Desktop are never deleted.`,
+      confirmLabel: 'Clean selected',
+      tone: privacy && privacy.length > 0 ? 'warning' : 'primary',
+    });
     if (!ok) return;
+    toast({
+      title: 'Cleaning…',
+      description: 'This can take up to a minute. Leave the app open.',
+      tone: 'info',
+      duration: 4000,
+    });
     void execute();
   };
 
@@ -107,31 +169,6 @@ export function CleanupCenter() {
         </>
       }
     >
-      {error ? (
-        <AlertBanner title="Cleanup issue" message={error} tone="warning" />
-      ) : null}
-      {result ? (
-        <AlertBanner
-          title={
-            result.deletedCount > 0
-              ? `Cleaned ${result.deletedCount} item(s) (${formatBytes(result.deletedBytes)})`
-              : `Cleanup finished — nothing removed`
-          }
-          message={[
-            result.action.resultMessage,
-            result.failedCount > 0
-              ? `${result.failedCount} failed or locked.`
-              : null,
-            result.errors?.[0] ? `Example: ${result.errors[0]}` : null,
-            result.categoriesCleaned?.length
-              ? `Categories: ${result.categoriesCleaned.join(', ')}`
-              : null,
-          ]
-            .filter(Boolean)
-            .join(' ')}
-          tone={result.deletedCount > 0 ? 'info' : 'warning'}
-        />
-      ) : null}
       {acting ? (
         <div className="flex items-center gap-3 rounded-card border border-hairline bg-surface-elevated px-panel-x py-panel-y text-sm text-text-secondary">
           <Spinner size="sm" label="Cleaning" />

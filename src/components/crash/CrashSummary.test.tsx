@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { CrashSummary } from './CrashSummary';
 import type { CrashEvent } from '../../types/device.types';
 
@@ -26,7 +26,7 @@ describe('CrashSummary', () => {
 
   it('renders the total count', () => {
     render(<CrashSummary events={events} />);
-    expect(screen.getByTestId('crash-summary-total')).toHaveTextContent(
+    expect(screen.getByTestId('crash-summary-all')).toHaveTextContent(
       '4 total',
     );
   });
@@ -46,11 +46,42 @@ describe('CrashSummary', () => {
 
   it('renders zeros for an empty list', () => {
     render(<CrashSummary events={[]} />);
-    expect(screen.getByTestId('crash-summary-total')).toHaveTextContent(
+    expect(screen.getByTestId('crash-summary-all')).toHaveTextContent(
       '0 total',
     );
     expect(screen.getByTestId('crash-summary-critical')).toHaveTextContent(
       '0 critical',
+    );
+  });
+
+  it('calls onFilterChange when a chip is clicked', () => {
+    const onFilterChange = vi.fn();
+    render(
+      <CrashSummary
+        events={events}
+        filter="all"
+        onFilterChange={onFilterChange}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('crash-summary-critical'));
+    expect(onFilterChange).toHaveBeenCalledWith('critical');
+    fireEvent.click(screen.getByTestId('crash-summary-error'));
+    expect(onFilterChange).toHaveBeenCalledWith('error');
+    fireEvent.click(screen.getByTestId('crash-summary-all'));
+    expect(onFilterChange).toHaveBeenCalledWith('all');
+  });
+
+  it('marks the active chip as selected', () => {
+    render(
+      <CrashSummary events={events} filter="error" onFilterChange={vi.fn()} />,
+    );
+    expect(screen.getByTestId('crash-summary-error')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByTestId('crash-summary-critical')).toHaveAttribute(
+      'aria-selected',
+      'false',
     );
   });
 });

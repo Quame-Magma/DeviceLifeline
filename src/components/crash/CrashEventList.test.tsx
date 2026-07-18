@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { CrashEventList } from './CrashEventList';
 import type { CrashEvent } from '../../types/device.types';
 
@@ -36,35 +36,48 @@ describe('CrashEventList', () => {
     expect(screen.getByText('No crashes detected')).toBeInTheDocument();
   });
 
-  it('renders a card per event', () => {
+  it('renders a row per event', () => {
     render(<CrashEventList events={EVENTS} />);
     expect(screen.getByTestId('crash-event-e1')).toBeInTheDocument();
     expect(screen.getByTestId('crash-event-e2')).toBeInTheDocument();
   });
 
-  it('renders the severity badge label', () => {
+  it('shows severity and title when collapsed', () => {
     render(<CrashEventList events={EVENTS} />);
     expect(screen.getByTestId('crash-severity-e1')).toHaveTextContent(
       'Critical',
     );
     expect(screen.getByTestId('crash-severity-e2')).toHaveTextContent('Error');
-  });
-
-  it('renders the plain-English explanation and category label', () => {
-    render(<CrashEventList events={EVENTS} />);
     expect(screen.getByTestId('crash-event-e1')).toHaveTextContent(
       'Windows crashed and restarted',
     );
     expect(screen.getByTestId('crash-event-e1')).toHaveTextContent(
-      'Recorded as: System crash (BSOD / bugcheck)',
+      'Blue screen (BSOD)',
     );
-    expect(screen.getByText('Blue screen (BSOD)')).toBeInTheDocument();
   });
 
-  it('shows the event id when present', () => {
+  it('hides details until expanded', () => {
     render(<CrashEventList events={EVENTS} />);
-    expect(screen.getByTestId('crash-event-e1')).toHaveTextContent(
-      'Event ID 1001',
-    );
+    expect(
+      screen.queryByText('Recorded as: System crash (BSOD / bugcheck)'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Event ID 1001')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Windows crashed/i }));
+
+    expect(
+      screen.getByText('Recorded as: System crash (BSOD / bugcheck)'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Event ID 1001')).toBeInTheDocument();
+    expect(screen.getByText('BugCheck 0x0000007E')).toBeInTheDocument();
+  });
+
+  it('collapses details when clicked again', () => {
+    render(<CrashEventList events={EVENTS} />);
+    const header = screen.getByRole('button', { name: /Windows crashed/i });
+    fireEvent.click(header);
+    expect(screen.getByText('Event ID 1001')).toBeInTheDocument();
+    fireEvent.click(header);
+    expect(screen.queryByText('Event ID 1001')).not.toBeInTheDocument();
   });
 });

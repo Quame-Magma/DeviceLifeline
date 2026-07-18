@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Power } from 'lucide-react';
 import { useStartup } from '../hooks/use-startup';
 import { usePaginatedItems } from '../hooks/use-pagination';
@@ -12,6 +12,7 @@ import { StatRow, StatTile } from '../components/common/StatTile';
 import { StatusPill } from '../components/common/StatusPill';
 import type { StartupEntry } from '../types/device.types';
 import { PageShell } from '../components/layout/PageShell';
+import { confirmAction, toastInfo } from '../lib/feedback';
 
 type CategoryFilter =
   | 'all'
@@ -86,6 +87,14 @@ export function StartupCenter() {
     void load();
   }, [load]);
 
+  const seenMessage = useRef<string | null>(null);
+  useEffect(() => {
+    if (!message || error) return;
+    if (seenMessage.current === message) return;
+    seenMessage.current = message;
+    toastInfo(message);
+  }, [message, error]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return entries.filter((e) => {
@@ -102,14 +111,16 @@ export function StartupCenter() {
   const enabledCount = entries.filter((e) => e.enabled).length;
   const { pageItems, pagination } = usePaginatedItems(filtered);
 
-  const handleToggle = (entry: StartupEntry) => {
+  const handleToggle = async (entry: StartupEntry) => {
     const next = !entry.enabled;
-    const ok = window.confirm(
-      `${next ? 'Enable' : 'Disable'} "${entry.name}"?\n\n` +
-        `Location: ${entry.location}\n` +
-        `Scope: ${entry.scope}\n\n` +
-        `This is audited. Machine-wide changes may require elevation.`,
-    );
+    const ok = await confirmAction({
+      title: `${next ? 'Enable' : 'Disable'} “${entry.name}”?`,
+      description:
+        `Location: ${entry.location}\nScope: ${entry.scope}\n\n` +
+        `This change is audited. Machine-wide changes may require elevation.`,
+      confirmLabel: next ? 'Enable' : 'Disable',
+      tone: next ? 'primary' : 'warning',
+    });
     if (!ok) return;
     void setEnabled(entry.id, next);
   };
@@ -132,7 +143,6 @@ export function StartupCenter() {
       {error ? (
         <AlertBanner title="Startup unavailable" message={error} />
       ) : null}
-      {message && !error ? <AlertBanner title={message} tone="info" /> : null}
 
       <StatRow columns={3}>
         <StatTile label="Entries" value={entries.length} />

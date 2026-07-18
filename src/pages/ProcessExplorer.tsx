@@ -10,6 +10,7 @@ import { SegmentedControl } from '../components/common/SegmentedControl';
 import { Spinner } from '../components/common/Spinner';
 import { StatRow, StatTile } from '../components/common/StatTile';
 import { StatusPill } from '../components/common/StatusPill';
+import { confirmAction } from '../lib/feedback';
 import { formatBytes, formatPercent } from '../lib/format';
 import type {
   MemoryRegion,
@@ -170,26 +171,32 @@ export function ProcessExplorer() {
     void loadDeep(selected.pid);
   };
 
-  const handleEndProcess = () => {
+  const handleEndProcess = async () => {
     if (!selected) {
       return;
     }
-    const confirmed = window.confirm(
-      `End process "${selected.name}" (PID ${selected.pid})?\n\nProtected system processes may fail or be refused by the OS.\n\nContinue?`,
-    );
+    const confirmed = await confirmAction({
+      title: `End process “${selected.name}”?`,
+      description: `PID ${selected.pid}. Protected system processes may fail or be refused by the OS.`,
+      confirmLabel: 'End process',
+      tone: 'danger',
+    });
     if (!confirmed) {
       return;
     }
     void kill(selected.pid, false);
   };
 
-  const handleEndProcessTree = () => {
+  const handleEndProcessTree = async () => {
     if (!selected) {
       return;
     }
-    const confirmed = window.confirm(
-      `End process tree for "${selected.name}" (PID ${selected.pid})?\n\nThis ends the process and its descendant processes. Protected system processes may fail or be refused by the OS.\n\nContinue?`,
-    );
+    const confirmed = await confirmAction({
+      title: `End process tree for “${selected.name}”?`,
+      description: `PID ${selected.pid}. This ends the process and its descendants. Protected system processes may fail or be refused by the OS.`,
+      confirmLabel: 'End tree',
+      tone: 'danger',
+    });
     if (!confirmed) {
       return;
     }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Archive } from 'lucide-react';
 import { useVault } from '../hooks/use-vault';
 import { useBackup } from '../hooks/use-backup';
@@ -15,9 +15,15 @@ import {
   DriveSelect,
   pickDefaultDrive,
 } from '../components/storage/DriveSelect';
+import { PageShell } from '../components/layout/PageShell';
+import {
+  confirmAction,
+  promptText,
+  toastInfo,
+  toastSuccess,
+} from '../lib/feedback';
 import { formatBytes, formatTimestamp } from '../lib/format';
 import type { VaultEntry, VolumeShadow } from '../types/device.types';
-import { PageShell } from '../components/layout/PageShell';
 
 function kindLabel(kind: string): string {
   const labels: Record<string, string> = {
@@ -92,6 +98,14 @@ export function RecoveryVault() {
   const error = vaultError || backupError;
   const message = vaultMessage || backupMessage;
 
+  const seenMessage = useRef<string | null>(null);
+  useEffect(() => {
+    if (!message || error) return;
+    if (seenMessage.current === message) return;
+    seenMessage.current = message;
+    toastInfo(message);
+  }, [message, error]);
+
   const { pageItems: pageEntries, pagination: entryPages } =
     usePaginatedItems(entries);
   const { pageItems: pageShadows, pagination: shadowPages } =
@@ -99,12 +113,16 @@ export function RecoveryVault() {
   const { pageItems: pageSchedules, pagination: schedulePages } =
     usePaginatedItems(schedules);
 
-  const handleDirectoryImage = () => {
-    const path = window.prompt(
-      'Enter the full path of the directory to image:',
-    );
-    if (path && path.trim().length > 0) {
-      void createDirectoryImage(path.trim());
+  const handleDirectoryImage = async () => {
+    const path = await promptText({
+      title: 'Create directory image',
+      description: 'Enter the full path of the directory to image.',
+      label: 'Directory path',
+      placeholder: 'C:\\Users\\Public\\Documents',
+      confirmLabel: 'Create image',
+    });
+    if (path) {
+      void createDirectoryImage(path);
     }
   };
 
@@ -112,11 +130,15 @@ export function RecoveryVault() {
     if (!restoreShadowId || !restoreRel.trim() || !restoreDest.trim()) {
       return;
     }
-    const ok = window.confirm(
-      `Restore "${restoreRel}" from shadow into:\n${restoreDest}\n\nContinue?`,
-    );
+    const ok = await confirmAction({
+      title: 'Restore file from shadow?',
+      description: `Restore “${restoreRel}” into:\n${restoreDest}`,
+      confirmLabel: 'Restore',
+      tone: 'warning',
+    });
     if (!ok) return;
     await restore(restoreShadowId, restoreRel.trim(), restoreDest.trim(), true);
+    toastSuccess('Restore started', `Writing into ${restoreDest}`);
   };
 
   useEffect(() => {
@@ -168,7 +190,6 @@ export function RecoveryVault() {
       {error ? (
         <AlertBanner title="Vault / backup unavailable" message={error} />
       ) : null}
-      {message && !error ? <AlertBanner title={message} tone="info" /> : null}
 
       <StatRow columns={4}>
         <StatTile label="Vault entries" value={entries.length} />

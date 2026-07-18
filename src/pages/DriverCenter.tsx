@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Wrench } from 'lucide-react';
 import { useDrivers } from '../hooks/use-drivers';
 import { useElevation } from '../hooks/use-elevation';
@@ -10,9 +10,10 @@ import { Pagination } from '../components/common/Pagination';
 import { Spinner } from '../components/common/Spinner';
 import { StatRow, StatTile } from '../components/common/StatTile';
 import { StatusPill } from '../components/common/StatusPill';
+import { PageShell } from '../components/layout/PageShell';
+import { confirmAction, toastInfo } from '../lib/feedback';
 import { formatTimestamp } from '../lib/format';
 import type { DriverInfo } from '../types/device.types';
-import { PageShell } from '../components/layout/PageShell';
 
 function healthTone(score: number): 'success' | 'warning' | 'error' {
   if (score < 40) return 'error';
@@ -60,6 +61,14 @@ export function DriverCenter() {
     void refreshElev();
   }, [loadDrivers, refreshElev]);
 
+  const seenMessage = useRef<string | null>(null);
+  useEffect(() => {
+    if (!message || error) return;
+    if (seenMessage.current === message) return;
+    seenMessage.current = message;
+    toastInfo(message);
+  }, [message, error]);
+
   const sorted = useMemo(
     () => [...drivers].sort((a, b) => a.healthScore - b.healthScore),
     [drivers],
@@ -73,13 +82,17 @@ export function DriverCenter() {
   const elevated = elev?.elevated === true;
   const restoreOk = restorePoint?.status === 'completed';
 
-  const handleExecute = () => {
+  const handleExecute = async () => {
     if (!plan || !restoreOk || !allChecked || !elevated) return;
-    const ok = window.confirm(
-      `Remove ${plan.packages.length} display driver package(s)?\n\n` +
+    const ok = await confirmAction({
+      title: 'Remove GPU driver packages?',
+      description:
+        `About to remove ${plan.packages.length} display driver package(s).\n\n` +
         `This is destructive. A restore point was created.\n` +
-        `Reboot and install a clean vendor driver afterward.\n\nContinue?`,
-    );
+        `Reboot and install a clean vendor driver afterward.`,
+      confirmLabel: 'Remove packages',
+      tone: 'danger',
+    });
     if (!ok) return;
     void executeClean(true);
   };
@@ -102,7 +115,6 @@ export function DriverCenter() {
       {error ? (
         <AlertBanner title="Drivers / clean unavailable" message={error} />
       ) : null}
-      {message && !error ? <AlertBanner title={message} tone="info" /> : null}
 
       <StatRow columns={3}>
         <StatTile label="Drivers" value={drivers.length} />

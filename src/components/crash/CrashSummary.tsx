@@ -1,15 +1,26 @@
 import type { CrashEvent } from '../../types/device.types';
 import { categoryLabel } from './display';
 
+/** Severity filter for the Crashes page event list. */
+export type CrashSeverityFilter = 'all' | 'critical' | 'error' | 'warning';
+
 interface CrashSummaryProps {
   events: CrashEvent[];
+  /** Active filter chip. Defaults to all. */
+  filter?: CrashSeverityFilter;
+  /** Called when the user clicks a severity chip. */
+  onFilterChange?: (filter: CrashSeverityFilter) => void;
 }
 
 /**
- * Compact tally of crash events by severity, plus a total. Rendered above the
- * event list to give an at-a-glance stability picture.
+ * Compact tally of crash events by severity. Chips are clickable filters
+ * for the event list below.
  */
-export function CrashSummary({ events }: CrashSummaryProps) {
+export function CrashSummary({
+  events,
+  filter = 'all',
+  onFilterChange,
+}: CrashSummaryProps) {
   const countBy = (severity: string) =>
     events.filter((event) => event.severity === severity).length;
   const critical = countBy('critical');
@@ -47,45 +58,90 @@ export function CrashSummary({ events }: CrashSummaryProps) {
         ? 'Look for repeated app names or modules before changing system settings.'
         : 'Monitor for repeats; warnings are usually less urgent unless they cluster.';
 
-  const chips: { key: string; label: string; className: string }[] = [
+  const chips: {
+    key: CrashSeverityFilter;
+    label: string;
+    idleClass: string;
+    activeClass: string;
+  }[] = [
     {
-      key: 'total',
+      key: 'all',
       label: `${events.length} total`,
-      className: 'bg-surface-elevated text-text-secondary border-hairline',
+      idleClass: 'bg-surface-elevated text-text-secondary border-hairline',
+      activeClass:
+        'bg-surface-card text-text-primary border-hairline-strong ring-2 ring-white/15',
     },
     {
       key: 'critical',
       label: `${critical} critical`,
-      className: 'bg-status-error-bg text-status-error border-status-error/30',
+      idleClass: 'bg-status-error-bg text-status-error border-status-error/30',
+      activeClass:
+        'bg-status-error-bg text-status-error border-status-error ring-2 ring-status-error/40',
     },
     {
       key: 'error',
       label: `${errors} error`,
-      className:
+      idleClass:
         'bg-status-warning-bg text-status-warning border-status-warning/30',
+      activeClass:
+        'bg-status-warning-bg text-status-warning border-status-warning ring-2 ring-status-warning/40',
     },
     {
       key: 'warning',
       label: `${warnings} warning`,
-      className: 'bg-surface-elevated text-text-secondary border-hairline',
+      idleClass: 'bg-surface-elevated text-text-secondary border-hairline',
+      activeClass:
+        'bg-surface-card text-text-primary border-hairline-strong ring-2 ring-white/15',
     },
   ];
 
+  const interactive = typeof onFilterChange === 'function';
+
   return (
     <div className="panel p-4">
-      <div className="flex flex-wrap items-center gap-2">
-        {chips.map((chip) => (
-          <span
-            key={chip.key}
-            data-testid={`crash-summary-${chip.key}`}
-            className={[
-              'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium',
-              chip.className,
-            ].join(' ')}
-          >
-            {chip.label}
-          </span>
-        ))}
+      <div
+        className="flex flex-wrap items-center gap-2"
+        role={interactive ? 'tablist' : undefined}
+        aria-label={interactive ? 'Filter crash events by severity' : undefined}
+      >
+        {chips.map((chip) => {
+          const active = filter === chip.key;
+          const className = [
+            'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+            active ? chip.activeClass : chip.idleClass,
+            interactive
+              ? 'cursor-pointer hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25'
+              : '',
+          ]
+            .filter(Boolean)
+            .join(' ');
+
+          if (!interactive) {
+            return (
+              <span
+                key={chip.key}
+                data-testid={`crash-summary-${chip.key}`}
+                className={className}
+              >
+                {chip.label}
+              </span>
+            );
+          }
+
+          return (
+            <button
+              key={chip.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              data-testid={`crash-summary-${chip.key}`}
+              className={className}
+              onClick={() => onFilterChange(chip.key)}
+            >
+              {chip.label}
+            </button>
+          );
+        })}
       </div>
       <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <div>

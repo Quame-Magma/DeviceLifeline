@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Package, RefreshCcw } from 'lucide-react';
 import { useDeviceDna } from '../hooks/use-device-dna';
 import { useUpdates } from '../hooks/use-updates';
@@ -13,9 +13,10 @@ import { Spinner } from '../components/common/Spinner';
 import { StatRow, StatTile } from '../components/common/StatTile';
 import { StatusPill } from '../components/common/StatusPill';
 import { SoftwareInventoryTable } from '../components/device/SoftwareInventoryTable';
+import { PageShell } from '../components/layout/PageShell';
+import { confirmAction, toastInfo } from '../lib/feedback';
 import { formatBytes, formatTimestamp } from '../lib/format';
 import type { SoftwareUpdate } from '../types/device.types';
-import { PageShell } from '../components/layout/PageShell';
 
 type Tab = 'inventory' | 'updates' | 'uninstall';
 
@@ -70,6 +71,28 @@ export function SoftwareLifecycle() {
     if (tab === 'uninstall') void loadApps();
   }, [tab, loadApps]);
 
+  const seenUninstallMsg = useRef<string | null>(null);
+  useEffect(() => {
+    if (!uninstallMessage || uninstallError) return;
+    if (seenUninstallMsg.current === uninstallMessage) return;
+    seenUninstallMsg.current = uninstallMessage;
+    toastInfo(uninstallMessage);
+  }, [uninstallMessage, uninstallError]);
+
+  const seenApply = useRef<string | null>(null);
+  useEffect(() => {
+    if (!lastResult) return;
+    const key = `${lastResult.succeeded.length}-${lastResult.failed.length}-${lastResult.skipped.length}`;
+    if (seenApply.current === key) return;
+    seenApply.current = key;
+    toastInfo(
+      `Applied: ${lastResult.succeeded.length} · Failed: ${lastResult.failed.length} · Skipped: ${lastResult.skipped.length}`,
+      lastResult.failed[0]
+        ? `${lastResult.failed[0].name}: ${lastResult.failed[0].message}`
+        : undefined,
+    );
+  }, [lastResult]);
+
   const snapshot = snapshots.find((s) => s.id === selectedSnapshotId);
   const withVersion = inventory.filter((item) => item.version).length;
   const available = useMemo(
@@ -114,9 +137,13 @@ export function SoftwareLifecycle() {
   const handleApply = async () => {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
-    const ok = window.confirm(
-      `Apply ${ids.length} update(s)?\n\nThis runs winget upgrade for each selected package. Continue?`,
-    );
+    const ok = await confirmAction({
+      title: `Apply ${ids.length} update(s)?`,
+      description:
+        'This runs winget upgrade for each selected package. The machine may need a restart after some updates.',
+      confirmLabel: 'Apply updates',
+      tone: 'primary',
+    });
     if (!ok) return;
     await apply(ids, true);
     setSelected(new Set());
@@ -124,20 +151,27 @@ export function SoftwareLifecycle() {
 
   const error = dnaError || updatesError || uninstallError;
 
-  const handleUninstall = (appId: string, name: string) => {
-    const ok = window.confirm(
-      `Uninstall "${name}"?\n\nRuns the publisher uninstall string (quiet if available), then scans leftovers. Continue?`,
-    );
+  const handleUninstall = async (appId: string, name: string) => {
+    const ok = await confirmAction({
+      title: `Uninstall “${name}”?`,
+      description:
+        'Runs the publisher uninstall string (quiet if available), then scans leftovers.',
+      confirmLabel: 'Uninstall',
+      tone: 'danger',
+    });
     if (!ok) return;
     void uninstall(appId);
   };
 
-  const handleRemoveLeftovers = () => {
+  const handleRemoveLeftovers = async () => {
     if (!leftoverScan || leftoverScan.leftovers.length === 0) return;
     const paths = leftoverScan.leftovers.map((l) => l.path);
-    const ok = window.confirm(
-      `Remove ${paths.length} leftover path(s) (~${formatBytes(leftoverScan.totalLeftoverBytes)})?\n\nOnly Program Files / AppData matches are allowed. Continue?`,
-    );
+    const ok = await confirmAction({
+      title: `Remove ${paths.length} leftover path(s)?`,
+      description: `About ${formatBytes(leftoverScan.totalLeftoverBytes)}. Only Program Files / AppData matches are allowed.`,
+      confirmLabel: 'Remove leftovers',
+      tone: 'danger',
+    });
     if (!ok) return;
     void removeLeftovers(paths);
   };
@@ -223,21 +257,6 @@ export function SoftwareLifecycle() {
     >
       {error ? (
         <AlertBanner title="Software unavailable" message={error} />
-      ) : null}
-      {uninstallMessage && !uninstallError ? (
-        <AlertBanner title={uninstallMessage} tone="info" />
-      ) : null}
-
-      {lastResult ? (
-        <AlertBanner
-          tone="info"
-          title={`Applied: ${lastResult.succeeded.length} · Failed: ${lastResult.failed.length} · Skipped: ${lastResult.skipped.length}`}
-          message={
-            lastResult.failed[0]
-              ? `${lastResult.failed[0].name}: ${lastResult.failed[0].message}`
-              : undefined
-          }
-        />
       ) : null}
 
       {tab === 'inventory' ? (

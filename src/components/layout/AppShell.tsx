@@ -2,11 +2,9 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Bell, Search, Settings } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import type { View } from './Sidebar';
-import {
-  CommandPalette,
-  useCommandPaletteShortcut,
-} from './CommandPalette';
+import { CommandPalette, useCommandPaletteShortcut } from './CommandPalette';
 import { Keycap } from '../common/Keycap';
+import { FeedbackHost } from '../feedback/FeedbackHost';
 import {
   loadPreferences,
   PREFERENCES_CHANGED_EVENT,
@@ -188,6 +186,7 @@ export function AppShell({ activeView, onNavigate, children }: AppShellProps) {
         onClose={closePalette}
         onNavigate={onNavigate}
       />
+      <FeedbackHost />
     </div>
   );
 }

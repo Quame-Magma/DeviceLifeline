@@ -15,9 +15,10 @@ import {
   DriveSelect,
   pickDefaultDrive,
 } from '../components/storage/DriveSelect';
+import { PageShell } from '../components/layout/PageShell';
+import { confirmAction } from '../lib/feedback';
 import { formatBytes, formatTimestamp } from '../lib/format';
 import type { StorageFolderNode, StorageItem } from '../types/device.types';
-import { PageShell } from '../components/layout/PageShell';
 
 function categoryLabel(category: string): string {
   const labels: Record<string, string> = {
@@ -102,10 +103,14 @@ export function StorageCenter() {
     void previewCleanup();
   };
 
-  const handleExecuteCleanup = () => {
-    const confirmed = window.confirm(
-      'Execute safe cleanup?\n\nThis permanently deletes temporary and cache files only. Application data, documents, and downloads are not touched.\n\nContinue?',
-    );
+  const handleExecuteCleanup = async () => {
+    const confirmed = await confirmAction({
+      title: 'Execute safe cleanup?',
+      description:
+        'This permanently deletes temporary and cache files only. Application data, documents, and downloads are not touched.',
+      confirmLabel: 'Execute cleanup',
+      tone: 'warning',
+    });
     if (!confirmed) {
       return;
     }

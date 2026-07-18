@@ -1,20 +1,38 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useCrash } from '../hooks/use-crash';
 import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { Spinner } from '../components/common/Spinner';
-import { CrashSummary } from '../components/crash/CrashSummary';
+import {
+  CrashSummary,
+  type CrashSeverityFilter,
+} from '../components/crash/CrashSummary';
 import { CrashEventList } from '../components/crash/CrashEventList';
 import { PageShell } from '../components/layout/PageShell';
 
 export function CrashIntelligence() {
   const { events, scanning, loading, error, loadCrashEvents, scanCrashEvents } =
     useCrash();
+  const [filter, setFilter] = useState<CrashSeverityFilter>('all');
 
   useEffect(() => {
     void loadCrashEvents();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const filteredEvents = useMemo(() => {
+    if (filter === 'all') return events;
+    return events.filter((e) => e.severity === filter);
+  }, [events, filter]);
+
+  const filterLabel =
+    filter === 'all'
+      ? null
+      : filter === 'critical'
+        ? 'critical'
+        : filter === 'error'
+          ? 'error'
+          : 'warning';
 
   return (
     <PageShell
@@ -45,18 +63,24 @@ export function CrashIntelligence() {
         </div>
       ) : (
         <>
-          <CrashSummary events={events} />
+          <CrashSummary
+            events={events}
+            filter={filter}
+            onFilterChange={setFilter}
+          />
           <section className="panel">
             <div className="panel-header">
               <p className="panel-title">Events</p>
               <p className="panel-subtitle">
                 {events.length === 0
                   ? 'Run a scan to read the Windows event log'
-                  : `${events.length} recorded`}
+                  : filterLabel
+                    ? `Showing ${filteredEvents.length} of ${events.length} · ${filterLabel}`
+                    : `${events.length} recorded · click a chip above to filter`}
               </p>
             </div>
             <div className="panel-body">
-              <CrashEventList events={events} />
+              <CrashEventList events={filteredEvents} />
             </div>
           </section>
         </>
