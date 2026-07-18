@@ -33,14 +33,18 @@ pub fn sample_hardware(device_id: &str) -> Result<HardwareSample, CoreError> {
         }
     };
 
-    let (mut cpu_temp_c, mut gpu_temp_c, component_notes) = sample_temps();
-    let (gpu_name, mut gpu_usage_pct, gpu_vram_used, gpu_vram_total) = sample_gpu();
+    let (cpu_temp_c, gpu_temp_c, component_notes) = sample_temps();
+    let (gpu_name, gpu_usage_pct, gpu_vram_used, gpu_vram_total) = sample_gpu();
     let smart = sample_smart()?;
     let mut sensors = component_notes_to_sensors(&component_notes);
 
     // HWiNFO-class Windows sensor pack (thermal zones, GPU load, fans).
+    // Re-bind temps/usage only on Windows so non-Windows builds stay free of unused_mut.
     #[cfg(windows)]
-    {
+    let (cpu_temp_c, gpu_temp_c, gpu_usage_pct) = {
+        let mut cpu_temp_c = cpu_temp_c;
+        let mut gpu_temp_c = gpu_temp_c;
+        let mut gpu_usage_pct = gpu_usage_pct;
         let pack = windows_sensor_pack();
         if cpu_temp_c.is_none() {
             cpu_temp_c = pack.cpu_temp_c;
@@ -52,7 +56,8 @@ pub fn sample_hardware(device_id: &str) -> Result<HardwareSample, CoreError> {
             gpu_usage_pct = pack.gpu_usage_pct;
         }
         sensors.extend(pack.sensors);
-    }
+        (cpu_temp_c, gpu_temp_c, gpu_usage_pct)
+    };
 
     // Promote disk temps into the sensor bag for the Sensors UI.
     for d in &smart {
@@ -722,6 +727,7 @@ $out | ConvertTo-Json -Compress -Depth 6
         .collect()
 }
 
+#[cfg(windows)]
 fn parse_smart_attrs(v: Option<&serde_json::Value>) -> Vec<SmartAttribute> {
     let Some(v) = v else {
         return Vec::new();

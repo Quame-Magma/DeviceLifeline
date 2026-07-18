@@ -534,6 +534,7 @@ fn enum_display_driver_packages(vendor: &str) -> Vec<String> {
     }
 }
 
+#[cfg(windows)]
 fn parse_pnputil_display_packages(text: &str, vendor: &str) -> Vec<String> {
     let mut packages = Vec::new();
     let mut current_pub: Option<String> = None;
@@ -867,6 +868,7 @@ mod tests {
         assert!(!is_oem_package_name("../evil.inf"));
     }
 
+    #[cfg(windows)]
     #[test]
     fn parse_pnputil_sample() {
         let sample = r#"

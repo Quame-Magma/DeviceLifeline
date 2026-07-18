@@ -274,7 +274,7 @@ fn create_shadow_os(volume: &str) -> (String, Option<String>, String, String) {
     }
     #[cfg(not(windows))]
     {
-        mock_shadow(volume, Some("Non-Windows lab shadow".into()))
+        mock_shadow(volume, Some("Non-Windows lab shadow"))
     }
 }
 

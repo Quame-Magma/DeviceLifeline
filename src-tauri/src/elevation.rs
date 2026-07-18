@@ -42,13 +42,9 @@ pub fn detach_console() {
 /// - `DEVICELIFELINE_SKIP_ELEVATION` is set
 /// - compiled with debug assertions (`tauri dev` / `cargo run` debug)
 pub fn ensure_elevated() {
-    if std::env::var_os(SKIP_ELEVATION_ENV).is_some() {
-        return;
-    }
-
-    // Never auto-elevate under `tauri dev`: the elevated child loses Vite/Tauri
-    // env and shows a blank WebView.
-    if cfg!(debug_assertions) {
+    // Skip when requested (tests/CI) or under debug/`tauri dev` (elevated child
+    // would lose Vite/Tauri env and show a blank WebView).
+    if std::env::var_os(SKIP_ELEVATION_ENV).is_some() || cfg!(debug_assertions) {
         return;
     }
 

@@ -5,9 +5,10 @@
 //! gracefully when access is denied.
 
 use crate::error::CoreError;
+#[cfg(windows)]
+use crate::models::ProcessInfo;
 use crate::models::{
-    MemoryRegion, ProcessDeepDetail, ProcessHandle, ProcessInfo, ProcessTokenInfo, TokenPrivilege,
-    WaitChainNode,
+    MemoryRegion, ProcessDeepDetail, ProcessHandle, ProcessTokenInfo, TokenPrivilege, WaitChainNode,
 };
 use crate::process::{self, enrich};
 

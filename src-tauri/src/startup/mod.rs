@@ -11,9 +11,9 @@ use crate::models::{StartupEntry, StartupToggleResult};
 
 /// Lists live Autoruns-class startup entries across full category set.
 pub fn list_startup_entries() -> Result<Vec<StartupEntry>, CoreError> {
-    let mut entries = Vec::new();
     #[cfg(windows)]
-    {
+    let mut entries = {
+        let mut entries = Vec::new();
         collect_run_keys(&mut entries);
         collect_startup_folders(&mut entries);
         collect_tasks(&mut entries);
@@ -22,11 +22,10 @@ pub fn list_startup_entries() -> Result<Vec<StartupEntry>, CoreError> {
         collect_registry_value_entries(&mut entries);
         collect_bho_and_shell(&mut entries);
         collect_wmi_persistence(&mut entries);
-    }
+        entries
+    };
     #[cfg(not(windows))]
-    {
-        entries = mock_entries();
-    }
+    let mut entries = mock_entries();
     // Dedup by id
     let mut seen = std::collections::HashSet::new();
     entries.retain(|e| seen.insert(e.id.clone()));
