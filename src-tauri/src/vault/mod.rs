@@ -141,7 +141,7 @@ fn create_system_restore_point(description: &str) -> (String, String) {
             "$ErrorActionPreference='Stop'; try {{ Checkpoint-Computer -Description '{}' -RestorePointType MODIFY_SETTINGS; 'OK' }} catch {{ $_.Exception.Message }}",
             description.replace('\'', "''")
         );
-        match std::process::Command::new("powershell")
+        match crate::process_win::silent_command("powershell")
             .args(["-NoProfile", "-NonInteractive", "-Command", &script])
             .output()
         {

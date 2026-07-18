@@ -180,7 +180,7 @@ fn run_uninstall_command(cmd: &str) -> Result<String, String> {
         return Err("empty uninstall command".into());
     }
     // Prefer cmd /C for registry-style commands with quotes and args.
-    let output = std::process::Command::new("cmd")
+    let output = crate::process_win::silent_command("cmd")
         .args(["/C", cmd])
         .output()
         .map_err(|e| format!("spawn: {e}"))?;

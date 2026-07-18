@@ -342,7 +342,7 @@ try {
 } catch {}
 $rows | ConvertTo-Json -Compress
 "#;
-    let output = std::process::Command::new("powershell")
+    let output = crate::process_win::silent_command("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", script])
         .output();
     let Ok(output) = output else {

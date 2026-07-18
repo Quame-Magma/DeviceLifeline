@@ -87,7 +87,7 @@ $cim = Get-CimInstance Win32_Process -Filter "ProcessId={pid}" -ErrorAction Sile
         pid = pid
     );
 
-    let output = std::process::Command::new("powershell")
+    let output = crate::process_win::silent_command("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", &script])
         .output();
 
@@ -158,7 +158,7 @@ Get-CimInstance Win32_Service | Select-Object -First 400 Name, DisplayName, Stat
     }
   } | ConvertTo-Json -Compress -Depth 4
 "#;
-    let output = std::process::Command::new("powershell")
+    let output = crate::process_win::silent_command("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", script])
         .output();
     let Ok(output) = output else {

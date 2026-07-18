@@ -410,7 +410,7 @@ fn collect_dev_tools(items: &mut Vec<RawConfig>) {
 
 #[cfg(windows)]
 fn first_where_result(command: &str) -> Option<String> {
-    let output = std::process::Command::new("where.exe")
+    let output = crate::process_win::silent_command("where.exe")
         .arg(command)
         .output()
         .ok()?;
@@ -469,7 +469,7 @@ fn format_gib(bytes: u64) -> String {
 /// Appends the active Windows power plan.
 #[cfg(windows)]
 fn collect_power_settings(items: &mut Vec<RawConfig>) {
-    let output = match std::process::Command::new("powercfg")
+    let output = match crate::process_win::silent_command("powercfg")
         .arg("/GETACTIVESCHEME")
         .output()
     {
@@ -520,7 +520,7 @@ struct NetAdapter {
 /// Appends active network adapters.
 #[cfg(windows)]
 fn collect_network_adapters(items: &mut Vec<RawConfig>) {
-    let output = match std::process::Command::new("powershell")
+    let output = match crate::process_win::silent_command("powershell")
         .args([
             "-NoProfile",
             "-ExecutionPolicy",

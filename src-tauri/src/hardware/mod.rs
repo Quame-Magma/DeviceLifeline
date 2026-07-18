@@ -410,7 +410,7 @@ try {
         gpu_usage_pct: None,
         sensors: Vec::new(),
     };
-    let output = std::process::Command::new("powershell")
+    let output = crate::process_win::silent_command("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", script])
         .output();
     let Ok(output) = output else {
@@ -532,7 +532,7 @@ if (-not $g -and $null -eq $usage) { '{}' | ConvertTo-Json; exit }
   driver = if ($g) { $g.DriverVersion } else { $null }
 } | ConvertTo-Json -Compress
 "#;
-    let output = std::process::Command::new("powershell")
+    let output = crate::process_win::silent_command("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", script])
         .output()
         .ok()?;
@@ -670,7 +670,7 @@ if ($smartctl) {
 }
 $out | ConvertTo-Json -Compress -Depth 6
 "#;
-    let output = std::process::Command::new("powershell")
+    let output = crate::process_win::silent_command("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", script])
         .output();
     let Ok(output) = output else {

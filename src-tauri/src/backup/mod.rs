@@ -6,7 +6,6 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use rusqlite::Connection;
 use time::{Duration, OffsetDateTime};
@@ -241,7 +240,7 @@ fn create_shadow_os(volume: &str) -> (String, Option<String>, String, String) {
              else {{ $id=$r.ShadowID; $obj=(Get-CimInstance Win32_ShadowCopy | Where-Object {{$_.ID -eq $id}} | Select-Object -First 1).DeviceObject; \
              \"OK|$id|$obj\" }}"
         );
-        if let Ok(output) = Command::new("powershell")
+        if let Ok(output) = crate::process_win::silent_command("powershell")
             .args(["-NoProfile", "-NonInteractive", "-Command", &script])
             .output()
         {
@@ -293,7 +292,7 @@ fn list_shadows_os() -> Vec<VolumeShadow> {
     #[cfg(windows)]
     {
         let script = "Get-CimInstance Win32_ShadowCopy -ErrorAction SilentlyContinue | ForEach-Object { \"$($_.ID)|$($_.VolumeName)|$($_.DeviceObject)|$($_.InstallDate)\" }";
-        if let Ok(output) = Command::new("powershell")
+        if let Ok(output) = crate::process_win::silent_command("powershell")
             .args(["-NoProfile", "-NonInteractive", "-Command", script])
             .output()
         {

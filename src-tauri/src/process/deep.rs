@@ -432,7 +432,7 @@ try {{
         pid = pid
     );
 
-    let output = std::process::Command::new("powershell")
+    let output = crate::process_win::silent_command("powershell")
         .args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", &script])
         .output();
 

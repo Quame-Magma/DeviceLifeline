@@ -5,8 +5,6 @@
 //! `#[cfg(windows)]`; on other platforms the module compiles empty and
 //! [`default_installer`](super::default_installer) uses the mock instead.
 
-#[cfg(windows)]
-use std::process::Command;
 
 #[cfg(windows)]
 use super::Installer;
@@ -42,7 +40,7 @@ impl Default for WinGetInstaller {
 #[cfg(windows)]
 impl Installer for WinGetInstaller {
     fn install(&self, step: &RestorePlanStep) -> StepOutcome {
-        let mut command = Command::new("winget");
+        let mut command = crate::process_win::silent_command("winget");
         command.arg("install");
 
         // Prefer an explicit package id when known; otherwise match by name.

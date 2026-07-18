@@ -272,9 +272,9 @@ fn mock_updates(device_id: &str, scanned_at: &str) -> Vec<SoftwareUpdate> {
 
 #[cfg(windows)]
 fn winget_upgrade_list(device_id: &str, scanned_at: &str) -> Vec<SoftwareUpdate> {
-    use std::process::Command;
+    
 
-    let output = Command::new("winget")
+    let output = crate::process_win::silent_command("winget")
         .args([
             "upgrade",
             "--include-unknown",
@@ -387,8 +387,8 @@ fn split_winget_cols(line: &str) -> Vec<String> {
 fn install_one(update: &SoftwareUpdate) -> (bool, String) {
     #[cfg(windows)]
     {
-        use std::process::Command;
-        let mut cmd = Command::new("winget");
+        
+        let mut cmd = crate::process_win::silent_command("winget");
         cmd.arg("upgrade");
         if let Some(id) = &update.winget_id {
             cmd.arg("--id").arg(id).arg("-e");

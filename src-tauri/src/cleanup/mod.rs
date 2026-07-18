@@ -255,7 +255,7 @@ fn delete_path_robust(path: &str, is_directory: bool) -> Result<(), String> {
     // Clear read-only and retry (common for thumbcache / temp).
     #[cfg(windows)]
     {
-        let _ = std::process::Command::new("attrib")
+        let _ = crate::process_win::silent_command("attrib")
             .args(["-R", path, "/S", "/D"])
             .output();
     }
@@ -844,7 +844,7 @@ fn risk_rank(risk: &str) -> u8 {
 fn run_special_recycle_bin() -> Result<String, String> {
     #[cfg(windows)]
     {
-        let output = std::process::Command::new("powershell")
+        let output = crate::process_win::silent_command("powershell")
             .args([
                 "-NoProfile",
                 "-NonInteractive",
@@ -868,7 +868,7 @@ fn run_special_recycle_bin() -> Result<String, String> {
 fn run_special_clipboard() -> Result<String, String> {
     #[cfg(windows)]
     {
-        let output = std::process::Command::new("powershell")
+        let output = crate::process_win::silent_command("powershell")
             .args([
                 "-NoProfile",
                 "-NonInteractive",
@@ -881,7 +881,7 @@ fn run_special_clipboard() -> Result<String, String> {
             Ok("Clipboard cleared".into())
         } else {
             // Fallback via cmd clip
-            let _ = std::process::Command::new("cmd")
+            let _ = crate::process_win::silent_command("cmd")
                 .args(["/C", "echo off | clip"])
                 .output();
             Ok("Clipboard cleared (fallback)".into())
@@ -896,7 +896,7 @@ fn run_special_clipboard() -> Result<String, String> {
 fn run_special_dns_flush() -> Result<String, String> {
     #[cfg(windows)]
     {
-        let output = std::process::Command::new("ipconfig")
+        let output = crate::process_win::silent_command("ipconfig")
             .args(["/flushdns"])
             .output()
             .map_err(|e| format!("ipconfig: {e}"))?;

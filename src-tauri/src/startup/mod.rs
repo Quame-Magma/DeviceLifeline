@@ -233,7 +233,7 @@ fn toggle_task(entry: &StartupEntry, enabled: bool) -> Result<String, String> {
         .as_deref()
         .filter(|s| !s.is_empty())
         .unwrap_or(&entry.name);
-    let output = std::process::Command::new("schtasks")
+    let output = crate::process_win::silent_command("schtasks")
         .args(["/Change", "/TN", task_name, flag])
         .output()
         .map_err(|e| format!("schtasks: {e}"))?;
@@ -256,7 +256,7 @@ fn toggle_service(entry: &StartupEntry, enabled: bool) -> Result<String, String>
         ));
     }
     let start_type = if enabled { "demand" } else { "disabled" };
-    let output = std::process::Command::new("sc")
+    let output = crate::process_win::silent_command("sc")
         .args(["config", &entry.name, &format!("start={start_type}")])
         .output()
         .map_err(|e| format!("sc: {e}"))?;
@@ -490,7 +490,7 @@ Get-ScheduledTask | Where-Object { $_.TaskName } | Select-Object -First 800 | Fo
   }
 } | ConvertTo-Json -Compress
 "#;
-    let output = std::process::Command::new("powershell")
+    let output = crate::process_win::silent_command("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", script])
         .output();
     let Ok(output) = output else {
@@ -558,7 +558,7 @@ Get-CimInstance Win32_Service | Select-Object -First 500 Name, DisplayName, Star
   }
 } | ConvertTo-Json -Compress
 "#;
-    let output = std::process::Command::new("powershell")
+    let output = crate::process_win::silent_command("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", script])
         .output();
     let Ok(output) = output else {
@@ -1011,7 +1011,7 @@ try {
 } catch {}
 $items | ConvertTo-Json -Compress
 "#;
-    let output = std::process::Command::new("powershell")
+    let output = crate::process_win::silent_command("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", script])
         .output();
     let Ok(output) = output else {

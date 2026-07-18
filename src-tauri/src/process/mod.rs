@@ -201,7 +201,7 @@ fn terminate_pid(pid: u32, name: &str, tree: bool) -> KillOutcome {
         if tree {
             args.push("/T".to_string());
         }
-        let output = std::process::Command::new("taskkill").args(&args).output();
+        let output = crate::process_win::silent_command("taskkill").args(&args).output();
         match output {
             Ok(out) if out.status.success() => KillOutcome {
                 success: true,
@@ -231,7 +231,7 @@ fn terminate_pid(pid: u32, name: &str, tree: bool) -> KillOutcome {
     {
         let _ = tree;
         use std::io::ErrorKind;
-        match std::process::Command::new("kill")
+        match crate::process_win::silent_command("kill")
             .args(["-TERM", &pid.to_string()])
             .output()
         {

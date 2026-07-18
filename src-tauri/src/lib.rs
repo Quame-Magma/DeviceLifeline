@@ -21,6 +21,7 @@ pub mod installer;
 pub mod intelligence;
 pub mod models;
 pub mod process;
+pub mod process_win;
 pub mod restore;
 pub mod search;
 pub mod security;

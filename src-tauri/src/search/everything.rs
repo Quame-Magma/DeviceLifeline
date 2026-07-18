@@ -24,13 +24,8 @@ pub fn everything_search(query: &str, limit: usize) -> Option<Vec<SearchHit>> {
 
     // es.exe: https://www.voidtools.com/support/everything/command_line_interface/
     // -n max results, -path print full path
-    let output = Command::new(&es)
-        .args([
-            "-n",
-            &limit.to_string(),
-            "-path",
-            q,
-        ])
+    let output = crate::process_win::silent_command(&es)
+        .args(["-n", &limit.to_string(), "-path", q])
         .output()
         .ok()?;
 
@@ -62,7 +57,10 @@ pub fn everything_search(query: &str, limit: usize) -> Option<Vec<SearchHit>> {
 
 fn find_es_binary() -> Option<PathBuf> {
     // PATH first.
-    if let Ok(output) = Command::new("where").arg("es.exe").output() {
+    if let Ok(output) = crate::process_win::silent_command("where")
+        .arg("es.exe")
+        .output()
+    {
         if output.status.success() {
             let text = String::from_utf8_lossy(&output.stdout);
             if let Some(line) = text.lines().next() {

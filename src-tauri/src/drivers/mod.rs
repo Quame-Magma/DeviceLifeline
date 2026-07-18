@@ -131,7 +131,7 @@ Get-CimInstance Win32_PnPSignedDriver |
     }
   } | ConvertTo-Json -Compress -Depth 4
 "#;
-    let output = std::process::Command::new("powershell")
+    let output = crate::process_win::silent_command("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", script])
         .output();
     let Ok(output) = output else {
@@ -506,7 +506,7 @@ fn is_oem_package_name(name: &str) -> bool {
 fn enum_display_driver_packages(vendor: &str) -> Vec<String> {
     #[cfg(windows)]
     {
-        let output = std::process::Command::new("pnputil")
+        let output = crate::process_win::silent_command("pnputil")
             .args(["/enum-drivers"])
             .output();
         let Ok(output) = output else {
@@ -604,7 +604,7 @@ fn parse_pnputil_display_packages(text: &str, vendor: &str) -> Vec<String> {
 fn pnputil_delete_driver(oem_inf: &str) -> Result<String, String> {
     #[cfg(windows)]
     {
-        let output = std::process::Command::new("pnputil")
+        let output = crate::process_win::silent_command("pnputil")
             .args(["/delete-driver", oem_inf, "/uninstall", "/force"])
             .output()
             .map_err(|e| format!("pnputil spawn: {e}"))?;
@@ -650,7 +650,7 @@ fn pnputil_remove_device(instance_id: &str) -> Result<(), String> {
         {
             return Err("instance id not in allowlisted display form".into());
         }
-        let output = std::process::Command::new("pnputil")
+        let output = crate::process_win::silent_command("pnputil")
             .args(["/remove-device", id])
             .output()
             .map_err(|e| format!("pnputil: {e}"))?;
@@ -672,7 +672,7 @@ fn pnputil_remove_device(instance_id: &str) -> Result<(), String> {
 }
 
 fn stop_service(name: &str) -> Result<(), String> {
-    let output = std::process::Command::new("sc")
+    let output = crate::process_win::silent_command("sc")
         .args(["stop", name])
         .output()
         .map_err(|e| format!("sc: {e}"))?;
@@ -720,7 +720,7 @@ Get-PnpDevice -Class Display -EA SilentlyContinue | ForEach-Object {
   }
 } | ConvertTo-Json -Compress
 "#;
-        let output = std::process::Command::new("powershell")
+        let output = crate::process_win::silent_command("powershell")
             .args(["-NoProfile", "-NonInteractive", "-Command", script])
             .output();
         let Ok(output) = output else {

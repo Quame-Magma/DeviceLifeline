@@ -5,7 +5,6 @@
 //! faster than user-folder-only indexing.
 
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use rusqlite::Connection;
 
@@ -99,7 +98,7 @@ fn read_usn_paths(volume: &str, max: usize) -> Option<Vec<String>> {
     // fsutil usn enumdata requires elevation on many systems; try readjournal first.
     // Prefer PowerShell DeviceIoControl path via fsutil:
     //   fsutil usn readjournal C: wait=0
-    let output = Command::new("fsutil")
+    let output = crate::process_win::silent_command("fsutil")
         .args(["usn", "readjournal", volume, "wait=0"])
         .output()
         .ok()?;
@@ -142,7 +141,7 @@ fn read_usn_paths(volume: &str, max: usize) -> Option<Vec<String>> {
 #[cfg(windows)]
 fn read_usn_enumdata(volume: &str, max: usize) -> Option<Vec<String>> {
     // fsutil usn enumdata 1 0 1 C:
-    let output = Command::new("fsutil")
+    let output = crate::process_win::silent_command("fsutil")
         .args(["usn", "enumdata", "1", "0", "1", volume])
         .output()
         .ok()?;

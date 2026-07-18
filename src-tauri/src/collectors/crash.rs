@@ -7,8 +7,6 @@
 //! always compiled, so non-Windows builds and unit tests have a deterministic
 //! source.
 
-#[cfg(windows)]
-use std::process::Command;
 
 use crate::error::CollectorError;
 use crate::models::RawCrashEvent;
@@ -47,7 +45,7 @@ impl Default for WindowsCrashCollector {
 #[cfg(windows)]
 impl CrashCollector for WindowsCrashCollector {
     fn collect(&self) -> Result<Vec<RawCrashEvent>, CollectorError> {
-        let output = Command::new("powershell")
+        let output = crate::process_win::silent_command("powershell")
             .args(["-NoProfile", "-NonInteractive", "-Command", PS_SCRIPT])
             .output()
             .map_err(|err| CollectorError::Source(format!("failed to run powershell: {err}")))?;
