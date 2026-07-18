@@ -1,22 +1,21 @@
 import { useEffect } from 'react';
 import { useHealth } from '../hooks/use-health';
-import { formatTimestamp } from '../lib/format';
+import { formatPercent, formatTimestamp } from '../lib/format';
+import { usePaginatedItems } from '../hooks/use-pagination';
+import { AlertBanner } from '../components/common/AlertBanner';
 import { Button } from '../components/common/Button';
 import { Card } from '../components/common/Card';
 import { EmptyState } from '../components/common/EmptyState';
+import { PageHeader } from '../components/common/PageHeader';
+import { Pagination } from '../components/common/Pagination';
 import { Spinner } from '../components/common/Spinner';
+import { StatRow, StatTile } from '../components/common/StatTile';
 import { HealthScoreGauge } from '../components/health/HealthScoreGauge';
 import { ResourceUsageBars } from '../components/health/ResourceUsageBars';
 import { HealthSampleList } from '../components/health/HealthSampleList';
 import { HealthAlertList } from '../components/health/HealthAlertList';
 import { buildHealthInsight } from '../components/health/insights';
 
-/**
- * Health Intelligence page — Increment 5.
- *
- * Shows the current device HealthScore, live CPU/memory/disk usage, and a
- * history of recent samples. "Sample now" captures a fresh on-device reading.
- */
 export function Health() {
   const {
     latest,
@@ -30,155 +29,142 @@ export function Health() {
     acknowledge,
   } = useHealth();
 
-  // Load the latest sample and history on mount.
+  const { pageItems: pageSamples, pagination: samplePages } =
+    usePaginatedItems(samples);
+  const { pageItems: pageAlerts, pagination: alertPages } =
+    usePaginatedItems(alerts);
+
   useEffect(() => {
     void loadHealth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSample = () => {
-    void collectSample();
-  };
-
   return (
-    <div className="flex h-full flex-col">
-      {/* Page header */}
-      <header className="flex flex-shrink-0 items-center justify-between gap-4 border-b border-surface-border bg-surface-card px-6 py-4">
-        <div>
-          <h1 className="text-lg font-semibold text-text-primary">
-            Health Intelligence
-          </h1>
-          <p className="mt-0.5 text-sm text-text-secondary">
-            Plain-English device health from CPU, memory, and disk pressure
-            across detected drives.
-            Samples automatically every 15 minutes while the app is open.
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          size="sm"
-          loading={sampling}
-          onClick={handleSample}
-          disabled={sampling}
-        >
-          {sampling ? 'Sampling…' : 'Sample now'}
-        </Button>
-      </header>
+    <div className="page-shell page-section">
+      <PageHeader
+        title="Health"
+        description="CPU, memory, and disk pressure on this PC."
+        actions={
+          <Button
+            variant="primary"
+            size="sm"
+            loading={sampling}
+            onClick={() => void collectSample()}
+          >
+            {sampling ? 'Sampling…' : 'Sample now'}
+          </Button>
+        }
+      />
 
-      {/* Error banner */}
-      {error && (
-        <div
-          role="alert"
-          className="mx-6 mt-4 flex flex-shrink-0 items-start gap-3 rounded border border-status-error/30 bg-status-error-bg px-4 py-3 text-sm text-status-error"
-        >
-          <span aria-hidden="true" className="mt-0.5 text-base">
-            ⚠
-          </span>
-          <div className="flex-1">
-            <p className="font-medium">Something went wrong</p>
-            <p className="mt-0.5 text-status-error/80">{error}</p>
-          </div>
+      {error ? (
+        <AlertBanner
+          title="Could not load health"
+          message={error}
+          onRetry={() => void loadHealth()}
+        />
+      ) : null}
+
+      {loading && latest === null ? (
+        <div className="flex justify-center py-16">
+          <Spinner label="Loading health…" />
         </div>
+      ) : latest === null ? (
+        <EmptyState
+          heading="No health data yet"
+          body="Take a sample to measure CPU, memory, and disk pressure."
+          action={
+            <Button
+              variant="primary"
+              size="sm"
+              loading={sampling}
+              onClick={() => void collectSample()}
+            >
+              Sample now
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          {(() => {
+            const insight = buildHealthInsight(latest, alerts);
+            return (
+              <>
+                {/* Status first — primary health story */}
+                <StatRow columns={3}>
+                  <StatTile label="Status" value={insight.status} />
+                  <StatTile
+                    label="CPU"
+                    value={formatPercent(latest.cpuUsage)}
+                  />
+                  <StatTile
+                    label="Sampled"
+                    value={formatTimestamp(latest.capturedAt)}
+                  />
+                </StatRow>
+
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-[auto_1fr]">
+                  <Card padding="lg" className="flex justify-center">
+                    <HealthScoreGauge score={latest.healthScore} />
+                  </Card>
+                  <Card padding="lg">
+                    <p className="text-sm font-semibold text-text-primary">
+                      {insight.summary}
+                    </p>
+                    <p className="mt-2 text-xs text-text-muted">
+                      {insight.primaryConcern}
+                    </p>
+                    <div className="mt-4">
+                      <ResourceUsageBars sample={latest} />
+                    </div>
+                    <p className="mt-4 rounded-control border border-hairline bg-surface-elevated px-3 py-2 text-xs text-text-secondary">
+                      <span className="font-medium text-text-primary">
+                        Next:{' '}
+                      </span>
+                      {insight.recommendedAction}
+                    </p>
+                  </Card>
+                </div>
+
+                <section className="panel">
+                  <div className="panel-header">
+                    <p className="panel-title">Recent samples</p>
+                    <p className="panel-subtitle">
+                      {samples.length} on this device
+                    </p>
+                  </div>
+                  <div className="p-4">
+                    <HealthSampleList samples={pageSamples} />
+                  </div>
+                  <Pagination
+                    pagination={samplePages}
+                    itemLabel="samples"
+                  />
+                </section>
+              </>
+            );
+          })()}
+        </>
       )}
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin px-6 py-5">
-        {alerts.length > 0 && (
-          <section className="mb-6">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-              Alerts
-            </p>
+      {/* Alerts below status so they never bury the health readout */}
+      {alerts.length > 0 ? (
+        <section className="panel">
+          <div className="panel-header">
+            <p className="panel-title">Open alerts</p>
+            <p className="panel-subtitle">{alerts.length} need attention</p>
+          </div>
+          <div className="p-4">
             <HealthAlertList
-              alerts={alerts}
+              alerts={pageAlerts}
               onAcknowledge={(id) => void acknowledge(id)}
             />
-          </section>
-        )}
-        {loading && latest === null ? (
-          <div className="flex items-center justify-center py-16">
-            <Spinner label="Loading health…" />
           </div>
-        ) : latest === null ? (
-          <EmptyState
-            heading="No health data yet"
-            body="Take your first sample to measure this device's CPU, memory, and detected disk pressure."
-            action={
-              <Button
-                variant="primary"
-                size="sm"
-                loading={sampling}
-                onClick={handleSample}
-              >
-                Sample now
-              </Button>
-            }
+          <Pagination
+            pagination={alertPages}
+            itemLabel="alerts"
           />
-        ) : (
-          <div className="flex flex-col gap-6">
-            <Card padding="lg">
-              {(() => {
-                const insight = buildHealthInsight(latest, alerts);
-                return (
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.15fr_1fr_1fr]">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                        Health readout
-                      </p>
-                      <p className="mt-2 text-base font-semibold text-text-primary">
-                        {insight.status}
-                      </p>
-                      <p className="mt-1 text-sm leading-6 text-text-secondary">
-                        {insight.summary}
-                      </p>
-                    </div>
-                    <div className="rounded border border-surface-border bg-surface px-3 py-2.5">
-                      <p className="text-2xs font-semibold uppercase tracking-wide text-text-muted">
-                        Main concern
-                      </p>
-                      <p className="mt-1 text-sm leading-5 text-text-secondary">
-                        {insight.primaryConcern}
-                      </p>
-                      <p className="mt-2 text-2xs leading-4 text-text-muted">
-                        {insight.evidence}
-                      </p>
-                    </div>
-                    <div className="rounded border border-accent/20 bg-accent-subtle px-3 py-2.5">
-                      <p className="text-2xs font-semibold uppercase tracking-wide text-accent">
-                        Recommended next step
-                      </p>
-                      <p className="mt-1 text-sm leading-5 text-text-secondary">
-                        {insight.recommendedAction}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })()}
-            </Card>
-
-            <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[auto_1fr]">
-              <HealthScoreGauge score={latest.healthScore} />
-              <Card padding="lg" className="flex flex-col justify-center">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                  Current usage
-                </p>
-                <ResourceUsageBars sample={latest} />
-                <p className="mt-4 text-2xs text-text-muted">
-                  Sampled {formatTimestamp(latest.capturedAt)}
-                </p>
-              </Card>
-            </div>
-
-            <div>
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                Recent samples
-              </p>
-              <Card padding="md">
-                <HealthSampleList samples={samples} />
-              </Card>
-            </div>
-          </div>
-        )}
-      </div>
+        </section>
+      ) : null}
     </div>
   );
 }

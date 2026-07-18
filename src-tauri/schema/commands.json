@@ -61,9 +61,9 @@
   },
   {
     "name": "run_restore",
-    "params": { "planId": "string" },
+    "params": { "planId": "string", "mode": "string?" },
     "returns": "RestoreJob",
-    "description": "Executes a restore plan synchronously via the platform installer (real WinGet on Windows, mock elsewhere), persists the job and per-step results, and returns the finished job."
+    "description": "Executes a restore plan. mode defaults to dryRun; install opts into real WinGet."
   },
   {
     "name": "get_restore_jobs",
@@ -111,7 +111,7 @@
     "name": "scan_crash_events",
     "params": {},
     "returns": "CrashEvent[]",
-    "description": "Scans the OS event log (Windows Event Viewer on Windows; mock elsewhere) for crash/stability events, classifies them into plain-English categories, persists any new ones idempotently, and returns the full list newest-first."
+    "description": "Scans the OS event log for crash/stability events, classifies them, persists new ones idempotently, and returns the full list newest-first."
   },
   {
     "name": "get_crash_events",
@@ -123,19 +123,19 @@
     "name": "export_setup",
     "params": { "snapshotId": "string" },
     "returns": "SetupBundle",
-    "description": "Builds a portable, SHA-256-checksummed setup bundle (snapshot + software inventory + system configuration) from a stored snapshot."
+    "description": "Builds a portable, SHA-256-checksummed setup bundle from a stored snapshot."
   },
   {
     "name": "import_setup",
     "params": { "bundleJson": "string" },
     "returns": "DeviceDnaSnapshot",
-    "description": "Imports a setup bundle (verifying its checksum) as a new local snapshot, stamped with the local device and an 'import' source, and returns the created snapshot."
+    "description": "Imports a setup bundle (verifying its checksum) as a new local snapshot."
   },
   {
     "name": "run_diagnosis",
     "params": { "query": "string" },
     "returns": "DiagnosisSession",
-    "description": "Runs a single-shot AI Detective diagnosis: assembles privacy-safe on-device context, runs the offline heuristic provider, persists the session + findings, and returns the session. Findings are fetched via get_diagnosis_findings."
+    "description": "Runs offline diagnosis with query intent routing over multi-engine context."
   },
   {
     "name": "get_diagnosis_sessions",
@@ -153,12 +153,95 @@
     "name": "get_sync_status",
     "params": {},
     "returns": "SyncStatus",
-    "description": "Returns the local cloud-sync queue status (configured flag + pending/synced/failed counts)."
+    "description": "Returns the local cloud-sync queue status."
   },
   {
     "name": "trigger_sync",
     "params": {},
     "returns": "SyncStatus",
-    "description": "Attempts to drain the cloud-sync queue via the configured client (a no-op until a Supabase backend is configured) and returns the updated status."
-  }
+    "description": "Attempts to drain the cloud-sync queue and returns the updated status."
+  },
+  {
+    "name": "get_dashboard_intelligence",
+    "params": {},
+    "returns": "DashboardIntelligence",
+    "description": "Aggregated intelligence for the ops dashboard (health, findings, top processes)."
+  },
+  {
+    "name": "list_intelligence_findings",
+    "params": { "includeDismissed": "boolean?" },
+    "returns": "IntelligenceFinding[]",
+    "description": "Lists durable intelligence findings from domain engines."
+  },
+  {
+    "name": "dismiss_finding",
+    "params": { "findingId": "string" },
+    "returns": "null",
+    "description": "Dismisses an intelligence finding."
+  },
+  {
+    "name": "list_action_audit",
+    "params": {},
+    "returns": "ActionAudit[]",
+    "description": "Lists action audit entries newest first."
+  },
+  {
+    "name": "propose_safe_cleanup",
+    "params": {},
+    "returns": "ActionAudit",
+    "description": "Records a dry-run safe cleanup preview (no file deletion)."
+  },
+  {
+    "name": "list_processes",
+    "params": { "topN": "number?" },
+    "returns": "ProcessSnapshot",
+    "description": "Lists live processes with risk scoring, sorted by memory then CPU."
+  },
+  {
+    "name": "scan_storage",
+    "params": { "rootPath": "string?" },
+    "returns": "StorageScanResult",
+    "description": "Depth-limited storage scan with categories and findings."
+  },
+  {
+    "name": "get_latest_storage_scan",
+    "params": {},
+    "returns": "StorageScan | null",
+    "description": "Returns the most recent storage scan."
+  },
+  {
+    "name": "get_storage_items",
+    "params": { "scanId": "string" },
+    "returns": "StorageItem[]",
+    "description": "Lists storage items for a scan, largest first."
+  },
+  {
+    "name": "search_all",
+    "params": { "query": "string" },
+    "returns": "SearchHit[]",
+    "description": "FTS search across software, config, crashes, timeline, and findings."
+  },
+  {
+    "name": "rebuild_search_index",
+    "params": {},
+    "returns": "null",
+    "description": "Rebuilds the local FTS search index from on-device data."
+  },
+  { "name": "collect_hardware_sample", "params": {}, "returns": "HardwareSample", "description": "Samples temps/GPU/SMART and persists." },
+  { "name": "get_latest_hardware_sample", "params": {}, "returns": "HardwareSample | null", "description": "Latest hardware sample." },
+  { "name": "get_hardware_samples", "params": { "limit": "number?" }, "returns": "HardwareSample[]", "description": "Recent hardware samples." },
+  { "name": "scan_drivers", "params": {}, "returns": "DriverInfo[]", "description": "Scan and score installed drivers." },
+  { "name": "list_drivers", "params": {}, "returns": "DriverInfo[]", "description": "List last driver inventory." },
+  { "name": "scan_security", "params": {}, "returns": "SecurityFinding[]", "description": "Behavioral security scan." },
+  { "name": "list_security_findings", "params": { "includeDismissed": "boolean?" }, "returns": "SecurityFinding[]", "description": "List security findings." },
+  { "name": "dismiss_security_finding", "params": { "findingId": "string" }, "returns": "null", "description": "Dismiss a security finding." },
+  { "name": "list_vault_entries", "params": {}, "returns": "VaultEntry[]", "description": "List recovery vault entries." },
+  { "name": "create_restore_point", "params": { "description": "string?" }, "returns": "VaultEntry", "description": "Create Windows System Restore point." },
+  { "name": "create_dna_vault_backup", "params": {}, "returns": "VaultEntry", "description": "Vault latest DNA as .dlsetup." },
+  { "name": "create_directory_image", "params": { "sourcePath": "string" }, "returns": "VaultEntry", "description": "Recursive directory image into vault." },
+  { "name": "get_agent_status", "params": {}, "returns": "AgentHeartbeat | null", "description": "Latest agent heartbeat." },
+  { "name": "ping_agent", "params": {}, "returns": "AgentHeartbeat", "description": "Record UI agent heartbeat." },
+  { "name": "execute_safe_cleanup", "params": { "confirm": "boolean" }, "returns": "CleanupResult", "description": "Delete allowed temp/cache files after confirm." },
+  { "name": "get_copilot_status", "params": {}, "returns": "object", "description": "Whether xAI LLM is configured." }
+]
 ]

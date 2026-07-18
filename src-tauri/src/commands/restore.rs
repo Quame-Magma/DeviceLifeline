@@ -21,10 +21,7 @@ pub fn create_restore_plan(
     state: State<'_, AppState>,
     snapshot_id: String,
 ) -> Result<RestorePlan, CoreError> {
-    let mut conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let mut conn = state.conn()?;
 
     let snapshot = device_repo::get_snapshot(&conn, &snapshot_id)?
         .ok_or_else(|| CoreError::NotFound(format!("snapshot {snapshot_id}")))?;
@@ -37,10 +34,7 @@ pub fn create_restore_plan(
 /// Lists all restore plans, newest first.
 #[tauri::command]
 pub fn get_restore_plans(state: State<'_, AppState>) -> Result<Vec<RestorePlan>, CoreError> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let conn = state.conn()?;
     restore_repo::list_plans(&conn)
 }
 
@@ -50,10 +44,7 @@ pub fn get_restore_plan_steps(
     state: State<'_, AppState>,
     plan_id: String,
 ) -> Result<Vec<RestorePlanStep>, CoreError> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let conn = state.conn()?;
     restore_repo::list_steps(&conn, &plan_id)
 }
 
@@ -67,10 +58,7 @@ pub fn run_restore(
     plan_id: String,
     mode: Option<String>,
 ) -> Result<RestoreJob, CoreError> {
-    let mut conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let mut conn = state.conn()?;
 
     let restore_plan = restore_repo::get_plan(&conn, &plan_id)?
         .ok_or_else(|| CoreError::NotFound(format!("restore plan {plan_id}")))?;
@@ -85,10 +73,7 @@ pub fn run_restore(
 /// Lists all restore jobs, newest first.
 #[tauri::command]
 pub fn get_restore_jobs(state: State<'_, AppState>) -> Result<Vec<RestoreJob>, CoreError> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let conn = state.conn()?;
     restore_repo::list_jobs(&conn)
 }
 
@@ -98,9 +83,6 @@ pub fn get_restore_step_results(
     state: State<'_, AppState>,
     job_id: String,
 ) -> Result<Vec<RestoreStepResult>, CoreError> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let conn = state.conn()?;
     restore_repo::list_step_results(&conn, &job_id)
 }

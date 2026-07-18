@@ -4,7 +4,8 @@
 export const APP_NAME = 'DeviceLifeline';
 
 /** Short tagline used in placeholder/empty states. */
-export const APP_TAGLINE = 'Your device, finally understood.';
+export const APP_TAGLINE =
+  'Understand what is happening on this PC, and fix it safely.';
 
 /** The minimum window width required for the layout. */
 export const MIN_WINDOW_WIDTH = 1024;

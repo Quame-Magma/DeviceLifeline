@@ -22,8 +22,16 @@ use crate::storage::{alerts_repo, device_repo, health_repo};
 /// reading against the alert thresholds (persisting any breaches), and returns
 /// the sample.
 pub fn capture_sample(conn: &Connection) -> Result<HealthSample, CoreError> {
-    let device = device_repo::ensure_local_device(conn)?;
     let metrics = sampler::sample();
+    capture_sample_from_metrics(conn, metrics)
+}
+
+/// Persists a pre-sampled metrics reading (OS I/O already completed).
+pub fn capture_sample_from_metrics(
+    conn: &Connection,
+    metrics: sampler::HealthMetrics,
+) -> Result<HealthSample, CoreError> {
+    let device = device_repo::ensure_local_device(conn)?;
     let sample = build_sample(&device.id, &metrics)?;
     health_repo::insert_sample(conn, &sample)?;
 

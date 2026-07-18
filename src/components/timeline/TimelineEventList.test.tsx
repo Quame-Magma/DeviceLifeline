@@ -86,7 +86,13 @@ describe('TimelineEventList', () => {
 
   it('shows all events count', () => {
     render(<TimelineEventList events={MOCK_EVENTS} />);
-    expect(screen.getByText('4 events')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === 'P' &&
+          (el.textContent ?? '').includes('of 4 events'),
+      ),
+    ).toBeInTheDocument();
   });
 
   it('filters to software category', () => {
@@ -118,7 +124,13 @@ describe('TimelineEventList', () => {
     const configBtn = screen.getByRole('button', { name: /^config$/i });
     fireEvent.click(configBtn);
 
-    expect(screen.getByText('1 of 4 events')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === 'P' &&
+          (el.textContent ?? '').includes('of 1 events'),
+      ),
+    ).toBeInTheDocument();
   });
 
   it('shows no category events message when filter has no matches', () => {

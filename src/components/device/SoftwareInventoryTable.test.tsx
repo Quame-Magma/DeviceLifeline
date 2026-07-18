@@ -94,9 +94,15 @@ describe('SoftwareInventoryTable', () => {
     expect(screen.getByText('No software found')).toBeInTheDocument();
   });
 
-  it('displays the item count', () => {
+  it('displays the item count in pagination', () => {
     render(<SoftwareInventoryTable items={MOCK_ITEMS} />);
-    expect(screen.getByText('3 filtered items')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === 'P' &&
+          (el.textContent ?? '').includes('of 3 apps'),
+      ),
+    ).toBeInTheDocument();
   });
 
   it('updates the item count when filtering', () => {
@@ -105,6 +111,12 @@ describe('SoftwareInventoryTable', () => {
 
     fireEvent.change(input, { target: { value: 'chrome' } });
 
-    expect(screen.getByText('1 of 3 filtered items')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === 'P' &&
+          (el.textContent ?? '').includes('of 1 apps'),
+      ),
+    ).toBeInTheDocument();
   });
 });

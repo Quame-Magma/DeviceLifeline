@@ -1,0 +1,4 @@
+# Keep build artifacts off C: (this machine often runs out of space there).
+# All `cargo` / `tauri dev` builds for this crate write to D: instead.
+[build]
+target-dir = "D:/cargo-target/devicelifeline"

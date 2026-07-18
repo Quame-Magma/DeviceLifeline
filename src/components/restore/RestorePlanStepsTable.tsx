@@ -43,9 +43,9 @@ export function RestorePlanStepsTable({ steps }: RestorePlanStepsTableProps) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className={[
-            'w-full rounded border border-surface-border bg-white px-3 py-2',
+            'w-full rounded-control border border-hairline bg-surface-elevated px-3 py-2 text-text-primary placeholder:text-text-muted',
             'text-sm text-text-primary placeholder:text-text-muted',
-            'focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent',
+            'focus:outline-none focus:ring-2 focus:ring-white/25 focus:border-hairline-strong',
             'transition-colors duration-150',
           ].join(' ')}
           aria-label="Search plan steps"

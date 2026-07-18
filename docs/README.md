@@ -7,9 +7,9 @@
 
 This folder contains the original pre-implementation documentation suite plus implementation alignment notes.
 Documents 01-60 span product, architecture, design, security, operations, and delivery; document 61 records the
-current local-first MVP test target for this repository.
+local-first MVP test target; document 62 is the Vision 2.0 architecture audit and gap analysis.
 
-**Last updated:** 2026-06-20 · **Status:** Draft v1 + local MVP implementation overlay · **Documents:** 61
+**Last updated:** 2026-07-16 · **Status:** Vision 2.0 local intelligence (v0.2) · **Documents:** 62
 
 ---
 
@@ -153,7 +153,12 @@ Every document follows a shared template: *Purpose & Scope · Assumptions · bod
 | 58 | [Future AI Agent Strategy](58-future-ai-agent-strategy.md) | Future: agentic, action-taking assistant |
 | 59 | [Future Mobile App Strategy](59-future-mobile-app-strategy.md) | Future: companion mobile app |
 | 60 | [Final Implementation Roadmap](60-final-implementation-roadmap.md) | **Capstone:** phased build sequence and critical path |
-| 61 | [Local-First MVP Plan](61-local-first-mvp-plan.md) | Current local MVP target with cloud/auth/payment deferred |
+| 61 | [Local-First MVP Plan](61-local-first-mvp-plan.md) | Local MVP target with cloud/auth/payment deferred |
+| 62 | [Vision 2.0 Architecture Audit](62-vision-2-architecture-audit-and-gap-analysis.md) | Gap analysis, redesign proposal, and expansion roadmap for the PC Intelligence Platform |
+| 63 | [Competitive Parity & Improvement Plan](63-competitive-parity-and-improvement-plan.md) | Honest assessment vs category leaders; phased plan awaiting approval |
+| 64 | [First Three Rivals Plan](64-first-three-rivals-plan.md) | Process / Disk+Storage / Search depth wave |
+| 65 | [Next Three Rivals Plan](65-next-three-rivals-plan.md) | HWiNFO sensors · Autoruns Startup · guided DDU |
+| 66 | [Cleanup · Revo · AIDA64](66-cleanup-revo-aida-rivals-plan.md) | CCleaner-class cleanup · uninstall leftovers · system report |
 
 ---
 

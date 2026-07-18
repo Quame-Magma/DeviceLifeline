@@ -25,10 +25,7 @@ fn build_status(conn: &rusqlite::Connection) -> Result<SyncStatus, CoreError> {
 /// Returns the current cloud-sync queue status.
 #[tauri::command]
 pub fn get_sync_status(state: State<'_, AppState>) -> Result<SyncStatus, CoreError> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let conn = state.conn()?;
     build_status(&conn)
 }
 
@@ -36,10 +33,7 @@ pub fn get_sync_status(state: State<'_, AppState>) -> Result<SyncStatus, CoreErr
 /// backend is configured) and returns the updated status.
 #[tauri::command]
 pub fn trigger_sync(state: State<'_, AppState>) -> Result<SyncStatus, CoreError> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let conn = state.conn()?;
     let client = sync::default_sync_client();
     sync::process_queue(&conn, client.as_ref())?;
     build_status(&conn)

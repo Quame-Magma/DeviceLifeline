@@ -16,19 +16,13 @@ use crate::AppState;
 /// and returns the full list newest-first.
 #[tauri::command]
 pub fn scan_crash_events(state: State<'_, AppState>) -> Result<Vec<CrashEvent>, CoreError> {
-    let mut conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let mut conn = state.conn()?;
     crash::scan_and_store(&mut conn)
 }
 
 /// Returns all recorded crash events, newest first.
 #[tauri::command]
 pub fn get_crash_events(state: State<'_, AppState>) -> Result<Vec<CrashEvent>, CoreError> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let conn = state.conn()?;
     crash_repo::list_events(&conn)
 }

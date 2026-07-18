@@ -1,9 +1,10 @@
 [package]
 name = "device-lifeline"
-version = "0.1.2"
+version = "0.3.0"
 authors = ["DriftLynx Technologies"]
 edition = "2021"
 rust-version = "1.77"
+default-run = "device-lifeline"
 
 [lib]
 name = "devicelifeline_lib"
@@ -11,6 +12,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
+
+[[bin]]
+name = "device-lifeline-agent"
+path = "src/bin/device_lifeline_agent.rs"
 
 [dependencies]
 tauri = { version = "2", features = [] }
@@ -24,6 +29,9 @@ thiserror = "1"
 log = "0.4"
 sysinfo = "0.33"
 sha2 = "0.10"
+ureq = { version = "2.12", default-features = true, features = ["json"] }
+dirs = "5"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
+windows-service = "0.7"

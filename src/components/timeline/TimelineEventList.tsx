@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { TimelineEvent } from '../../types/device.types';
+import { usePaginatedItems } from '../../hooks/use-pagination';
+import { Pagination } from '../common/Pagination';
 
 interface TimelineEventListProps {
   events: TimelineEvent[];
@@ -15,25 +17,16 @@ const CATEGORY_LABELS: Record<CategoryFilter, string> = {
 
 const CATEGORY_FILTERS: CategoryFilter[] = ['all', 'software', 'config'];
 
-/** Returns Tailwind badge classes based on event type. */
 function badgeClasses(eventType: string): string {
-  if (
-    eventType === 'software_install' ||
-    eventType === 'config_added'
-  ) {
-    return 'bg-green-100 text-green-800';
+  if (eventType === 'software_install' || eventType === 'config_added') {
+    return 'border-status-success/25 bg-status-success-bg text-status-success';
   }
-  if (
-    eventType === 'software_removal' ||
-    eventType === 'config_removed'
-  ) {
-    return 'bg-red-100 text-red-800';
+  if (eventType === 'software_removal' || eventType === 'config_removed') {
+    return 'border-status-error/25 bg-status-error-bg text-status-error';
   }
-  // software_update
-  return 'bg-amber-100 text-amber-800';
+  return 'border-status-warning/25 bg-status-warning-bg text-status-warning';
 }
 
-/** Human-readable label for an event type. */
 function eventTypeLabel(eventType: string): string {
   switch (eventType) {
     case 'software_install':
@@ -51,7 +44,6 @@ function eventTypeLabel(eventType: string): string {
   }
 }
 
-/** Format an ISO date string to a readable local date+time. */
 function formatDate(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
@@ -64,12 +56,6 @@ function formatDate(iso: string): string {
   });
 }
 
-/**
- * Presentational list of timeline events.
- * Renders events newest-first (already ordered by the API) with a colored type
- * badge, title, muted detail, and formatted timestamp.
- * Supports category filtering (All / Software / Config).
- */
 export function TimelineEventList({ events }: TimelineEventListProps) {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
 
@@ -78,9 +64,10 @@ export function TimelineEventList({ events }: TimelineEventListProps) {
       ? events
       : events.filter((e) => e.category === categoryFilter);
 
+  const { pageItems, pagination } = usePaginatedItems(filtered);
+
   return (
-    <div className="flex flex-col gap-4 h-full">
-      {/* Category filter */}
+    <div className="flex h-full flex-col gap-3">
       <div
         className="flex gap-1 px-4 pt-1"
         role="group"
@@ -93,11 +80,11 @@ export function TimelineEventList({ events }: TimelineEventListProps) {
             aria-pressed={categoryFilter === f}
             onClick={() => setCategoryFilter(f)}
             className={[
-              'rounded px-3 py-1.5 text-xs font-medium transition-colors duration-100',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+              'rounded-control px-2.5 py-1 text-xs font-medium transition-colors',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
               categoryFilter === f
-                ? 'bg-accent text-white'
-                : 'bg-surface border border-surface-border text-text-secondary hover:text-text-primary hover:bg-surface-border',
+                ? 'bg-surface-card text-text-primary'
+                : 'text-text-muted hover:bg-surface-elevated hover:text-text-primary',
             ].join(' ')}
           >
             {CATEGORY_LABELS[f]}
@@ -105,60 +92,55 @@ export function TimelineEventList({ events }: TimelineEventListProps) {
         ))}
       </div>
 
-      {/* Event count */}
-      <p className="px-4 text-xs text-text-muted" aria-live="polite">
-        {filtered.length === events.length
-          ? `${events.length} event${events.length === 1 ? '' : 's'}`
-          : `${filtered.length} of ${events.length} event${events.length === 1 ? '' : 's'}`}
-      </p>
-
-      {/* Events or empty state */}
       {events.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center px-4">
-          <p className="text-sm text-text-muted text-center">
+        <div className="flex flex-1 items-center justify-center px-4 py-10">
+          <p className="text-center text-sm text-text-muted">
             No changes recorded yet — capture a snapshot after making changes.
           </p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="flex flex-1 items-center justify-center px-4">
-          <p className="text-sm text-text-muted text-center">
+        <div className="flex flex-1 items-center justify-center px-4 py-10">
+          <p className="text-center text-sm text-text-muted">
             No events in this category.
           </p>
         </div>
       ) : (
-        <ul
-          className="flex-1 overflow-auto scrollbar-thin px-4 pb-4 space-y-2"
-          aria-label="Timeline events"
-        >
-          {filtered.map((event) => (
-            <li
-              key={event.id}
-              className="rounded border border-surface-border bg-surface-card px-4 py-3 flex flex-col gap-1 shadow-sm"
-            >
-              <div className="flex items-center gap-2 flex-wrap">
-                <span
-                  className={[
-                    'inline-flex items-center rounded-full px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide',
-                    badgeClasses(event.eventType),
-                  ].join(' ')}
-                >
-                  {eventTypeLabel(event.eventType)}
-                </span>
-                <span className="text-sm font-medium text-text-primary">
-                  {event.title}
-                </span>
-              </div>
-              {event.detail !== null && (
-                <p className="text-xs text-text-muted font-mono">
-                  {event.detail}
+        <>
+          <ul
+            className="flex-1 space-y-2 overflow-auto px-4 scrollbar-thin"
+            aria-label="Timeline events"
+          >
+            {pageItems.map((event) => (
+              <li
+                key={event.id}
+                className="flex flex-col gap-1 rounded-card border border-hairline bg-surface px-4 py-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={[
+                      'inline-flex items-center rounded-control border px-2 py-0.5 text-2xs font-medium capitalize',
+                      badgeClasses(event.eventType),
+                    ].join(' ')}
+                  >
+                    {eventTypeLabel(event.eventType)}
+                  </span>
+                  <span className="text-sm font-medium text-text-primary">
+                    {event.title}
+                  </span>
+                </div>
+                {event.detail !== null ? (
+                  <p className="font-mono text-xs text-text-muted">
+                    {event.detail}
+                  </p>
+                ) : null}
+                <p className="text-2xs text-text-muted">
+                  {formatDate(event.occurredAt)}
                 </p>
-              )}
-              <p className="text-2xs text-text-muted">
-                {formatDate(event.occurredAt)}
-              </p>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+          <Pagination pagination={pagination} itemLabel="events" />
+        </>
       )}
     </div>
   );

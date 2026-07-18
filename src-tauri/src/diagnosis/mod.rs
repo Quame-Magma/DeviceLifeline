@@ -1,11 +1,12 @@
-//! AI Detective (offline / heuristic).
+//! AI Detective / Copilot.
 //!
 //! Assembles a privacy-safe, on-device [`DiagnosisContext`] (structured
 //! summaries only — never raw file contents), runs the platform
 //! [`DiagnosisProvider`](provider::DiagnosisProvider) over it, and persists the
-//! session and findings. The real LLM-backed provider is a later drop-in behind
-//! [`provider::default_provider`]; SQL lives in `storage::diagnosis_repo`.
+//! session and findings. Uses SpaceXAI/xAI when `XAI_API_KEY` is set; otherwise
+//! offline heuristics. SQL lives in `storage::diagnosis_repo`.
 
+pub mod llm;
 pub mod provider;
 
 use rusqlite::Connection;
@@ -13,6 +14,7 @@ use rusqlite::Connection;
 use crate::dna::snapshot::now_rfc3339;
 use crate::error::CoreError;
 use crate::models::{DiagnosisContext, DiagnosisFinding, DiagnosisSession};
+use crate::process;
 use crate::storage::{
     alerts_repo, crash_repo, device_repo, diagnosis_repo, health_repo, timeline_repo,
 };
@@ -21,6 +23,8 @@ use crate::storage::{
 const RECENT_CRASHES: usize = 8;
 /// Number of most-recent timeline changes summarized into the context.
 const RECENT_CHANGES: usize = 5;
+/// Number of top processes summarized into the context.
+const TOP_PROCESSES: usize = 8;
 
 /// Pushes `value` into `vec` if not already present (order-preserving dedup).
 fn push_unique(vec: &mut Vec<String>, value: String) {
@@ -39,7 +43,12 @@ fn pct(used: i64, total: i64) -> Option<f64> {
 
 /// Assembles the on-device context summary the provider will analyze. Reads
 /// only summaries from existing repos; never touches raw file contents.
-pub fn assemble_context(conn: &Connection) -> Result<DiagnosisContext, CoreError> {
+///
+/// When `query` is provided, also records the detected intent on the context.
+pub fn assemble_context(
+    conn: &Connection,
+    query: Option<&str>,
+) -> Result<DiagnosisContext, CoreError> {
     let latest = health_repo::latest_sample(conn)?;
     let (health_score, cpu_usage, memory_pct, disk_pct) = match &latest {
         Some(sample) => (
@@ -77,6 +86,16 @@ pub fn assemble_context(conn: &Connection) -> Result<DiagnosisContext, CoreError
         .map(|snapshot| snapshot.software_count)
         .unwrap_or(0);
 
+    // Live process summary for "slow" / resource attribution. Best-effort: if
+    // process sampling fails, leave fields empty rather than aborting diagnosis.
+    let (top_process_names, top_process_memory_pct) =
+        match process::top_process_summary(TOP_PROCESSES) {
+            Ok(pair) => pair,
+            Err(_) => (Vec::new(), None),
+        };
+
+    let query_intent = query.map(|q| provider::detect_intent(q).as_str().to_string());
+
     Ok(DiagnosisContext {
         health_score,
         cpu_usage,
@@ -86,6 +105,9 @@ pub fn assemble_context(conn: &Connection) -> Result<DiagnosisContext, CoreError
         recent_crash_categories,
         recent_change_titles,
         software_count,
+        top_process_names,
+        top_process_memory_pct,
+        query_intent,
     })
 }
 
@@ -105,7 +127,7 @@ fn summarize(findings: &[provider::FindingDraft]) -> String {
 /// and returns the session. Findings are fetched separately by session id.
 pub fn run_diagnosis(conn: &mut Connection, query: &str) -> Result<DiagnosisSession, CoreError> {
     let device = device_repo::ensure_local_device(conn)?;
-    let context = assemble_context(conn)?;
+    let context = assemble_context(conn, Some(query))?;
     let drafts = provider::default_provider().diagnose(query, &context);
 
     let session_id = uuid::Uuid::new_v4().to_string();
@@ -159,10 +181,12 @@ mod tests {
         // elsewhere), so compare to the captured snapshot's own count.
         let snapshot = capture_snapshot(&mut conn).expect("capture snapshot");
 
-        let context = assemble_context(&conn).expect("assemble context");
+        let context = assemble_context(&conn, Some("why is my pc slow?"))
+            .expect("assemble context");
         assert_eq!(context.software_count, snapshot.software_count);
         assert!(context.health_score.is_none());
         assert!(context.recent_crash_categories.is_empty());
+        assert_eq!(context.query_intent.as_deref(), Some("slow"));
     }
 
     #[test]
@@ -174,6 +198,7 @@ mod tests {
         assert_eq!(session.query, "why is my pc slow?");
         assert!(session.finding_count >= 1);
         assert!(!session.summary.is_empty());
+        assert_eq!(session.context.query_intent.as_deref(), Some("slow"));
 
         let findings = diagnosis_repo::list_findings(&conn, &session.id).expect("list findings");
         assert_eq!(findings.len() as i64, session.finding_count);

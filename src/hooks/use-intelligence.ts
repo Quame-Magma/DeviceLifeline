@@ -1,0 +1,204 @@
+/**
+ * `useIntelligence` - custom hook for Intelligence Spine API calls.
+ *
+ * Components and pages MUST use this hook to interact with intelligence data.
+ * They must NOT import from `src/api/tauri/intelligence.ts` directly.
+ */
+
+import { useCallback, useState } from 'react';
+import {
+  dismissFinding as apiDismissFinding,
+  executeSafeCleanup as apiExecuteSafeCleanup,
+  getCopilotStatus as apiGetCopilotStatus,
+  getDashboardIntelligence,
+  listActionAudit,
+  listIntelligenceFindings,
+  proposeSafeCleanup as apiProposeSafeCleanup,
+} from '../api/tauri/intelligence';
+import type {
+  ActionAuditEntry,
+  CleanupResult,
+  CopilotStatus,
+  DashboardIntelligence,
+  IntelligenceFinding,
+} from '../types/device.types';
+
+function toMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) {
+    return err.message;
+  }
+  if (typeof err === 'string') {
+    return err;
+  }
+  return fallback;
+}
+
+export interface UseIntelligenceReturn {
+  dashboard: DashboardIntelligence | null;
+  findings: IntelligenceFinding[];
+  audit: ActionAuditEntry[];
+  cleanupPreview: ActionAuditEntry | null;
+  cleanupResult: CleanupResult | null;
+  copilotStatus: CopilotStatus | null;
+  loading: boolean;
+  dismissing: boolean;
+  cleanupLoading: boolean;
+  error: string | null;
+  loadDashboard: () => Promise<void>;
+  loadFindings: (includeDismissed?: boolean) => Promise<void>;
+  loadAudit: () => Promise<void>;
+  dismiss: (findingId: string) => Promise<void>;
+  previewCleanup: () => Promise<void>;
+  executeCleanup: (confirm: boolean) => Promise<void>;
+  loadCopilotStatus: () => Promise<void>;
+}
+
+export function useIntelligence(): UseIntelligenceReturn {
+  const [dashboard, setDashboard] = useState<DashboardIntelligence | null>(
+    null,
+  );
+  const [findings, setFindings] = useState<IntelligenceFinding[]>([]);
+  const [audit, setAudit] = useState<ActionAuditEntry[]>([]);
+  const [cleanupPreview, setCleanupPreview] =
+    useState<ActionAuditEntry | null>(null);
+  const [cleanupResult, setCleanupResult] = useState<CleanupResult | null>(
+    null,
+  );
+  const [copilotStatus, setCopilotStatus] = useState<CopilotStatus | null>(
+    null,
+  );
+  const [loading, setLoading] = useState(false);
+  const [dismissing, setDismissing] = useState(false);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getDashboardIntelligence();
+      setDashboard(data);
+      setFindings(data.recentFindings ?? []);
+    } catch (err) {
+      setError(toMessage(err, 'Failed to load dashboard intelligence.'));
+      setDashboard(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadFindings = useCallback(async (includeDismissed = false) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const list = await listIntelligenceFindings(includeDismissed);
+      setFindings(list);
+    } catch (err) {
+      setError(toMessage(err, 'Failed to load intelligence findings.'));
+      setFindings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadAudit = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const list = await listActionAudit();
+      setAudit(list);
+    } catch (err) {
+      setError(toMessage(err, 'Failed to load action audit.'));
+      setAudit([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const dismiss = useCallback(async (findingId: string) => {
+    setDismissing(true);
+    setError(null);
+    try {
+      await apiDismissFinding(findingId);
+      setFindings((prev) => prev.filter((f) => f.id !== findingId));
+      setDashboard((prev) =>
+        prev
+          ? {
+              ...prev,
+              recentFindings: prev.recentFindings.filter(
+                (f) => f.id !== findingId,
+              ),
+              openFindings: Math.max(0, prev.openFindings - 1),
+            }
+          : prev,
+      );
+    } catch (err) {
+      setError(toMessage(err, 'Failed to dismiss finding.'));
+    } finally {
+      setDismissing(false);
+    }
+  }, []);
+
+  const previewCleanup = useCallback(async () => {
+    setCleanupLoading(true);
+    setError(null);
+    setCleanupResult(null);
+    try {
+      const entry = await apiProposeSafeCleanup();
+      setCleanupPreview(entry);
+    } catch (err) {
+      setError(toMessage(err, 'Failed to preview cleanup.'));
+    } finally {
+      setCleanupLoading(false);
+    }
+  }, []);
+
+  const executeCleanup = useCallback(async (confirm: boolean) => {
+    setCleanupLoading(true);
+    setError(null);
+    try {
+      const result = await apiExecuteSafeCleanup(confirm);
+      setCleanupResult(result);
+      setCleanupPreview(result.action);
+    } catch (err) {
+      setError(toMessage(err, 'Failed to execute cleanup.'));
+    } finally {
+      setCleanupLoading(false);
+    }
+  }, []);
+
+  const loadCopilotStatus = useCallback(async () => {
+    try {
+      const status = await apiGetCopilotStatus();
+      setCopilotStatus(status);
+    } catch {
+      // Graceful fallback when the backend is unavailable.
+      setCopilotStatus({
+        llmConfigured: false,
+        provider: 'heuristic',
+        model: 'offline',
+        availableProviders: [],
+      });
+    }
+  }, []);
+
+  return {
+    dashboard,
+    findings,
+    audit,
+    cleanupPreview,
+    cleanupResult,
+    copilotStatus,
+    loading,
+    dismissing,
+    cleanupLoading,
+    error,
+    loadDashboard,
+    loadFindings,
+    loadAudit,
+    dismiss,
+    previewCleanup,
+    executeCleanup,
+    loadCopilotStatus,
+  };
+}

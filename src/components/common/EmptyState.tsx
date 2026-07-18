@@ -1,18 +1,15 @@
 import type { ReactNode } from 'react';
 
 interface EmptyStateProps {
-  /** Large contextual icon or illustration element. */
   icon?: ReactNode;
   heading: string;
   body?: string;
-  /** Optional CTA rendered below the body copy. */
   action?: ReactNode;
   className?: string;
 }
 
 /**
- * Standard empty state layout.
- * Every data-presenting section must use this when it has no data to show.
+ * Quiet empty state on solid surfaces.
  */
 export function EmptyState({
   icon,
@@ -24,20 +21,24 @@ export function EmptyState({
   return (
     <div
       className={[
-        'flex flex-col items-center justify-center gap-3 py-16 px-8 text-center',
+        'flex flex-col items-center justify-center gap-3 px-8 py-14 text-center animate-fade-up',
         className,
       ]
         .filter(Boolean)
         .join(' ')}
     >
-      {icon && (
-        <span className="text-text-muted" aria-hidden="true">
+      {icon ? (
+        <span className="text-text-muted opacity-70" aria-hidden="true">
           {icon}
         </span>
-      )}
+      ) : null}
       <h3 className="text-base font-semibold text-text-primary">{heading}</h3>
-      {body && <p className="text-sm text-text-secondary max-w-xs">{body}</p>}
-      {action && <div className="mt-2">{action}</div>}
+      {body ? (
+        <p className="max-w-sm text-sm leading-relaxed text-text-secondary">
+          {body}
+        </p>
+      ) : null}
+      {action ? <div className="mt-1">{action}</div> : null}
     </div>
   );
 }

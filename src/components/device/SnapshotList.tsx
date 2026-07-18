@@ -36,9 +36,9 @@ export function SnapshotList({
               onClick={() => onSelect(snap.id)}
               className={[
                 'w-full rounded px-3 py-2.5 text-left text-sm transition-colors duration-100',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
                 isSelected
-                  ? 'bg-accent-subtle border border-accent/30 text-text-primary'
+                  ? 'bg-surface-card border border-hairline-strong text-text-primary'
                   : 'hover:bg-surface text-text-secondary hover:text-text-primary border border-transparent',
               ]
                 .filter(Boolean)

@@ -17,10 +17,7 @@ pub fn export_setup(
     state: State<'_, AppState>,
     snapshot_id: String,
 ) -> Result<SetupBundle, CoreError> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let conn = state.conn()?;
     setup::build_bundle(&conn, &snapshot_id)
 }
 
@@ -31,9 +28,6 @@ pub fn import_setup(
     state: State<'_, AppState>,
     bundle_json: String,
 ) -> Result<DeviceDnaSnapshot, CoreError> {
-    let mut conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let mut conn = state.conn()?;
     setup::import_bundle(&mut conn, &bundle_json)
 }

@@ -19,10 +19,7 @@ pub fn run_diagnosis(
     state: State<'_, AppState>,
     query: String,
 ) -> Result<DiagnosisSession, CoreError> {
-    let mut conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let mut conn = state.conn()?;
     diagnosis::run_diagnosis(&mut conn, &query)
 }
 
@@ -31,10 +28,7 @@ pub fn run_diagnosis(
 pub fn get_diagnosis_sessions(
     state: State<'_, AppState>,
 ) -> Result<Vec<DiagnosisSession>, CoreError> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let conn = state.conn()?;
     diagnosis_repo::list_sessions(&conn)
 }
 
@@ -44,9 +38,6 @@ pub fn get_diagnosis_findings(
     state: State<'_, AppState>,
     session_id: String,
 ) -> Result<Vec<DiagnosisFinding>, CoreError> {
-    let conn = state
-        .db
-        .lock()
-        .map_err(|_| CoreError::Internal("database lock poisoned".to_string()))?;
+    let conn = state.conn()?;
     diagnosis_repo::list_findings(&conn, &session_id)
 }

@@ -41,9 +41,9 @@ export function RestorePlanList({
               className={[
                 'flex w-full flex-col gap-0.5 rounded px-3 py-2 text-left text-sm',
                 'transition-colors duration-150',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
                 isActive
-                  ? 'bg-accent/10 border-l-[3px] border-accent pl-[9px]'
+                  ? 'bg-surface-card border-l-[3px] border-white/40 pl-[9px]'
                   : 'border-l-[3px] border-transparent pl-[9px] hover:bg-surface/60',
               ]
                 .filter(Boolean)
@@ -52,7 +52,7 @@ export function RestorePlanList({
               <span
                 className={[
                   'font-medium truncate',
-                  isActive ? 'text-accent' : 'text-text-primary',
+                  isActive ? 'text-text-primary' : 'text-text-primary',
                 ].join(' ')}
               >
                 {plan.name}

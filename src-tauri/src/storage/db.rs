@@ -57,13 +57,40 @@ const MIGRATIONS: &[(&str, &str)] = &[
         "0010_add_health_disk_scope",
         include_str!("../../migrations/0010_add_health_disk_scope.sql"),
     ),
+    (
+        "0011_add_intelligence_spine",
+        include_str!("../../migrations/0011_add_intelligence_spine.sql"),
+    ),
+    (
+        "0012_add_storage_scans",
+        include_str!("../../migrations/0012_add_storage_scans.sql"),
+    ),
+    (
+        "0013_add_search_fts",
+        include_str!("../../migrations/0013_add_search_fts.sql"),
+    ),
+    (
+        "0014_add_hardware_drivers_security_vault",
+        include_str!("../../migrations/0014_add_hardware_drivers_security_vault.sql"),
+    ),
+    (
+        "0015_add_file_index_meta",
+        include_str!("../../migrations/0015_add_file_index_meta.sql"),
+    ),
+    (
+        "0016_add_updates_and_backup",
+        include_str!("../../migrations/0016_add_updates_and_backup.sql"),
+    ),
 ];
 
 /// Opens (creating if necessary) the SQLite database at `path`, enables
-/// foreign-key enforcement, and runs all pending migrations.
+/// foreign-key enforcement + WAL, and runs all pending migrations.
 pub fn open(path: &Path) -> Result<Connection, CoreError> {
     let conn = Connection::open(path)?;
     conn.pragma_update(None, "foreign_keys", "ON")?;
+    let _ = conn.pragma_update(None, "journal_mode", "WAL");
+    let _ = conn.pragma_update(None, "synchronous", "NORMAL");
+    let _ = conn.busy_timeout(std::time::Duration::from_millis(5_000));
     run_migrations(&conn)?;
     Ok(conn)
 }
@@ -131,6 +158,22 @@ mod tests {
         assert!(table_exists(&conn, "diagnosis_sessions"));
         assert!(table_exists(&conn, "diagnosis_findings"));
         assert!(table_exists(&conn, "sync_queue"));
+        assert!(table_exists(&conn, "intelligence_findings"));
+        assert!(table_exists(&conn, "action_audit"));
+        assert!(table_exists(&conn, "background_jobs"));
+        assert!(table_exists(&conn, "storage_scans"));
+        assert!(table_exists(&conn, "storage_items"));
+        assert!(table_exists(&conn, "search_index"));
+        assert!(table_exists(&conn, "hardware_samples"));
+        assert!(table_exists(&conn, "smart_readings"));
+        assert!(table_exists(&conn, "drivers"));
+        assert!(table_exists(&conn, "security_findings"));
+        assert!(table_exists(&conn, "vault_entries"));
+        assert!(table_exists(&conn, "agent_heartbeats"));
+        assert!(table_exists(&conn, "file_index_meta"));
+        assert!(table_exists(&conn, "software_updates"));
+        assert!(table_exists(&conn, "backup_schedules"));
+        assert!(table_exists(&conn, "volume_shadows"));
 
         let version: i64 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))

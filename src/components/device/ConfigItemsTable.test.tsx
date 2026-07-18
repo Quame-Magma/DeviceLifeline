@@ -176,7 +176,13 @@ describe('ConfigItemsTable', () => {
 
   it('displays the total item count', () => {
     render(<ConfigItemsTable items={MOCK_ITEMS} />);
-    expect(screen.getByText('10 filtered items')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === 'P' &&
+          (el.textContent ?? '').includes('of 10 items'),
+      ),
+    ).toBeInTheDocument();
   });
 
   it('filters rows based on the search input', () => {
@@ -224,7 +230,13 @@ describe('ConfigItemsTable', () => {
 
     fireEvent.change(input, { target: { value: 'OneDrive' } });
 
-    expect(screen.getByText('1 of 10 filtered items')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === 'P' &&
+          (el.textContent ?? '').includes('of 1 items'),
+      ),
+    ).toBeInTheDocument();
   });
 
   it('filters by kind when clicking a kind filter button', () => {
@@ -256,7 +268,7 @@ describe('ConfigItemsTable', () => {
   it('filters by scheduled tasks kind', () => {
     render(<ConfigItemsTable items={MOCK_ITEMS} />);
 
-    const tasksBtn = screen.getByRole('button', { name: /^Scheduled tasks$/i });
+    const tasksBtn = screen.getByRole('button', { name: /^Tasks$/i });
     fireEvent.click(tasksBtn);
 
     expect(

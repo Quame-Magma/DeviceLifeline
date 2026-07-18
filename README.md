@@ -66,25 +66,28 @@ until the local MVP is stable enough to test on real Windows devices. See
 
 ## Repository status
 
-🚧 **Local MVP hardening.**
-The repo contains the Tauri app, local SQLite schema, Rust collectors, restore/diagnosis/health/crash slices,
-and a React UI for the core workflows. See [CONTRIBUTING.md](CONTRIBUTING.md) to build and run it locally
-(Windows-first; non-Windows runs use deterministic mock collectors where OS access is unavailable). The broader
-cloud-backed product sequence remains documented in the
-[Final Implementation Roadmap](docs/60-final-implementation-roadmap.md).
+**Vision 2.0 local intelligence platform (v0.3).**
+The repo contains the Tauri app, local SQLite schema, Rust collectors and intelligence engines,
+restore/diagnosis/health/crash/hardware/drivers/security/vault slices, always-on agent binary,
+SpaceXAI/xAI copilot (optional), and a React ops-center UI. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Strategic baseline: [Vision 2.0 Architecture Audit](docs/62-vision-2-architecture-audit-and-gap-analysis.md).
 
 **What is testable locally:**
-- Capture a filtered snapshot of restore-relevant installed software (real Windows collectors; deterministic mock elsewhere)
-- Persist snapshots + inventory to a local SQLite database with versioned migrations
-- Browse snapshots and search the software inventory in the desktop UI
-- Capture restore-relevant browser, developer-tool, scheduled-task, hardware, power, and network configuration basics and diff snapshots into timeline events
-- Export/import local `.dlsetup` setup bundles with checksum verification
-- Create restore plans, simulate restore jobs safely by default, and opt into real WinGet installs explicitly
-- Capture basic health samples, crash events, and offline diagnosis findings
-- Tauri v2 IPC between the React UI and the Rust core; CI definitions for the frontend and Rust core
+- Device DNA, Timeline, restore (dry-run/WinGet), health, crash intelligence
+- Intelligence spine: findings, action audit, dashboard aggregate
+- Process Explorer with risk scoring
+- Storage Intelligence (deeper scans) + **confirmed temp/cache cleanup**
+- Hardware samples: CPU temps (when sensors expose), GPU name/VRAM, SMART/reliability
+- Driver inventory with signing/health scoring
+- Behavioral security scan (persistence + process heuristics, not AV signatures)
+- Recovery Vault: System Restore points, DNA vault backups, directory images
+- Always-on agent: `cargo run --bin device-lifeline-agent -- --console`
+- Copilot: offline heuristics, or SpaceXAI via `XAI_API_KEY`
+- Universal Search (FTS5), command palette (Ctrl/Cmd+K)
+- SQLite WAL + short-lived connection pool (no single global mutex across OS I/O)
 
 **Layout:** `src-tauri/` (Rust core + Tauri), `src/` (React UI), `supabase/` (cloud scaffold for later),
-`docs/` (the 60-document suite). See [48. Folder Structure](docs/48-folder-structure-specification.md).
+`docs/` (documentation suite). See [48. Folder Structure](docs/48-folder-structure-specification.md).
 
 ## License
 

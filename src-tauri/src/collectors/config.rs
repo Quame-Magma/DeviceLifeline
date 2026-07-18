@@ -42,6 +42,8 @@ impl Default for WindowsConfigCollector {
 impl ConfigCollector for WindowsConfigCollector {
     fn collect(&self) -> Result<Vec<RawConfig>, CollectorError> {
         let mut items: Vec<RawConfig> = Vec::new();
+        collect_startup(&mut items);
+        collect_services(&mut items);
         collect_scheduled_tasks(&mut items);
         collect_browser_extensions(&mut items);
         collect_dev_tools(&mut items);
@@ -54,7 +56,6 @@ impl ConfigCollector for WindowsConfigCollector {
 
 /// Appends startup entries from the HKLM and HKCU `Run` keys.
 #[cfg(windows)]
-#[allow(dead_code)]
 fn collect_startup(items: &mut Vec<RawConfig>) {
     use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_READ};
     use winreg::RegKey;
@@ -98,7 +99,6 @@ fn collect_startup(items: &mut Vec<RawConfig>) {
 
 /// Appends Win32 service entries from `SYSTEM\CurrentControlSet\Services`.
 #[cfg(windows)]
-#[allow(dead_code)]
 fn collect_services(items: &mut Vec<RawConfig>) {
     use winreg::enums::{HKEY_LOCAL_MACHINE, KEY_READ};
     use winreg::RegKey;
@@ -147,7 +147,6 @@ fn collect_services(items: &mut Vec<RawConfig>) {
 
 /// Maps a service `Start` DWORD to a human-readable status string.
 #[cfg(windows)]
-#[allow(dead_code)]
 fn map_start_mode(start: u32) -> String {
     match start {
         0 => "boot",

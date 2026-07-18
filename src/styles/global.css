@@ -19,22 +19,197 @@
 
   body {
     font-family:
-      Inter,
-      ui-sans-serif,
+      'Segoe UI Variable',
+      'Segoe UI',
       system-ui,
-      -apple-system,
+      ui-sans-serif,
       sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: #07080a;
+    color: #f4f4f6;
+    line-height: 1.5;
+  }
+
+  #root {
+    min-height: 100%;
+    background-color: #07080a;
+    color: #f4f4f6;
+  }
+
+  :focus-visible {
+    outline: none;
+  }
+
+  ::selection {
+    background: rgba(255, 255, 255, 0.16);
+    color: #f4f4f6;
+  }
+}
+
+@layer components {
+  .app-backdrop {
+    @apply relative isolate min-h-full bg-canvas;
+  }
+
+  .glass-panel {
+    @apply border border-hairline bg-surface;
+  }
+
+  .glass-panel-strong {
+    @apply border border-hairline bg-surface-elevated;
+  }
+
+  .acrylic-panel {
+    @apply border border-hairline bg-surface-elevated/95 backdrop-blur-xl;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+  }
+
+  .smoke-overlay {
+    @apply bg-black/60;
+  }
+
+  .page-shell {
+    @apply mx-auto w-full max-w-content px-page py-6 lg:px-page-lg lg:py-8;
+  }
+
+  .content-canvas {
+    @apply min-h-0 flex-1 bg-canvas;
+    background-image: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.02) 0%,
+      transparent 120px
+    );
+  }
+
+  .page-section {
+    @apply space-y-6;
+  }
+
+  :root[data-density='comfortable'] .page-shell {
+    @apply py-8 lg:py-10;
+  }
+
+  :root[data-density='comfortable'] .page-section {
+    @apply space-y-8;
+  }
+
+  :root[data-reduce-motion='true'] .anim-stagger > *,
+  :root[data-reduce-motion='true'] .animate-fade-up,
+  :root[data-reduce-motion='true'] .animate-fade-in,
+  :root[data-reduce-motion='true'] .animate-scale-in,
+  :root[data-reduce-motion='true'] .animate-blur-fade-in {
+    animation: none !important;
+  }
+
+  .anim-stagger > * {
+    animation: blur-fade-in 0.35s cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  .anim-stagger > *:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  .anim-stagger > *:nth-child(2) {
+    animation-delay: 40ms;
+  }
+  .anim-stagger > *:nth-child(3) {
+    animation-delay: 80ms;
+  }
+  .anim-stagger > *:nth-child(4) {
+    animation-delay: 120ms;
+  }
+  .anim-stagger > *:nth-child(5) {
+    animation-delay: 160ms;
+  }
+  .anim-stagger > *:nth-child(6) {
+    animation-delay: 200ms;
+  }
+
+  .score-ring-track {
+    stroke: rgba(255, 255, 255, 0.08);
+  }
+
+  .score-ring-progress {
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .keycap {
+    @apply inline-flex h-5 items-center rounded px-1.5 font-mono text-2xs text-text-secondary;
+    background: linear-gradient(180deg, #121212 0%, #0d0d0d 100%);
+    border: 1px solid #242728;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25 focus-visible:ring-offset-1 focus-visible:ring-offset-canvas;
+  }
+
+  /* Shared form field — use on every text/search input for consistency */
+  .field {
+    @apply h-9 w-full rounded-control border border-hairline bg-surface-elevated px-3 text-sm text-text-primary;
+    @apply placeholder:text-text-muted;
+    @apply focus:border-hairline-strong focus:outline-none focus:ring-2 focus:ring-white/20;
+  }
+
+  .field-lg {
+    @apply field h-11 px-4;
+  }
+
+  /* Data table shell */
+  .data-table {
+    @apply w-full border-collapse text-sm;
+  }
+
+  .data-table thead tr {
+    @apply border-b border-hairline;
+  }
+
+  .data-table th {
+    @apply py-2.5 pr-3 text-left text-2xs font-medium uppercase tracking-wide text-text-muted;
+  }
+
+  .data-table td {
+    @apply py-2.5 pr-3 text-text-secondary;
+  }
+
+  .data-table tbody tr {
+    @apply border-b border-hairline/60 transition-colors duration-75 last:border-b-0;
+  }
+
+  .data-table tbody tr:hover {
+    @apply bg-surface-elevated;
+  }
+
+  .data-table tbody tr[aria-selected='true'] {
+    @apply bg-surface-card;
+  }
+
+  .panel {
+    @apply overflow-hidden rounded-card border border-hairline bg-surface;
+  }
+
+  .panel-header {
+    @apply border-b border-hairline px-4 py-3;
+  }
+
+  .panel-title {
+    @apply text-sm font-semibold text-text-primary;
+  }
+
+  .panel-subtitle {
+    @apply mt-0.5 text-xs text-text-muted;
+  }
+
+  /* Kill leftover “AI dashboard” table header shouting */
+  .data-table th {
+    @apply normal-case tracking-normal font-medium text-text-muted;
   }
 }
 
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-color: rgba(156, 156, 157, 0.35) transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
@@ -46,7 +221,21 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
+    background-color: rgba(156, 156, 157, 0.35);
     border-radius: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-stagger > *,
+  .animate-fade-up,
+  .animate-fade-in,
+  .animate-scale-in,
+  .animate-blur-fade-in {
+    animation: none !important;
+  }
+
+  .score-ring-progress {
+    transition: none !important;
   }
 }

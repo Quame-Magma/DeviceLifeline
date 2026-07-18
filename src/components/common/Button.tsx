@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent';
 type Size = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -12,24 +12,25 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<Variant, string> = {
   primary:
-    'bg-accent text-white hover:bg-accent-hover focus-visible:ring-accent disabled:bg-accent/50',
+    'bg-white text-text-inverse hover:bg-[#e8e8e8] focus-visible:ring-white/40 disabled:opacity-40',
+  accent:
+    'bg-white text-text-inverse hover:bg-[#e8e8e8] focus-visible:ring-white/40 disabled:opacity-40',
   secondary:
-    'bg-white text-text-primary border border-surface-border hover:bg-surface focus-visible:ring-accent disabled:opacity-50',
+    'border border-hairline bg-transparent text-text-primary hover:bg-surface-card focus-visible:ring-white/25 disabled:opacity-40',
   ghost:
-    'bg-transparent text-text-secondary hover:bg-surface focus-visible:ring-accent disabled:opacity-40',
+    'bg-transparent text-text-secondary hover:bg-surface-card hover:text-text-primary focus-visible:ring-white/25 disabled:opacity-40',
   danger:
-    'bg-status-error text-white hover:bg-red-600 focus-visible:ring-red-400 disabled:opacity-50',
+    'bg-status-error/90 text-white hover:bg-status-error focus-visible:ring-status-error/50 disabled:opacity-40',
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: 'px-3 py-1.5 text-sm gap-1.5',
-  md: 'px-4 py-2 text-sm gap-2',
-  lg: 'px-5 py-2.5 text-base gap-2',
+  sm: 'h-8 px-3 text-sm gap-1.5',
+  md: 'h-9 px-4 text-sm gap-2',
+  lg: 'h-10 px-5 text-sm gap-2',
 };
 
 /**
- * Primary interactive button atom.
- * Supports multiple variants, sizes, and a loading state.
+ * Raycast-style actions: white primary pill, hairline secondary, quiet ghost.
  */
 export function Button({
   variant = 'primary',
@@ -48,9 +49,10 @@ export function Button({
       disabled={isDisabled}
       aria-busy={loading}
       className={[
-        'inline-flex items-center justify-center rounded font-medium',
-        'transition-colors duration-150',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        'inline-flex items-center justify-center rounded-control font-medium',
+        'transition-colors duration-150 ease-ray',
+        'active:scale-[0.98]',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-canvas',
         'cursor-pointer disabled:cursor-not-allowed',
         variantClasses[variant],
         sizeClasses[size],

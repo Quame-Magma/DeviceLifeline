@@ -33,6 +33,12 @@ export function DiagnosisContextViewer({
     ['Recent crashes', listText(context.recentCrashCategories)],
     ['Recent changes', String(context.recentChangeTitles.length)],
     ['Software tracked', String(context.softwareCount)],
+    ['Top processes', listText(context.topProcessNames ?? [])],
+    [
+      'Top process memory',
+      pctText(context.topProcessMemoryPct ?? null),
+    ],
+    ['Query intent', context.queryIntent ?? 'general'],
   ];
 
   return (

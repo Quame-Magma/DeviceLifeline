@@ -30,7 +30,7 @@ export function DiagnosisHistory({
               className={[
                 'w-full rounded px-3 py-2 text-left',
                 active
-                  ? 'bg-accent-subtle text-text-primary'
+                  ? 'bg-surface-card text-text-primary'
                   : 'text-text-secondary hover:bg-surface',
               ].join(' ')}
             >
