@@ -1033,77 +1033,8 @@ function DiskHealthCard({ disk }: { disk: DiskHealthSummary }) {
       ? `${disk.powerOnHours.toLocaleString()} h`
       : '—';
 
-  const metrics = (
-    <div className="grid w-full min-w-0 grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-[5.5rem_5.5rem_6.5rem_7rem_4.75rem_1rem] sm:items-center sm:justify-items-start">
-      <DiskMetric
-        label="Status"
-        value={statusValue}
-        valueClass={smartStatusClass(statusValue)}
-      />
-      <DiskMetric
-        label="Temperature"
-        value={formatTemp(disk.temperatureC)}
-      />
-      <DiskMetric label="Power-on Hours" value={powerOnValue} />
-      <div className="min-w-0">
-        <p className="text-2xs font-medium uppercase tracking-wide text-text-muted">
-          Wear
-        </p>
-        <div className="mt-1 flex items-center gap-2">
-          <span className="text-sm font-medium tabular-nums text-text-primary">
-            {formatOptionalPercent(disk.wearPct)}
-          </span>
-          <div className="h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-white/[0.06]">
-            {wear !== null ? (
-              <div
-                className={[
-                  'h-full rounded-full',
-                  wear >= 50
-                    ? 'bg-status-error'
-                    : wear >= 20
-                      ? 'bg-status-warning'
-                      : 'bg-status-success',
-                ].join(' ')}
-                style={{ width: `${wear}%` }}
-              />
-            ) : null}
-          </div>
-        </div>
-      </div>
-      <div
-        className={[
-          'flex h-[3.25rem] w-[4.75rem] flex-col items-center justify-center rounded-control border px-2',
-          scoreBoxClass,
-        ].join(' ')}
-      >
-        <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
-          Score
-        </span>
-        <span className="text-sm font-semibold tabular-nums leading-tight">
-          {Math.round(disk.healthScore)}
-          <span className="text-2xs font-medium opacity-70">/100</span>
-        </span>
-      </div>
-      {hasAttributes ? (
-        expanded ? (
-          <ChevronDown
-            className="hidden h-4 w-4 shrink-0 text-text-muted sm:block"
-            strokeWidth={1.75}
-          />
-        ) : (
-          <ChevronRight
-            className="hidden h-4 w-4 shrink-0 text-text-muted sm:block"
-            strokeWidth={1.75}
-          />
-        )
-      ) : (
-        <span className="hidden w-4 sm:block" aria-hidden />
-      )}
-    </div>
-  );
-
   const identity = (
-    <div className="flex min-w-0 items-center gap-3 sm:max-w-[16rem] sm:shrink-0">
+    <div className="flex min-w-0 items-center gap-3">
       <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-hairline bg-surface-elevated text-text-muted">
         <HardDrive className="h-4 w-4" strokeWidth={1.75} aria-hidden />
       </span>
@@ -1123,10 +1054,74 @@ function DiskHealthCard({ disk }: { disk: DiskHealthSummary }) {
     </div>
   );
 
+  // Full-width even columns: drive + metrics + score fill the card (no dead right gap).
   const rowBody = (
-    <div className="flex w-full min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+    <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.4fr)_repeat(4,minmax(0,1fr))_auto] lg:items-center lg:gap-x-8">
       {identity}
-      <div className="min-w-0 flex-1">{metrics}</div>
+      <DiskMetric
+        label="Status"
+        value={statusValue}
+        valueClass={smartStatusClass(statusValue)}
+      />
+      <DiskMetric
+        label="Temperature"
+        value={formatTemp(disk.temperatureC)}
+      />
+      <DiskMetric label="Power-on Hours" value={powerOnValue} />
+      <div className="min-w-0">
+        <p className="text-2xs font-medium uppercase tracking-wide text-text-muted">
+          Wear
+        </p>
+        <div className="mt-1 flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-sm font-medium tabular-nums text-text-primary">
+            {formatOptionalPercent(disk.wearPct)}
+          </span>
+          <div className="h-1.5 min-w-[3rem] flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+            {wear !== null ? (
+              <div
+                className={[
+                  'h-full rounded-full',
+                  wear >= 50
+                    ? 'bg-status-error'
+                    : wear >= 20
+                      ? 'bg-status-warning'
+                      : 'bg-status-success',
+                ].join(' ')}
+                style={{ width: `${wear}%` }}
+              />
+            ) : null}
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center justify-start gap-2 lg:justify-end">
+        <div
+          className={[
+            'flex h-[3.25rem] min-w-[4.75rem] flex-col items-center justify-center rounded-control border px-3',
+            scoreBoxClass,
+          ].join(' ')}
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
+            Score
+          </span>
+          <span className="text-sm font-semibold tabular-nums leading-tight">
+            {Math.round(disk.healthScore)}
+            <span className="text-2xs font-medium opacity-70">/100</span>
+          </span>
+        </div>
+        {hasAttributes ? (
+          expanded ? (
+            <ChevronDown
+              className="h-4 w-4 shrink-0 text-text-muted"
+              strokeWidth={1.75}
+            />
+          ) : (
+            <ChevronRight
+              className="h-4 w-4 shrink-0 text-text-muted"
+              strokeWidth={1.75}
+            />
+          )
+        ) : null}
+      </div>
     </div>
   );
 
