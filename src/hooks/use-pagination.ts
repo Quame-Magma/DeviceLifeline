@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 
 /** Single global page size — consistent across the entire app. */
-export const DEFAULT_PAGE_SIZE = 10;
+export const DEFAULT_PAGE_SIZE = 5;
 
 export interface PaginationState {
   page: number;
@@ -18,7 +18,7 @@ export interface PaginationState {
 }
 
 /**
- * Client-side pagination. Always uses {@link DEFAULT_PAGE_SIZE} (10).
+ * Client-side pagination. Always uses {@link DEFAULT_PAGE_SIZE} (5).
  */
 export function usePagination(totalItems: number): PaginationState {
   const pageSize = DEFAULT_PAGE_SIZE;

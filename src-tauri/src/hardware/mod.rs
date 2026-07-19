@@ -45,6 +45,20 @@ pub fn sample_hardware(device_id: &str) -> Result<HardwareSample, CoreError> {
         let mut cpu_temp_c = cpu_temp_c;
         let mut gpu_temp_c = gpu_temp_c;
         let mut gpu_usage_pct = gpu_usage_pct;
+
+        // Fast path first: ThermalZone + nvidia-smi only (often works without admin).
+        let fast = windows_fast_temps();
+        if cpu_temp_c.is_none() {
+            cpu_temp_c = fast.cpu_temp_c;
+        }
+        if gpu_temp_c.is_none() {
+            gpu_temp_c = fast.gpu_temp_c;
+        }
+        if gpu_usage_pct.is_none() {
+            gpu_usage_pct = fast.gpu_usage_pct;
+        }
+        sensors.extend(fast.sensors);
+
         let pack = windows_sensor_pack();
         if cpu_temp_c.is_none() {
             cpu_temp_c = pack.cpu_temp_c;
@@ -72,6 +86,11 @@ pub fn sample_hardware(device_id: &str) -> Result<HardwareSample, CoreError> {
         }
     }
 
+    // Fill top-level temps from any °C sensor we already collected (sensors UI
+    // often has thermal zone data even when cpu_temp_c stayed None).
+    let (mut cpu_temp_c, mut gpu_temp_c) =
+        promote_temps_from_sensors(&sensors, cpu_temp_c, gpu_temp_c);
+
     if let Some(t) = cpu_temp_c {
         ensure_sensor(&mut sensors, "CPU package", t, "°C", "sysinfo/WMI", "cpu");
     }
@@ -84,6 +103,11 @@ pub fn sample_hardware(device_id: &str) -> Result<HardwareSample, CoreError> {
     if let Some(mhz) = cpu_clock_mhz {
         ensure_sensor(&mut sensors, "CPU clock", mhz, "MHz", "sysinfo", "cpu");
     }
+
+    // Re-promote after ensure_sensor (no-op if already set).
+    let promoted = promote_temps_from_sensors(&sensors, cpu_temp_c, gpu_temp_c);
+    cpu_temp_c = promoted.0;
+    gpu_temp_c = promoted.1;
 
     let fan_rpm = sensors
         .iter()
@@ -120,6 +144,73 @@ pub fn sample_hardware(device_id: &str) -> Result<HardwareSample, CoreError> {
         smart,
         sensors,
     })
+}
+
+/// Prefer explicit CPU/GPU sensors; fall back to ACPI thermal zones for CPU.
+fn promote_temps_from_sensors(
+    sensors: &[SensorReading],
+    cpu: Option<f64>,
+    gpu: Option<f64>,
+) -> (Option<f64>, Option<f64>) {
+    let mut cpu = cpu;
+    let mut gpu = gpu;
+
+    if cpu.is_none() {
+        cpu = best_temp_sensor(sensors, &["cpu", "package", "tctl", "tdie", "core"]);
+    }
+    if cpu.is_none() {
+        // System thermal zone is not package temp, but better than blank on most PCs.
+        cpu = best_temp_sensor(sensors, &["thermal", "thm", "acpi", "zone"]);
+    }
+    if gpu.is_none() {
+        gpu = best_temp_sensor(
+            sensors,
+            &["gpu", "nvidia", "geforce", "radeon", "amd", "graphics"],
+        );
+    }
+
+    (cpu, gpu)
+}
+
+fn best_temp_sensor(sensors: &[SensorReading], name_hints: &[&str]) -> Option<f64> {
+    let mut best: Option<f64> = None;
+    for s in sensors {
+        if !is_celsius_unit(&s.unit) {
+            continue;
+        }
+        if !s.value.is_finite() || s.value <= 0.0 || s.value > 150.0 {
+            continue;
+        }
+        let hay = format!(
+            "{} {} {}",
+            s.category.to_ascii_lowercase(),
+            s.name.to_ascii_lowercase(),
+            s.source.to_ascii_lowercase()
+        );
+        // Skip disk temps when promoting CPU/GPU.
+        if hay.contains("disk") || hay.contains("ssd") || hay.contains("hdd") || hay.contains("nvme")
+        {
+            if !name_hints.iter().any(|h| *h == "disk") {
+                continue;
+            }
+        }
+        let matched = name_hints.iter().any(|h| hay.contains(h));
+        if !matched {
+            continue;
+        }
+        best = Some(match best {
+            Some(prev) => prev.max(s.value),
+            None => s.value,
+        });
+    }
+    best
+}
+
+fn is_celsius_unit(unit: &str) -> bool {
+    matches!(
+        unit.trim(),
+        "°C" | "°c" | "C" | "c" | "Celsius" | "celsius"
+    ) || unit.trim().eq_ignore_ascii_case("degc")
 }
 
 fn ensure_sensor(
@@ -196,6 +287,249 @@ struct WindowsSensorPack {
     sensors: Vec<SensorReading>,
 }
 
+/// Lightweight thermal probe — runs first so Performance tiles get a value even
+/// when the full sensor pack fails, hangs, or needs LibreHardwareMonitor.
+#[cfg(windows)]
+fn windows_fast_temps() -> WindowsSensorPack {
+    // Keep this script intentionally simple (no List[T], no high-precision casts)
+    // so Windows PowerShell 5.1 always emits JSON under CREATE_NO_WINDOW.
+    let script = r#"
+$ErrorActionPreference = 'SilentlyContinue'
+$cpuTemp = $null
+$gpuTemp = $null
+$gpuUsage = $null
+$sensors = @()
+
+foreach ($z in @(Get-CimInstance Win32_PerfFormattedData_Counters_ThermalZoneInformation -ErrorAction SilentlyContinue)) {
+  if ($null -eq $z.Temperature) { continue }
+  $c = [double]$z.Temperature
+  if ($c -gt 200) { $c = $c - 273.15 }
+  if ($c -lt 0 -or $c -gt 150) { continue }
+  $c = [math]::Round($c, 2)
+  $name = 'Thermal zone'
+  if ($z.Name) { $name = 'Thermal · ' + [string]$z.Name }
+  $sensors += [pscustomobject]@{ name = $name; value = $c; unit = 'C'; source = 'ThermalZoneInfo'; category = 'thermal' }
+  if ($null -eq $cpuTemp) { $cpuTemp = $c }
+}
+
+try {
+  foreach ($z in @(Get-CimInstance -Namespace root/wmi -ClassName MSAcpi_ThermalZoneTemperature -ErrorAction SilentlyContinue)) {
+    if ($null -eq $z.CurrentTemperature) { continue }
+    $c = ([double]$z.CurrentTemperature / 10.0) - 273.15
+    if ($c -lt 0 -or $c -gt 150) { continue }
+    $c = [math]::Round($c, 2)
+    $name = 'ACPI thermal'
+    if ($z.InstanceName) { $name = [string]$z.InstanceName }
+    $sensors += [pscustomobject]@{ name = $name; value = $c; unit = 'C'; source = 'MSAcpi'; category = 'thermal' }
+    if ($null -eq $cpuTemp) { $cpuTemp = $c }
+  }
+} catch {}
+
+$smi = Get-Command nvidia-smi -ErrorAction SilentlyContinue
+if ($smi) {
+  try {
+    $line = & nvidia-smi --query-gpu=temperature.gpu,utilization.gpu --format=csv,noheader,nounits 2>$null | Select-Object -First 1
+    if ($line) {
+      $p = $line -split ','
+      if ($p.Count -ge 1 -and $p[0].Trim() -match '^[\d\.]+$') {
+        $gpuTemp = [double]$p[0].Trim()
+        $sensors += [pscustomobject]@{ name = 'GPU temp (nvidia-smi)'; value = $gpuTemp; unit = 'C'; source = 'nvidia-smi'; category = 'gpu' }
+      }
+      if ($p.Count -ge 2 -and $p[1].Trim() -match '^[\d\.]+$') {
+        $gpuUsage = [double]$p[1].Trim()
+        $sensors += [pscustomobject]@{ name = 'GPU load (nvidia-smi)'; value = $gpuUsage; unit = '%'; source = 'nvidia-smi'; category = 'gpu' }
+      }
+    }
+  } catch {}
+}
+
+foreach ($ns in @('root/LibreHardwareMonitor', 'root/OpenHardwareMonitor')) {
+  try {
+    $rows = @(Get-CimInstance -Namespace $ns -ClassName Sensor -ErrorAction SilentlyContinue | Where-Object { $_.SensorType -eq 'Temperature' } | Select-Object -First 40)
+    foreach ($s in $rows) {
+      if ($null -eq $s.Value) { continue }
+      $val = [double]$s.Value
+      if ($val -le 0 -or $val -gt 150) { continue }
+      $name = [string]$s.Name
+      $cat = 'thermal'
+      if ($name -match 'GPU|Radeon|GeForce|NVIDIA|AMD') {
+        $cat = 'gpu'
+        if ($null -eq $gpuTemp) { $gpuTemp = $val }
+      } elseif ($name -match 'CPU|Package|Tctl|Tdie|Core') {
+        $cat = 'cpu'
+        if ($null -eq $cpuTemp) { $cpuTemp = $val }
+      }
+      $sensors += [pscustomobject]@{ name = ($name + ' (Temperature)'); value = [math]::Round($val, 2); unit = 'C'; source = ($ns -replace 'root/',''); category = $cat }
+    }
+  } catch {}
+}
+
+[pscustomobject]@{
+  cpuTemp = $cpuTemp
+  gpuTemp = $gpuTemp
+  gpuUsage = $gpuUsage
+  sensors = @($sensors)
+} | ConvertTo-Json -Compress -Depth 6
+"#;
+    parse_windows_sensor_json(&run_powershell_json(script))
+}
+
+#[cfg(windows)]
+fn run_powershell_json(script: &str) -> String {
+    // CIM thermal probes + CREATE_NO_WINDOW + piped stdout often yield empty
+    // captures. Write the script body to a .ps1 that dumps JSON to a result file.
+    let dir = std::env::temp_dir().join("devicelifeline-hw");
+    let _ = std::fs::create_dir_all(&dir);
+    let id = uuid::Uuid::new_v4();
+    let script_path = dir.join(format!("probe-{id}.ps1"));
+    let out_path = dir.join(format!("probe-{id}.json"));
+    let out_path_str = out_path.to_string_lossy().replace('\'', "''");
+
+    // Wrap user script so the final JSON object is written to disk (not only stdout).
+    let wrapped = format!(
+        r#"$ErrorActionPreference = 'SilentlyContinue'
+$__outPath = '{out}'
+try {{
+{body}
+}} catch {{
+  '{{"cpuTemp":null,"gpuTemp":null,"gpuUsage":null,"sensors":[],"error":"' + ($_.Exception.Message -replace '"','') + '"}}' | Set-Content -LiteralPath $__outPath -Encoding utf8
+}}
+"#,
+        out = out_path_str,
+        body = inject_json_file_emit(script, &out_path_str),
+    );
+
+    let mut bytes = vec![0xEFu8, 0xBB, 0xBF]; // UTF-8 BOM for Windows PowerShell 5.1
+    bytes.extend_from_slice(wrapped.as_bytes());
+    if std::fs::write(&script_path, &bytes).is_err() {
+        return String::new();
+    }
+
+    let script_str = script_path.to_string_lossy().to_string();
+    let _ = crate::process_win::silent_command("powershell")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            &script_str,
+        ])
+        .output();
+
+    let text = std::fs::read_to_string(&out_path)
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    let _ = std::fs::remove_file(&script_path);
+    let _ = std::fs::remove_file(&out_path);
+
+    if !text.is_empty() {
+        return text;
+    }
+
+    // Last resort: tiny -Command that only hits thermal zones.
+    let fallback = r#"$z=Get-CimInstance Win32_PerfFormattedData_Counters_ThermalZoneInformation -EA SilentlyContinue|Select-Object -First 1; if($z){$c=[double]$z.Temperature; if($c -gt 200){$c=$c-273.15}; Write-Output ('{"cpuTemp":'+$c+',"gpuTemp":null,"gpuUsage":null,"sensors":[{"name":"Thermal","value":'+$c+',"unit":"C","source":"ThermalZoneInfo","category":"thermal"}]}')} else { Write-Output '{"cpuTemp":null,"gpuTemp":null,"gpuUsage":null,"sensors":[]}' }"#;
+    let output = crate::process_win::silent_command("powershell")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            fallback,
+        ])
+        .output();
+    let Ok(output) = output else {
+        return String::new();
+    };
+    String::from_utf8_lossy(&output.stdout).trim().to_string()
+}
+
+/// Replace trailing `ConvertTo-Json ...` with write-to-file so probes work
+/// without relying on captured process stdout.
+#[cfg(windows)]
+fn inject_json_file_emit(script: &str, out_path: &str) -> String {
+    let trimmed = script.trim_end();
+    // Common ending in our packs:
+    //   } | ConvertTo-Json -Compress -Depth 6
+    if let Some(idx) = trimmed.rfind("| ConvertTo-Json") {
+        let head = trimmed[..idx].trim_end();
+        return format!(
+            "{head} | ConvertTo-Json -Compress -Depth 6 | Set-Content -LiteralPath '{out_path}' -Encoding utf8\n"
+        );
+    }
+    // Scripts without ConvertTo-Json: append a no-op result file.
+    format!(
+        "{trimmed}\nif (-not (Test-Path -LiteralPath '{out_path}')) {{ '{{}}' | Set-Content -LiteralPath '{out_path}' -Encoding utf8 }}\n"
+    )
+}
+
+#[cfg(windows)]
+fn parse_windows_sensor_json(text: &str) -> WindowsSensorPack {
+    let mut pack = WindowsSensorPack {
+        cpu_temp_c: None,
+        gpu_temp_c: None,
+        gpu_usage_pct: None,
+        sensors: Vec::new(),
+    };
+    if text.is_empty() {
+        return pack;
+    }
+    // Strip BOM / find first JSON object if PowerShell printed warnings before it.
+    let cleaned = text.trim_start_matches('\u{feff}').trim();
+    let json_slice = cleaned.find('{').map(|i| &cleaned[i..]).unwrap_or(cleaned);
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(json_slice) else {
+        return pack;
+    };
+    pack.cpu_temp_c = v
+        .get("cpuTemp")
+        .and_then(|x| x.as_f64())
+        .filter(|t| t.is_finite() && *t > 0.0 && *t <= 150.0);
+    pack.gpu_temp_c = v
+        .get("gpuTemp")
+        .and_then(|x| x.as_f64())
+        .filter(|t| t.is_finite() && *t > 0.0 && *t <= 150.0);
+    pack.gpu_usage_pct = v.get("gpuUsage").and_then(|x| x.as_f64());
+    if let Some(arr) = v.get("sensors").and_then(|s| s.as_array()) {
+        for item in arr {
+            let Some(name) = item.get("name").and_then(|x| x.as_str()) else {
+                continue;
+            };
+            let Some(value) = item.get("value").and_then(|x| x.as_f64()) else {
+                continue;
+            };
+            let unit_raw = item
+                .get("unit")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .to_string();
+            // Normalize plain "C" from ASCII-safe scripts to display unit.
+            let unit = if unit_raw.eq_ignore_ascii_case("c") {
+                "°C".to_string()
+            } else {
+                unit_raw
+            };
+            pack.sensors.push(SensorReading {
+                name: name.to_string(),
+                value,
+                unit,
+                source: item
+                    .get("source")
+                    .and_then(|x| x.as_str())
+                    .unwrap_or("WMI")
+                    .to_string(),
+                category: item
+                    .get("category")
+                    .and_then(|x| x.as_str())
+                    .unwrap_or("other")
+                    .to_string(),
+            });
+        }
+    }
+    pack
+}
+
 #[cfg(windows)]
 fn windows_sensor_pack() -> WindowsSensorPack {
     // Full OS-available HWiNFO-class harvest: ACPI, PDH, CIM, nvidia-smi, LHM WMI if present.
@@ -227,10 +561,10 @@ try {
   foreach ($z in (Get-CimInstance Win32_PerfFormattedData_Counters_ThermalZoneInformation -EA SilentlyContinue)) {
     if ($null -eq $z.Temperature) { continue }
     $c = [double]$z.Temperature
-    if ($c -gt 200) { $c = $c - 273 } # some expose Kelvin
+    if ($c -gt 200) { $c = $c - 273.15 }
     if ($c -lt 0 -or $c -gt 150) { continue }
     $name = if ($z.Name) { "Thermal · $($z.Name)" } else { 'Thermal zone info' }
-    Add-S $name $c '°C' 'ThermalZoneInfo' 'thermal'
+    Add-S $name $c 'C' 'ThermalZoneInfo' 'thermal'
     if ($null -eq $cpuTemp) { $cpuTemp = $c }
   }
 } catch {}
@@ -395,58 +729,7 @@ try {
   sensors = @($sensors)
 } | ConvertTo-Json -Compress -Depth 6
 "#;
-    let mut pack = WindowsSensorPack {
-        cpu_temp_c: None,
-        gpu_temp_c: None,
-        gpu_usage_pct: None,
-        sensors: Vec::new(),
-    };
-    let output = crate::process_win::silent_command("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", script])
-        .output();
-    let Ok(output) = output else {
-        return pack;
-    };
-    if !output.status.success() {
-        return pack;
-    }
-    let text = String::from_utf8_lossy(&output.stdout);
-    let Ok(v) = serde_json::from_str::<serde_json::Value>(text.trim()) else {
-        return pack;
-    };
-    pack.cpu_temp_c = v.get("cpuTemp").and_then(|x| x.as_f64());
-    pack.gpu_temp_c = v.get("gpuTemp").and_then(|x| x.as_f64());
-    pack.gpu_usage_pct = v.get("gpuUsage").and_then(|x| x.as_f64());
-    if let Some(arr) = v.get("sensors").and_then(|s| s.as_array()) {
-        for item in arr {
-            let Some(name) = item.get("name").and_then(|x| x.as_str()) else {
-                continue;
-            };
-            let Some(value) = item.get("value").and_then(|x| x.as_f64()) else {
-                continue;
-            };
-            pack.sensors.push(SensorReading {
-                name: name.to_string(),
-                value,
-                unit: item
-                    .get("unit")
-                    .and_then(|x| x.as_str())
-                    .unwrap_or("")
-                    .to_string(),
-                source: item
-                    .get("source")
-                    .and_then(|x| x.as_str())
-                    .unwrap_or("WMI")
-                    .to_string(),
-                category: item
-                    .get("category")
-                    .and_then(|x| x.as_str())
-                    .unwrap_or("other")
-                    .to_string(),
-            });
-        }
-    }
-    pack
+    parse_windows_sensor_json(&run_powershell_json(script))
 }
 
 fn sample_temps() -> (Option<f64>, Option<f64>, Vec<String>) {
@@ -609,86 +892,180 @@ fn mock_smart() -> Vec<SmartReading> {
 
 #[cfg(windows)]
 fn windows_smart_via_powershell() -> Vec<SmartReading> {
-    // Full reliability counter dump + physical disk identity.
-    let script = r#"
-$ErrorActionPreference='SilentlyContinue'
-$out = @()
-foreach ($d in (Get-PhysicalDisk)) {
-  $rel = $null
-  try { $rel = $d | Get-StorageReliabilityCounter } catch {}
-  $attrs = @()
-  if ($rel) {
-    $props = $rel.PSObject.Properties | Where-Object {
-      $_.Name -notin @('PSComputerName','CimClass','CimInstanceProperties','CimSystemProperties','ObjectId','PassThroughClass','PassThroughIds','PassThroughNamespace','PassThroughServer','UniqueId')
-    }
-    foreach ($p in $props) {
-      if ($null -eq $p.Value) { continue }
-      $attrs += [pscustomobject]@{
-        id = $null
-        name = [string]$p.Name
-        value = [string]$p.Value
-        raw = [string]$p.Value
-        worst = $null
-        threshold = $null
-        status = 'OK'
-      }
-    }
-  }
-  $out += [pscustomobject]@{
-    name = $d.FriendlyName
-    media = [string]$d.MediaType
-    health = [string]$d.HealthStatus
-    serial = [string]$d.SerialNumber
-    size = [int64]$d.Size
-    temp = if ($rel) { $rel.Temperature } else { $null }
-    powerOnHours = if ($rel) { $rel.PowerOnHours } else { $null }
-    wear = if ($rel) { $rel.Wear } else { $null }
-    readErrors = if ($rel) { $rel.ReadErrorsTotal } else { $null }
-    writeErrors = if ($rel) { $rel.WriteErrorsTotal } else { $null }
-    attrs = $attrs
-  }
-}
-# Optional smartctl if present (full classic SMART).
-$smartctl = Get-Command smartctl -ErrorAction SilentlyContinue
-if ($smartctl) {
-  try {
-    $sc = & smartctl -A -j /dev/sda 2>$null | ConvertFrom-Json
-    if ($sc.ata_smart_attributes.table) {
-      $scAttrs = @()
-      foreach ($a in $sc.ata_smart_attributes.table) {
-        $scAttrs += [pscustomobject]@{
-          id = [string]$a.id
-          name = [string]$a.name
-          value = [string]$a.value
-          raw = [string]$a.raw.value
-          worst = [string]$a.worst
-          threshold = [string]$a.thresh
-          status = if ($a.when_failed) { [string]$a.when_failed } else { 'OK' }
+    // Ship a real .ps1 (include_str) — complex format! strings were producing empty results.
+    const SMART_PROBE_PS1: &str = include_str!("../../scripts/smart_probe.ps1");
+
+    let dir = std::env::temp_dir().join("devicelifeline-hw");
+    let _ = std::fs::create_dir_all(&dir);
+    let id = uuid::Uuid::new_v4();
+    let script_path = dir.join(format!("smart-{id}.ps1"));
+    let out_path = dir.join(format!("smart-{id}.json"));
+
+    let mut bytes = vec![0xEFu8, 0xBB, 0xBF];
+    bytes.extend_from_slice(SMART_PROBE_PS1.as_bytes());
+    let text = if std::fs::write(&script_path, &bytes).is_ok() {
+        let script_str = script_path.to_string_lossy().to_string();
+        let out_str = out_path.to_string_lossy().to_string();
+        let mut cmd = crate::process_win::silent_command("powershell");
+        cmd.env("DL_SMART_OUT", &out_str);
+        cmd.args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            &script_str,
+        ]);
+        let output = cmd.output();
+        if let Ok(ref o) = output {
+            if !o.status.success() {
+                log::warn!(
+                    "smart probe exit {:?}; stderr={}",
+                    o.status.code(),
+                    String::from_utf8_lossy(&o.stderr)
+                );
+            }
         }
-      }
-      if ($out.Count -gt 0) { $out[0].attrs = $scAttrs }
-    }
-  } catch {}
-}
-$out | ConvertTo-Json -Compress -Depth 6
-"#;
-    let output = crate::process_win::silent_command("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", script])
-        .output();
-    let Ok(output) = output else {
-        return Vec::new();
+        std::fs::read_to_string(&out_path)
+            .unwrap_or_default()
+            .trim()
+            .trim_start_matches('\u{feff}')
+            .to_string()
+    } else {
+        String::new()
     };
-    if !output.status.success() {
+
+    let mut readings = parse_smart_json(&text);
+    if readings.is_empty() {
+        log::warn!(
+            "smart probe empty; json_len={} head={:?}",
+            text.len(),
+            text.chars().take(240).collect::<String>()
+        );
+        // Immediate fallback: Win32_DiskDrive always works without Storage module.
+        readings = windows_smart_from_win32_diskdrive();
+    } else {
+        let _ = std::fs::remove_file(&script_path);
+        let _ = std::fs::remove_file(&out_path);
+    }
+
+    let ioctl_temps = windows_physical_drive_temperatures();
+    for r in &mut readings {
+        if r.temperature_c.is_none() {
+            if let Some(id) = r
+                .raw_json
+                .as_ref()
+                .and_then(|j| serde_json::from_str::<serde_json::Value>(j).ok())
+                .and_then(|v| {
+                    v.get("deviceId").and_then(|x| {
+                        x.as_u64()
+                            .or_else(|| x.as_i64().map(|i| i as u64))
+                    })
+                })
+            {
+                if let Some(t) = ioctl_temps.get(&(id as u32)) {
+                    r.temperature_c = Some(*t);
+                }
+            }
+        }
+        enrich_smart_from_attributes(r);
+    }
+
+    if readings.iter().any(|r| r.temperature_c.is_none()) && !ioctl_temps.is_empty() {
+        let mut temps: Vec<(u32, f64)> = ioctl_temps.iter().map(|(k, v)| (*k, *v)).collect();
+        temps.sort_by_key(|(id, _)| *id);
+        let mut ti = 0usize;
+        for r in &mut readings {
+            if r.temperature_c.is_none() {
+                if let Some((_, t)) = temps.get(ti) {
+                    r.temperature_c = Some(*t);
+                    ti += 1;
+                }
+            }
+        }
+    }
+
+    readings
+}
+
+/// Basic disk identity via WMI Win32_DiskDrive — no Storage module, no elevation.
+#[cfg(windows)]
+fn windows_smart_from_win32_diskdrive() -> Vec<SmartReading> {
+    let dir = std::env::temp_dir().join("devicelifeline-hw");
+    let _ = std::fs::create_dir_all(&dir);
+    let id = uuid::Uuid::new_v4();
+    let script_path = dir.join(format!("diskdrive-{id}.ps1"));
+    let out_path = dir.join(format!("diskdrive-{id}.json"));
+    let out_lit = out_path.to_string_lossy().replace('\'', "''");
+    let script = format!(
+        "$ErrorActionPreference='SilentlyContinue'\n\
+         $rows=@()\n\
+         foreach ($d in @(Get-CimInstance Win32_DiskDrive -ErrorAction SilentlyContinue)) {{\n\
+           $rows += [pscustomobject]@{{\n\
+             name = $(if ($d.Model) {{ [string]$d.Model }} else {{ [string]$d.Caption }})\n\
+             media = $(if ($d.MediaType) {{ [string]$d.MediaType }} else {{ $null }})\n\
+             health = 'Unknown'\n\
+             serial = $(if ($d.SerialNumber) {{ [string]$d.SerialNumber.Trim() }} else {{ $null }})\n\
+             size = $(if ($d.Size) {{ [int64]$d.Size }} else {{ $null }})\n\
+             deviceId = $null\n\
+             temp = $null\n\
+             powerOnHours = $null\n\
+             wear = $null\n\
+             attrs = @()\n\
+           }}\n\
+         }}\n\
+         if ($rows.Count -eq 0) {{ '[]' | Set-Content -LiteralPath '{out}' -Encoding utf8 }}\n\
+         else {{ ($rows | ConvertTo-Json -Compress -Depth 4) | Set-Content -LiteralPath '{out}' -Encoding utf8 }}\n",
+        out = out_lit
+    );
+    let mut bytes = vec![0xEFu8, 0xBB, 0xBF];
+    bytes.extend_from_slice(script.as_bytes());
+    let text = if std::fs::write(&script_path, &bytes).is_ok() {
+        let _ = crate::process_win::silent_command("powershell")
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                &script_path.to_string_lossy(),
+            ])
+            .output();
+        std::fs::read_to_string(&out_path)
+            .unwrap_or_default()
+            .trim()
+            .trim_start_matches('\u{feff}')
+            .to_string()
+    } else {
+        String::new()
+    };
+    let _ = std::fs::remove_file(&script_path);
+    let _ = std::fs::remove_file(&out_path);
+    parse_smart_json(&text)
+}
+
+#[cfg(windows)]
+fn parse_smart_json(text: &str) -> Vec<SmartReading> {
+    let cleaned = text.trim_start_matches('\u{feff}').trim();
+    if cleaned.is_empty() {
         return Vec::new();
     }
-    let text = String::from_utf8_lossy(&output.stdout);
-    let trimmed = text.trim();
-    if trimmed.is_empty() {
-        return Vec::new();
-    }
-    let value: serde_json::Value = match serde_json::from_str(trimmed) {
+    // Prefer '[' when it appears before '{' so multi-disk arrays parse correctly.
+    // Starting at the first '{' inside `[{...},{...}]` yields invalid JSON and
+    // previously returned zero disks.
+    let json_slice = match (cleaned.find('['), cleaned.find('{')) {
+        (Some(a), Some(b)) if a < b => &cleaned[a..],
+        (Some(a), None) => &cleaned[a..],
+        (None, Some(b)) => &cleaned[b..],
+        (Some(_), Some(b)) => &cleaned[b..],
+        _ => cleaned,
+    };
+    let value: serde_json::Value = match serde_json::from_str(json_slice) {
         Ok(v) => v,
-        Err(_) => return Vec::new(),
+        Err(e) => {
+            log::warn!("smart json parse failed: {e}; head={:?}", &json_slice.chars().take(120).collect::<String>());
+            return Vec::new();
+        }
     };
     let arr = if value.is_array() {
         value.as_array().cloned().unwrap_or_default()
@@ -698,8 +1075,11 @@ $out | ConvertTo-Json -Compress -Depth 6
     arr.into_iter()
         .filter_map(|v| {
             let name = v.get("name")?.as_str()?.to_string();
+            if name.is_empty() {
+                return None;
+            }
             let attributes = parse_smart_attrs(v.get("attrs"));
-            Some(SmartReading {
+            let mut reading = SmartReading {
                 id: uuid::Uuid::new_v4().to_string(),
                 sample_id: String::new(),
                 disk_name: name.clone(),
@@ -716,15 +1096,178 @@ $out | ConvertTo-Json -Compress -Depth 6
                     .get("health")
                     .and_then(|x| x.as_str())
                     .map(|s| s.to_string()),
-                temperature_c: v.get("temp").and_then(|x| x.as_f64()),
-                power_on_hours: v.get("powerOnHours").and_then(|x| x.as_i64()),
-                wear_pct: v.get("wear").and_then(|x| x.as_f64()),
+                temperature_c: json_f64(v.get("temp")),
+                power_on_hours: v.get("powerOnHours").and_then(|x| {
+                    x.as_i64()
+                        .or_else(|| x.as_f64().map(|f| f as i64))
+                        .or_else(|| x.as_str().and_then(|s| s.parse().ok()))
+                }),
+                wear_pct: json_f64(v.get("wear")),
                 raw_json: Some(v.to_string()),
                 size_bytes: v.get("size").and_then(|x| x.as_i64()),
                 attributes,
-            })
+            };
+            enrich_smart_from_attributes(&mut reading);
+            Some(reading)
         })
         .collect()
+}
+
+#[cfg(windows)]
+fn json_f64(v: Option<&serde_json::Value>) -> Option<f64> {
+    let v = v?;
+    v.as_f64()
+        .or_else(|| v.as_i64().map(|i| i as f64))
+        .or_else(|| v.as_u64().map(|u| u as f64))
+        .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+        .filter(|n| n.is_finite())
+}
+
+#[cfg(windows)]
+fn enrich_smart_from_attributes(reading: &mut SmartReading) {
+    for attr in &reading.attributes {
+        let name = attr.name.to_ascii_lowercase();
+        let num = attr
+            .value
+            .as_deref()
+            .and_then(|s| s.parse::<f64>().ok())
+            .or_else(|| attr.raw.as_deref().and_then(|s| s.parse::<f64>().ok()));
+        let Some(num) = num.filter(|n| n.is_finite()) else {
+            continue;
+        };
+        if reading.temperature_c.is_none()
+            && (name.contains("temperature") || name == "temp")
+            && num > 0.0
+            && num < 120.0
+        {
+            reading.temperature_c = Some(num);
+        }
+        if reading.power_on_hours.is_none()
+            && (name.contains("poweron") || name.contains("power_on") || name.contains("power-on"))
+        {
+            reading.power_on_hours = Some(num as i64);
+        }
+        if reading.wear_pct.is_none()
+            && (name == "wear" || name.contains("wear") || name.contains("percentused") || name.contains("percent_used"))
+            && num >= 0.0
+            && num <= 100.0
+        {
+            reading.wear_pct = Some(num);
+        }
+    }
+}
+
+/// Query drive temperature via IOCTL_STORAGE_QUERY_PROPERTY / Temperature property.
+/// Works for many NVMe/SATA devices without StorageReliabilityCounter elevation.
+#[cfg(windows)]
+fn windows_physical_drive_temperatures() -> std::collections::HashMap<u32, f64> {
+    use std::collections::HashMap;
+    use std::os::windows::fs::OpenOptionsExt;
+    use std::os::windows::io::AsRawHandle;
+
+    // FILE_SHARE_READ | FILE_SHARE_WRITE — allow open while volumes are mounted.
+    const FILE_SHARE_READ: u32 = 0x0000_0001;
+    const FILE_SHARE_WRITE: u32 = 0x0000_0002;
+
+    let mut out = HashMap::new();
+    for index in 0u32..16 {
+        let path = format!(r"\\.\PhysicalDrive{index}");
+        let file = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(FILE_SHARE_READ | FILE_SHARE_WRITE)
+            .open(&path);
+        let Ok(file) = file else {
+            continue;
+        };
+        if let Some(temp) = storage_device_temperature_c(file.as_raw_handle()) {
+            out.insert(index, temp);
+        }
+    }
+    out
+}
+
+#[cfg(windows)]
+fn storage_device_temperature_c(
+    handle: std::os::windows::io::RawHandle,
+) -> Option<f64> {
+    use windows_sys::Win32::Foundation::HANDLE;
+    use windows_sys::Win32::System::IO::DeviceIoControl;
+
+    // STORAGE_PROPERTY_ID::StorageDeviceTemperatureProperty = 14
+    // STORAGE_QUERY_TYPE::PropertyStandardQuery = 0
+    #[repr(C)]
+    struct StoragePropertyQuery {
+        property_id: u32,
+        query_type: u32,
+        additional_parameters: [u8; 1],
+    }
+
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    struct StorageTemperatureInfo {
+        index: u16,
+        temperature: i16,
+        over_threshold: i16,
+        under_threshold: i16,
+        over_threshold_changable: u8,
+        under_threshold_changable: u8,
+        event_generated: u8,
+        reserved0: u8,
+        reserved1: u32,
+    }
+
+    #[repr(C)]
+    struct StorageTemperatureDataDescriptor {
+        version: u32,
+        size: u32,
+        critical_temperature: i16,
+        warning_temperature: i16,
+        info_count: u16,
+        reserved0: [u8; 2],
+        reserved1: [u32; 3],
+        // Followed by TemperatureInfo[InfoCount]
+    }
+
+    // CTL_CODE(IOCTL_STORAGE_BASE=0x2d, 0x500, METHOD_BUFFERED=0, FILE_ANY_ACCESS=0)
+    const IOCTL_STORAGE_QUERY_PROPERTY: u32 = (0x0000_002d << 16) | (0x500 << 2);
+
+    let query = StoragePropertyQuery {
+        property_id: 14,
+        query_type: 0,
+        additional_parameters: [0],
+    };
+    let mut buf = [0u8; 512];
+    let mut returned = 0u32;
+    let ok = unsafe {
+        DeviceIoControl(
+            handle as HANDLE,
+            IOCTL_STORAGE_QUERY_PROPERTY,
+            (&query as *const StoragePropertyQuery).cast(),
+            std::mem::size_of::<StoragePropertyQuery>() as u32,
+            buf.as_mut_ptr().cast(),
+            buf.len() as u32,
+            &mut returned,
+            std::ptr::null_mut(),
+        )
+    };
+    if ok == 0 || returned < std::mem::size_of::<StorageTemperatureDataDescriptor>() as u32 {
+        return None;
+    }
+    let desc = unsafe { &*(buf.as_ptr() as *const StorageTemperatureDataDescriptor) };
+    if desc.info_count == 0 {
+        return None;
+    }
+    let info_offset = std::mem::size_of::<StorageTemperatureDataDescriptor>();
+    if (returned as usize) < info_offset + std::mem::size_of::<StorageTemperatureInfo>() {
+        return None;
+    }
+    let info = unsafe { &*(buf.as_ptr().add(info_offset) as *const StorageTemperatureInfo) };
+    // Temperature is Celsius; -32768 means not reported.
+    let t = info.temperature;
+    if t <= -256 || t >= 200 {
+        return None;
+    }
+    Some(f64::from(t))
 }
 
 #[cfg(windows)]
@@ -881,5 +1424,69 @@ mod tests {
         let sample = sample_hardware("dev-1").expect("sample");
         assert_eq!(sample.device_id, "dev-1");
         assert!(!sample.id.is_empty());
+    }
+
+    #[test]
+    fn promote_temps_from_thermal_sensor() {
+        let sensors = vec![SensorReading {
+            name: "Thermal · \\_TZ.THM".into(),
+            value: 41.0,
+            unit: "°C".into(),
+            source: "ThermalZoneInfo".into(),
+            category: "thermal".into(),
+        }];
+        let (cpu, gpu) = promote_temps_from_sensors(&sensors, None, None);
+        assert_eq!(cpu, Some(41.0));
+        assert!(gpu.is_none());
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_fast_temps_reads_thermal_zone() {
+        let pack = windows_fast_temps();
+        assert!(
+            pack.cpu_temp_c.is_some() || !pack.sensors.is_empty(),
+            "expected thermal zone reading (Win32 thermal counters) on this host"
+        );
+        if let Some(t) = pack.cpu_temp_c {
+            assert!(t > 0.0 && t < 120.0, "cpu temp out of range: {t}");
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn sample_hardware_records_cpu_temp_when_available() {
+        let sample = sample_hardware("dev-temp").expect("sample");
+        // After the file-based thermal probe, top-level cpu_temp_c should fill in
+        // from ACPI thermal zones on typical Windows laptops/desktops.
+        assert!(
+            sample.cpu_temp_c.is_some()
+                || sample
+                    .sensors
+                    .iter()
+                    .any(|s| is_celsius_unit(&s.unit) && s.value > 0.0),
+            "hardware sample should record at least one temperature"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_smart_lists_physical_disks() {
+        let smart = windows_smart_via_powershell();
+        eprintln!(
+            "smart disks: count={} names={:?}",
+            smart.len(),
+            smart.iter().map(|s| s.disk_name.as_str()).collect::<Vec<_>>()
+        );
+        for s in &smart {
+            eprintln!(
+                "  {} temp={:?} wear={:?} powerOn={:?} health={:?}",
+                s.disk_name, s.temperature_c, s.wear_pct, s.power_on_hours, s.health_status
+            );
+        }
+        assert!(
+            !smart.is_empty(),
+            "expected at least one physical disk from SMART probe"
+        );
     }
 }

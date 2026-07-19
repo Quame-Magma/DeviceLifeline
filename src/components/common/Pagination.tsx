@@ -9,7 +9,7 @@ interface PaginationProps {
 }
 
 /**
- * Fixed 10-per-page footer. No page-size selector — consistent app-wide.
+ * Fixed 5-per-page footer. No page-size selector — consistent app-wide.
  */
 export function Pagination({
   pagination,

@@ -53,7 +53,7 @@ export default function App() {
       {activeView === 'device-dna' && <DeviceDNA />}
       {activeView === 'timeline' && <Timeline />}
       {activeView === 'recovery-center' && <RecoveryCenter />}
-      {activeView === 'health' && <Health />}
+      {activeView === 'health' && <Health onNavigate={setActiveView} />}
       {activeView === 'crash-intelligence' && <CrashIntelligence />}
       {activeView === 'ai-detective' && <AIDetective />}
       {activeView === 'processes' && <ProcessExplorer />}

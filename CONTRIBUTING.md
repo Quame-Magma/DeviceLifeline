@@ -42,8 +42,20 @@ pnpm tauri dev      # launches the desktop app (Vite dev server + Rust core)
 pnpm dev            # frontend only, in a browser (Tauri APIs unavailable)
 ```
 
+If the system drive is low on space, point Cargo’s target directory elsewhere (PowerShell):
+
+```powershell
+$env:CARGO_TARGET_DIR = "D:\cargo-target\devicelifeline"
+pnpm tauri dev
+```
+
+Avoid running two `pnpm tauri dev` sessions at once — they fight over Vite port **1420**.
+
 > On **non-Windows** machines the software collector returns deterministic **mock** data, so the UI
 > is fully explorable. The **real** Windows registry collector only compiles/runs on Windows.
+
+Hardware / SMART behavior on Windows is documented in
+[67. Ops Center UI & Sensor Collection](docs/67-ops-center-ui-and-sensor-collection.md).
 
 ## Build
 

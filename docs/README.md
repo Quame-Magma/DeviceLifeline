@@ -9,7 +9,7 @@ This folder contains the original pre-implementation documentation suite plus im
 Documents 01-60 span product, architecture, design, security, operations, and delivery; document 61 records the
 local-first MVP test target; document 62 is the Vision 2.0 architecture audit and gap analysis.
 
-**Last updated:** 2026-07-16 · **Status:** Vision 2.0 local intelligence (v0.2) · **Documents:** 62
+**Last updated:** 2026-07-19 · **Status:** Vision 2.0 local intelligence (v0.3.x) · **Documents:** 67
 
 ---
 
@@ -159,14 +159,15 @@ Every document follows a shared template: *Purpose & Scope · Assumptions · bod
 | 64 | [First Three Rivals Plan](64-first-three-rivals-plan.md) | Process / Disk+Storage / Search depth wave |
 | 65 | [Next Three Rivals Plan](65-next-three-rivals-plan.md) | HWiNFO sensors · Autoruns Startup · guided DDU |
 | 66 | [Cleanup · Revo · AIDA64](66-cleanup-revo-aida-rivals-plan.md) | CCleaner-class cleanup · uninstall leftovers · system report |
+| 67 | [Ops Center UI & Sensor Collection](67-ops-center-ui-and-sensor-collection.md) | Health / Performance / Storage UI polish; Windows thermal & SMART sampling notes |
 
 ---
 
 ## Suite at a glance
 
-- **61 documents**, including the original 60-document planning suite and the local MVP implementation overlay.
+- **67 documents**, including the original 60-document planning suite, local MVP overlay, competitive waves, and ops-center UI/sensor notes.
 - Consistent canonical vocabulary (Device DNA Snapshot, Performance Timeline, AI Detective, Recovery Center, Technician/Business Editions) and stable requirement IDs (`FR-`, `NFR-`, `SEC-`, `PRIV-`, `RISK-`, `US-`, `A11Y-`).
 - **MVP boundary** is respected throughout: post-MVP capabilities are explicitly labeled.
 
-> _Documents 01-60 are the original planning and architecture suite. Document 61 aligns that plan with the
-> current local-first application build._
+> _Documents 01-60 are the original planning and architecture suite. Documents 61–67 align that plan with the
+> Vision 2.0 local-first application build, rival waves, and ops-center implementation notes._

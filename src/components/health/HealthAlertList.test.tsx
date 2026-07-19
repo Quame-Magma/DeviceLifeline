@@ -18,22 +18,33 @@ const mk = (id: string, acknowledged: boolean): HealthAlert => ({
 
 describe('HealthAlertList', () => {
   it('renders the alert title and detail', () => {
-    render(<HealthAlertList alerts={[mk('a1', false)]} onAcknowledge={() => {}} />);
+    render(
+      <HealthAlertList alerts={[mk('a1', false)]} onAcknowledge={() => {}} />,
+    );
     expect(screen.getByText('Memory critically high')).toBeInTheDocument();
     expect(screen.getByText('Memory usage is at 95%.')).toBeInTheDocument();
   });
 
   it('shows an Acknowledge button for unacknowledged alerts and fires the callback', () => {
     const onAcknowledge = vi.fn();
-    render(<HealthAlertList alerts={[mk('a1', false)]} onAcknowledge={onAcknowledge} />);
+    render(
+      <HealthAlertList
+        alerts={[mk('a1', false)]}
+        onAcknowledge={onAcknowledge}
+      />,
+    );
     const button = screen.getByTestId('alert-ack-a1');
     fireEvent.click(button);
     expect(onAcknowledge).toHaveBeenCalledWith('a1');
   });
 
   it('shows an acknowledged label and no button for acknowledged alerts', () => {
-    render(<HealthAlertList alerts={[mk('a2', true)]} onAcknowledge={() => {}} />);
-    expect(screen.getByTestId('alert-state-a2')).toHaveTextContent('Acknowledged');
+    render(
+      <HealthAlertList alerts={[mk('a2', true)]} onAcknowledge={() => {}} />,
+    );
+    expect(screen.getByTestId('alert-state-a2')).toHaveTextContent(
+      'Acknowledged',
+    );
     expect(screen.queryByTestId('alert-ack-a2')).not.toBeInTheDocument();
   });
 });
