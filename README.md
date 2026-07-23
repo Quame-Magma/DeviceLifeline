@@ -33,7 +33,7 @@ and rarely explain *root causes*. DeviceLifeline gives every computer a memory.
 ## Technology
 
 Desktop **Tauri** · UI **React + TypeScript + Tailwind CSS** · System core **Rust** · Local DB **SQLite** ·
-Cloud **Supabase** · AI **OpenAI / Anthropic / SpaceXAI (xAI)** · Installs **WinGet** (Windows) / **Homebrew** (future macOS) ·
+Cloud **Supabase** (deferred) · AI **local Qwen3** (on-device; heuristics if unprovisioned) · Installs **WinGet** (Windows) / **Homebrew** (future macOS) ·
 Payments **Stripe + Paystack** · Analytics **PostHog** · Crash reporting **Sentry**.
 
 > **Windows is the first-class target.** macOS and Linux are documented as future architecture plans.
@@ -67,7 +67,7 @@ until the local MVP is stable enough to test on real Windows devices. See
 
 **Vision 2.0 local intelligence platform (v0.3.x).**  
 Tauri app, local SQLite schema, Rust collectors and intelligence engines, restore/diagnosis/health/crash/
-hardware/drivers/security/vault slices, always-on agent binary, SpaceXAI/xAI copilot (optional), and a React
+hardware/drivers/security/vault slices, always-on agent binary, local Qwen3 copilot (when provisioned), and a React
 ops-center UI. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### What is testable locally
@@ -84,7 +84,7 @@ ops-center UI. See [CONTRIBUTING.md](CONTRIBUTING.md).
 - Behavioral security scan (persistence + process heuristics, not AV signatures)
 - Recovery Vault: System Restore points, DNA vault backups, directory images
 - Always-on agent: `cargo run --bin device-lifeline-agent -- --console`
-- Copilot: offline heuristics, or SpaceXAI via `XAI_API_KEY`
+- Copilot: **local Qwen3** when provisioned (`scripts/fetch-qwen3.ps1` → `resources/ai`); otherwise offline heuristics (no cloud LLM APIs)
 - Universal Search (FTS5), command palette (Ctrl/Cmd+K)
 - Professional confirm/toast feedback (no raw `window.confirm` for product flows)
 - App-wide list pagination: **5 items per page**

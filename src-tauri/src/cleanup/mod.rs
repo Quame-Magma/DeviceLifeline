@@ -133,6 +133,10 @@ pub fn execute_cleanup(
     let mut skipped_locked = 0i64;
     let mut deleted_paths = Vec::new();
     let mut errors = Vec::new();
+    let attempted_paths: std::collections::HashSet<String> = file_candidates
+        .iter()
+        .map(|item| item.path.clone())
+        .collect();
 
     for item in &selected {
         if is_virtual_candidate(item) {
@@ -228,12 +232,23 @@ pub fn execute_cleanup(
         cat_list.sort();
     }
 
+    // A process can recreate cache/temp files immediately after they are
+    // removed. Re-scan the exact attempted paths before returning success.
+    let remaining_paths = collect_all_candidates()
+        .into_iter()
+        .filter(|candidate| {
+            !is_virtual_candidate(candidate) && attempted_paths.contains(&candidate.path)
+        })
+        .map(|candidate| candidate.path)
+        .collect::<Vec<_>>();
+
     Ok(CleanupResult {
         action,
         deleted_count,
         deleted_bytes,
         failed_count: failed_count + skipped_locked,
         deleted_paths,
+        remaining_paths,
         errors,
         categories_cleaned: cat_list,
     })
@@ -252,7 +267,7 @@ fn delete_path_robust(path: &str, is_directory: bool) -> Result<(), String> {
         fs::remove_file(&p)
     };
     if first.is_ok() {
-        return Ok(());
+        return verify_path_removed(&p);
     }
     let err1 = first.err().map(|e| e.to_string()).unwrap_or_default();
 
@@ -275,7 +290,17 @@ fn delete_path_robust(path: &str, is_directory: bool) -> Result<(), String> {
     } else {
         fs::remove_file(&p)
     };
-    second.map_err(|e| format!("{err1}; retry: {e}"))
+    second
+        .map_err(|e| format!("{err1}; retry: {e}"))
+        .and_then(|_| verify_path_removed(&p))
+}
+
+fn verify_path_removed(path: &Path) -> Result<(), String> {
+    match fs::symlink_metadata(path) {
+        Ok(_) => Err("remove reported success but the path is still present".into()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("could not verify removal: {error}")),
+    }
 }
 
 fn is_path_hard_blocked(path: &str) -> bool {
@@ -1173,5 +1198,17 @@ mod tests {
         let conn = memory_db();
         let err = execute_cleanup(&conn, None, false).expect_err("confirm");
         assert!(err.to_string().contains("confirm"));
+    }
+
+    #[test]
+    fn delete_path_verifies_a_real_file_removal() {
+        let path = std::env::temp_dir().join(format!(
+            "devicelifeline-cleanup-test-{}.tmp",
+            uuid::Uuid::new_v4()
+        ));
+        fs::write(&path, b"cleanup verification").expect("create test file");
+
+        delete_path_robust(&path.display().to_string(), false).expect("delete test file");
+        assert!(!path.exists());
     }
 }

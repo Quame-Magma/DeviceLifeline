@@ -11,9 +11,11 @@ import {
   executeSafeCleanup as apiExecuteSafeCleanup,
   getCopilotStatus as apiGetCopilotStatus,
   getDashboardIntelligence,
+  getLocalQwenInstallProgress as apiGetInstallProgress,
   listActionAudit,
   listIntelligenceFindings,
   proposeSafeCleanup as apiProposeSafeCleanup,
+  startLocalQwenInstall as apiStartLocalQwenInstall,
 } from '../api/tauri/intelligence';
 import type {
   ActionAuditEntry,
@@ -21,6 +23,7 @@ import type {
   CopilotStatus,
   DashboardIntelligence,
   IntelligenceFinding,
+  LocalQwenInstallProgress,
 } from '../types/device.types';
 
 function toMessage(err: unknown, fallback: string): string {
@@ -51,6 +54,10 @@ export interface UseIntelligenceReturn {
   previewCleanup: () => Promise<void>;
   executeCleanup: (confirm: boolean) => Promise<void>;
   loadCopilotStatus: () => Promise<void>;
+  /** Start downloading local Qwen3 into app data (~640 MB). */
+  startLocalQwenInstall: () => Promise<void>;
+  installProgress: LocalQwenInstallProgress | null;
+  refreshInstallProgress: () => Promise<void>;
 }
 
 export function useIntelligence(): UseIntelligenceReturn {
@@ -67,6 +74,8 @@ export function useIntelligence(): UseIntelligenceReturn {
   const [copilotStatus, setCopilotStatus] = useState<CopilotStatus | null>(
     null,
   );
+  const [installProgress, setInstallProgress] =
+    useState<LocalQwenInstallProgress | null>(null);
   const [loading, setLoading] = useState(false);
   const [dismissing, setDismissing] = useState(false);
   const [cleanupLoading, setCleanupLoading] = useState(false);
@@ -171,6 +180,15 @@ export function useIntelligence(): UseIntelligenceReturn {
     try {
       const status = await apiGetCopilotStatus();
       setCopilotStatus(status);
+      if (status.local) {
+        setInstallProgress({
+          phase: status.local.installPhase ?? 'idle',
+          percent: status.local.installPercent ?? 0,
+          message: status.local.installMessage ?? '',
+          error: status.local.installError ?? null,
+          busy: status.local.installBusy ?? false,
+        });
+      }
     } catch {
       // Graceful fallback when the backend is unavailable.
       setCopilotStatus({
@@ -178,7 +196,38 @@ export function useIntelligence(): UseIntelligenceReturn {
         provider: 'heuristic',
         model: 'offline',
         availableProviders: [],
+        local: {
+          provider: 'local-qwen3',
+          model: 'Qwen3-0.6B',
+          endpoint: 'http://127.0.0.1:39201/v1',
+          modelPath: null,
+          runtimePath: null,
+          modelInstalled: false,
+          runtimeInstalled: false,
+          ready: false,
+          modelDownloadUrl: '',
+          runtimeDownloadUrl: '',
+        },
       });
+    }
+  }, []);
+
+  const refreshInstallProgress = useCallback(async () => {
+    try {
+      const p = await apiGetInstallProgress();
+      setInstallProgress(p);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const startLocalQwenInstall = useCallback(async () => {
+    setError(null);
+    try {
+      const p = await apiStartLocalQwenInstall();
+      setInstallProgress(p);
+    } catch (err) {
+      setError(toMessage(err, 'Failed to start local model install.'));
     }
   }, []);
 
@@ -189,6 +238,7 @@ export function useIntelligence(): UseIntelligenceReturn {
     cleanupPreview,
     cleanupResult,
     copilotStatus,
+    installProgress,
     loading,
     dismissing,
     cleanupLoading,
@@ -200,5 +250,7 @@ export function useIntelligence(): UseIntelligenceReturn {
     previewCleanup,
     executeCleanup,
     loadCopilotStatus,
+    startLocalQwenInstall,
+    refreshInstallProgress,
   };
 }

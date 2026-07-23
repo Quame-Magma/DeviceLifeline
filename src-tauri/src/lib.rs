@@ -145,6 +145,8 @@ pub fn run() {
             commands::sysreport::get_system_inventory_report,
             commands::sysreport::run_system_benchmark,
             commands::intelligence::get_copilot_status,
+            commands::intelligence::start_local_qwen_install,
+            commands::intelligence::get_local_qwen_install_progress,
             commands::process::list_processes,
             commands::process::get_process_tree,
             commands::process::get_process_detail,
@@ -196,6 +198,13 @@ pub fn run() {
             commands::backup::run_backup_schedule_now,
             commands::backup::restore_from_shadow,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        // Tauri 2: Builder::run expects `Context` (generate_context!). A RunEvent
+        // callback is only available after `.build(context)` returns `App`.
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app, event| {
+            if matches!(event, tauri::RunEvent::ExitRequested { .. }) {
+                diagnosis::llm::shutdown_local_server();
+            }
+        });
 }

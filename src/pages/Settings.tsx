@@ -24,7 +24,7 @@ import {
   type StartPage,
   type UserPreferences,
 } from '../lib/preferences';
-import { APP_NAME, APP_TAGLINE } from '../lib/constants';
+import { APP_NAME, APP_TAGLINE, APP_VERSION } from '../lib/constants';
 import { BlurFade } from '../components/motion/BlurFade';
 import { PageShell } from '../components/layout/PageShell';
 
@@ -48,7 +48,12 @@ export function Settings() {
   const [prefs, setPrefs] = useState<UserPreferences>(DEFAULT_PREFERENCES);
   const [savedFlash, setSavedFlash] = useState(false);
 
-  const { copilotStatus, loadCopilotStatus } = useIntelligence();
+  const {
+    copilotStatus,
+    loadCopilotStatus,
+    startLocalQwenInstall,
+    installProgress,
+  } = useIntelligence();
   const { heartbeat, loadStatus } = useAgent();
   const {
     status: elevation,
@@ -177,24 +182,24 @@ export function Settings() {
         <SettingsSection
           icon={ScanSearch}
           title="Copilot & AI"
-          description="Provider status is read from the environment. Keys are never stored in the UI."
+          description="On-device only: local Qwen3 when provisioned, otherwise offline heuristics. No cloud LLM APIs."
         >
           <SettingsRow
             label="Mode"
             description={
               llmReady
-                ? 'Cloud LLM is active for natural-language answers.'
-                : 'Offline heuristic provider. Set an API key in the environment to enable cloud models.'
+                ? 'Local Qwen3 is available for natural-language answers on this PC.'
+                : 'Offline heuristic provider. Install local Qwen3 for richer answers.'
             }
           >
-            <StatusPill tone={llmReady ? 'info' : 'neutral'}>
-              {llmReady ? 'LLM ready' : 'Heuristic'}
+            <StatusPill tone={llmReady ? 'success' : 'neutral'}>
+              {llmReady ? 'Local Qwen3' : 'Heuristic'}
             </StatusPill>
           </SettingsRow>
 
           <SettingsRow
             label="Active provider"
-            description="Preference order uses DEVICELIFELINE_LLM_PROVIDER when multiple keys exist."
+            description="Always local-qwen3 when the model is ready; otherwise heuristic."
           >
             <span className="font-mono text-sm text-text-secondary">
               {copilotStatus
@@ -204,23 +209,56 @@ export function Settings() {
           </SettingsRow>
 
           <SettingsRow
-            label="Available keys"
-            description="Detected from XAI_API_KEY, OPENAI_API_KEY, and GEMINI_API_KEY."
+            label="Local model"
+            description={
+              copilotStatus?.local?.modelInstalled
+                ? copilotStatus.local.modelPath ?? 'Installed'
+                : 'Missing Qwen3-0.6B-Q8_0.gguf'
+            }
           >
             <span className="text-sm text-text-secondary">
-              {copilotStatus?.availableProviders?.length
-                ? copilotStatus.availableProviders.join(', ')
-                : 'None configured'}
+              {copilotStatus?.local?.modelInstalled ? 'Installed' : 'Not found'}
             </span>
           </SettingsRow>
 
           <SettingsRow
-            label="How to enable cloud Copilot"
-            description="Set one of the env vars, then restart DeviceLifeline."
+            label="llama-server"
+            description={
+              copilotStatus?.local?.runtimeInstalled
+                ? copilotStatus.local.runtimePath ?? 'Installed'
+                : 'Missing llama-server.exe'
+            }
           >
-            <code className="rounded-control border border-hairline bg-surface-elevated px-2 py-1 font-mono text-2xs text-text-muted">
-              XAI_API_KEY=…
-            </code>
+            <span className="text-sm text-text-secondary">
+              {copilotStatus?.local?.runtimeInstalled
+                ? 'Installed'
+                : 'Not found'}
+            </span>
+          </SettingsRow>
+
+          <SettingsRow
+            label="Install on-device model"
+            description={
+              installProgress?.busy
+                ? installProgress.message
+                : copilotStatus?.local?.ready
+                  ? 'Local Qwen3 is installed for this user.'
+                  : 'Downloads ~640 MB privately to this PC (app data). No cloud APIs.'
+            }
+          >
+            <Button
+              variant="primary"
+              size="sm"
+              loading={installProgress?.busy === true}
+              disabled={copilotStatus?.local?.ready === true}
+              onClick={() => void startLocalQwenInstall()}
+            >
+              {copilotStatus?.local?.ready
+                ? 'Installed'
+                : installProgress?.busy
+                  ? `${installProgress.percent}%`
+                  : 'Download local model'}
+            </Button>
           </SettingsRow>
         </SettingsSection>
       </BlurFade>
@@ -278,7 +316,9 @@ export function Settings() {
             label="Version"
             description="Matches package version for this build."
           >
-            <span className="font-mono text-sm text-text-secondary">0.3.0</span>
+            <span className="font-mono text-sm text-text-secondary">
+              {APP_VERSION}
+            </span>
           </SettingsRow>
           <SettingsRow
             label="Design system"

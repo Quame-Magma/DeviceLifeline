@@ -3,8 +3,9 @@
 //! Assembles a privacy-safe, on-device [`DiagnosisContext`] (structured
 //! summaries only — never raw file contents), runs the platform
 //! [`DiagnosisProvider`](provider::DiagnosisProvider) over it, and persists the
-//! session and findings. Uses SpaceXAI/xAI when `XAI_API_KEY` is set; otherwise
-//! offline heuristics. SQL lives in `storage::diagnosis_repo`.
+//! session and findings. Uses **local Qwen3** when provisioned in
+//! `resources/ai`; otherwise offline heuristics. No cloud LLM APIs.
+//! SQL lives in `storage::diagnosis_repo`.
 
 pub mod llm;
 pub mod provider;

@@ -79,13 +79,14 @@ export function useCleanup() {
       }
       const r = await apiExecute(cats, true);
       setResult(r);
-      if (r.deletedCount === 0 && r.failedCount > 0) {
+      const remaining = r.remainingPaths?.length ?? 0;
+      if (r.failedCount > 0 || remaining > 0) {
         const sample = (r.errors ?? []).slice(0, 3).join(' · ');
-        setError(
-          sample
-            ? `Nothing deleted. ${sample}`
-            : 'Nothing deleted — files may be locked (close browsers/apps) or need elevation.',
-        );
+        const status =
+          remaining > 0
+            ? String(remaining) + ' target(s) still present after cleanup.'
+            : 'Nothing deleted — files may be locked (close browsers/apps) or need elevation.';
+        setError(sample ? status + ' ' + sample : status);
       } else if (r.deletedCount === 0) {
         setError(
           'Nothing to delete in the selected categories (already clean, or only virtual actions failed).',

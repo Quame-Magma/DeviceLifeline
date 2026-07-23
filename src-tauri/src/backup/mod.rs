@@ -265,30 +265,29 @@ fn create_shadow_os(volume: &str) -> (String, Option<String>, String, String) {
                 }
             }
             if line.starts_with("FAIL|") {
-                // Fall through to mock recorded shadow for lab/dev without admin.
                 let msg = line.trim_start_matches("FAIL|");
-                return mock_shadow(volume, Some(msg));
+                return failed_shadow(Some(msg));
             }
         }
-        mock_shadow(volume, Some("VSS create failed; recorded lab shadow"))
+        failed_shadow(Some(
+            "VSS create failed — run elevated or ensure Volume Shadow Copy is available",
+        ))
     }
     #[cfg(not(windows))]
     {
-        mock_shadow(volume, Some("Non-Windows lab shadow"))
+        let _ = volume;
+        failed_shadow(Some("Volume shadow copy is only available on Windows"))
     }
 }
 
-fn mock_shadow(_volume: &str, detail: Option<&str>) -> (String, Option<String>, String, String) {
-    let id = format!("{{{}}}", uuid::Uuid::new_v4());
+/// Honest failure — never invent a fake available shadow for the UI.
+fn failed_shadow(detail: Option<&str>) -> (String, Option<String>, String, String) {
     (
-        id,
-        Some(format!(
-            "\\\\?\\GLOBALROOT\\Device\\HarddiskVolumeShadowCopy{}",
-            (uuid::Uuid::new_v4().as_u128() % 20) + 1
-        )),
-        "available".into(),
+        format!("{{{}}}", uuid::Uuid::new_v4()),
+        None,
+        "failed".into(),
         detail
-            .unwrap_or("Recorded volume shadow (lab/mock path when live VSS unavailable)")
+            .unwrap_or("Volume shadow create failed")
             .into(),
     )
 }

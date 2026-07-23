@@ -1126,6 +1126,8 @@ pub struct CleanupResult {
     pub deleted_bytes: i64,
     pub failed_count: i64,
     pub deleted_paths: Vec<String>,
+    /// Candidate paths still found after the cleanup verification scan.
+    pub remaining_paths: Vec<String>,
     pub errors: Vec<String>,
     #[serde(default)]
     pub categories_cleaned: Vec<String>,

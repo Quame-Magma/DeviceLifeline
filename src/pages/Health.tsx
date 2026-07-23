@@ -178,7 +178,7 @@ function HealthBody({
   return (
     <>
       {/* Hero */}
-      <section className="panel overflow-hidden" data-health-ui="mock-v2">
+      <section className="panel overflow-hidden">
         <div className="grid gap-6 p-5 lg:grid-cols-[200px_minmax(0,1fr)] lg:items-center lg:gap-8 lg:p-6">
           <HealthScoreGauge score={latest.healthScore} />
 
@@ -265,15 +265,10 @@ function HealthBody({
                   : `${alerts.length} recorded`}
               </p>
             </div>
-            {onNavigate ? (
-              <button
-                type="button"
-                onClick={() => onNavigate('cleanup')}
-                className="flex items-center gap-0.5 text-xs font-medium text-text-secondary hover:text-text-primary"
-              >
-                View all alerts
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
+            {alerts.length > 0 ? (
+              <span className="text-2xs text-text-muted">
+                {alerts.length} total · {openCount} open
+              </span>
             ) : null}
           </div>
           <div className="panel-body space-y-3">

@@ -493,9 +493,13 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         />
         <ResourceTile
           icon={Timer}
-          label="Uptime"
+          label="Sample window"
           value={uptimeFromSamples(historyAsc) ?? '—'}
-          detail="Since last sample window"
+          detail={
+            historyAsc.length >= 2
+              ? 'Span of health samples'
+              : 'Collect samples to measure'
+          }
           detailTone="success"
           series={[]}
           stroke="#59d499"
@@ -517,7 +521,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
             </div>
             <button
               type="button"
-              onClick={go('health')}
+              onClick={go('ai-detective')}
               className="flex items-center gap-0.5 text-xs font-medium text-text-secondary hover:text-text-primary"
             >
               View all findings
@@ -592,7 +596,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         </section>
       </div>
 
-      {/* System timeline — exact mock: 4-node horizontal rail, short labels only */}
+      {/* System timeline — real events only, short labels */}
       <section className="panel">
         <div className="flex items-start justify-between gap-3 px-panel-x pb-1 pt-panel-y">
           <div>
@@ -979,13 +983,13 @@ function truncate(s: string, n: number): string {
   return s.length <= n ? s : `${s.slice(0, n - 1)}…`;
 }
 
+/** Span between oldest and newest health samples (not OS boot uptime). */
 function uptimeFromSamples(samples: HealthSample[]): string | null {
-  if (samples.length === 0) return null;
-  // Approximate session span from oldest→newest sample as a stand-in until OS uptime is wired.
+  if (samples.length < 2) return null;
   const times = samples
     .map((s) => new Date(s.capturedAt).getTime())
     .filter(Number.isFinite);
-  if (times.length === 0) return null;
+  if (times.length < 2) return null;
   const span = Math.max(...times) - Math.min(...times);
   if (span < 60_000) return '<1h';
   const hours = Math.floor(span / 3_600_000);
@@ -1050,9 +1054,8 @@ type TimelineItem = {
 };
 
 /**
- * Always 4 curated nodes matching the product mock (Image #1):
- * Windows Update · Smart Check · Driver Update · System Cleanup
- * Never dump raw registry paths into the overview strip.
+ * Overview strip built only from real timeline / health / crash signals.
+ * Never invents product names, free-space figures, or relative dates.
  */
 function buildTimelineItems(
   events: TimelineEvent[],
@@ -1084,56 +1087,81 @@ function buildTimelineItems(
       t.includes('config') ||
       t.includes('startup') ||
       t.includes('service') ||
-      t.includes('task')
+      t.includes('task') ||
+      t.includes('clean')
     );
   });
 
-  return [
-    {
-      id: softwareEv?.id ?? 'tl-update',
-      title: 'Windows Update',
-      detail: softwareEv
-        ? humanDetail(softwareEv, 'Successfully installed')
-        : snapshotCount > 0
-          ? 'Successfully installed'
-          : 'No recent updates',
-      when: softwareEv
-        ? relativeTime(softwareEv.occurredAt)
-        : relativeTime(latest?.capturedAt),
+  const items: TimelineItem[] = [];
+
+  if (softwareEv) {
+    items.push({
+      id: softwareEv.id,
+      title: 'Software change',
+      detail: humanDetail(softwareEv, 'Change detected'),
+      when: relativeTime(softwareEv.occurredAt),
       tone: 'neutral',
       icon: CloudDownload,
-    },
-    {
-      id: 'tl-check',
-      title: 'Smart Check',
-      detail: latest
-        ? crashCount > 0
-          ? `${crashCount} stability note(s)`
-          : 'No issues found'
-        : 'Not run yet',
+    });
+  } else if (snapshotCount > 0) {
+    items.push({
+      id: 'tl-baseline',
+      title: 'Baseline',
+      detail: `${snapshotCount} snapshot${snapshotCount === 1 ? '' : 's'} on device`,
       when: relativeTime(latest?.capturedAt),
-      tone: 'success',
-      icon: Activity,
-    },
-    {
-      id: driverEv?.id ?? 'tl-driver',
-      title: 'Driver Update',
-      detail: driverEv
-        ? humanDetail(driverEv, 'Driver change detected')
-        : 'NVIDIA Graphics Driver',
-      when: driverEv ? relativeTime(driverEv.occurredAt) : 'Yesterday',
+      tone: 'neutral',
+      icon: CloudDownload,
+    });
+  }
+
+  items.push({
+    id: 'tl-check',
+    title: 'Health check',
+    detail: latest
+      ? crashCount > 0
+        ? `${crashCount} stability note(s)`
+        : `Score ${Math.round(latest.healthScore)}`
+      : 'Not sampled yet',
+    when: relativeTime(latest?.capturedAt),
+    tone: latest ? 'success' : 'neutral',
+    icon: Activity,
+  });
+
+  if (driverEv) {
+    items.push({
+      id: driverEv.id,
+      title: 'Driver change',
+      detail: humanDetail(driverEv, 'Driver change detected'),
+      when: relativeTime(driverEv.occurredAt),
       tone: 'info',
       icon: Wrench,
-    },
-    {
-      id: configEv?.id ?? 'tl-cleanup',
-      title: 'System Cleanup',
-      detail: configEv ? humanDetail(configEv, '2.4 GB freed') : '2.4 GB freed',
-      when: configEv ? relativeTime(configEv.occurredAt) : '2 days ago',
+    });
+  }
+
+  if (configEv) {
+    items.push({
+      id: configEv.id,
+      title: 'Config change',
+      detail: humanDetail(configEv, 'Configuration changed'),
+      when: relativeTime(configEv.occurredAt),
       tone: 'warning',
       icon: Brush,
-    },
-  ];
+    });
+  }
+
+  // Prefer up to 4 real nodes; pad only with honest empty slots when sparse.
+  while (items.length < 4) {
+    items.push({
+      id: `tl-empty-${items.length}`,
+      title: 'No event',
+      detail: 'Capture a baseline or wait for changes',
+      when: '—',
+      tone: 'neutral',
+      icon: Activity,
+    });
+  }
+
+  return items.slice(0, 4);
 }
 
 function blob(e: TimelineEvent): string {

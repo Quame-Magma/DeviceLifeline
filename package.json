@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "test": "vitest run",
+    "prepare:local-ai": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/fetch-qwen3.ps1",
     "tauri": "tauri"
   },
   "dependencies": {

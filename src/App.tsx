@@ -55,7 +55,9 @@ export default function App() {
       {activeView === 'recovery-center' && <RecoveryCenter />}
       {activeView === 'health' && <Health onNavigate={setActiveView} />}
       {activeView === 'crash-intelligence' && <CrashIntelligence />}
-      {activeView === 'ai-detective' && <AIDetective />}
+      {activeView === 'ai-detective' && (
+        <AIDetective onNavigate={setActiveView} />
+      )}
       {activeView === 'processes' && <ProcessExplorer />}
       {activeView === 'storage' && <StorageCenter />}
       {activeView === 'search' && <UniversalSearch />}

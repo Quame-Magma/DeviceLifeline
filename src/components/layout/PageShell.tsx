@@ -4,6 +4,8 @@ import { PageHeader } from '../common/PageHeader';
 interface PageShellProps {
   title: string;
   description?: string;
+  icon?: ReactNode;
+  titleExtra?: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   /** Wider content (matches Overview). Default true. */
@@ -21,6 +23,8 @@ interface PageShellProps {
 export function PageShell({
   title,
   description,
+  icon,
+  titleExtra,
   actions,
   children,
   wide = true,
@@ -41,6 +45,8 @@ export function PageShell({
       <PageHeader
         title={title}
         description={description}
+        icon={icon}
+        titleExtra={titleExtra}
         actions={actions}
         compact={compact}
       />

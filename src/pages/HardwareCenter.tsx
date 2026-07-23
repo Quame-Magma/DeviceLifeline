@@ -449,7 +449,7 @@ function PerformanceBody({
       {/* Hero metric tiles with sparklines */}
       <div
         className="grid grid-cols-2 gap-2 xl:grid-cols-4"
-        data-performance-ui="mock-v1"
+
       >
         <MetricSparkCard
           icon={Thermometer}

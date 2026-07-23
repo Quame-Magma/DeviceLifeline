@@ -1,11 +1,10 @@
 //! Diagnosis providers.
 //!
 //! A [`DiagnosisProvider`] turns the on-device [`DiagnosisContext`] into a set
-//! of findings. [`HeuristicProvider`] is the default, fully-offline,
-//! deterministic implementation (rule-based over the context). A future remote
-//! provider (OpenAI/Anthropic via a Supabase edge function) can be swapped in
-//! behind [`default_provider`] without touching the rest of the slice —
-//! mirroring the real-vs-mock collector pattern.
+//! of findings. [`HeuristicProvider`] is the fully-offline, deterministic
+//! rule engine. When local Qwen3 is provisioned (`resources/ai`),
+//! [`default_provider`] uses the on-device LLM first and falls back to
+//! heuristics on failure. **No cloud LLM APIs are used.**
 
 use crate::models::DiagnosisContext;
 
@@ -139,9 +138,8 @@ pub trait DiagnosisProvider: Send + Sync {
 
 /// Returns the platform-appropriate provider.
 ///
-/// When any of `XAI_API_KEY`, `OPENAI_API_KEY`, or `GEMINI_API_KEY` is set,
-/// uses that cloud provider (see `DEVICELIFELINE_LLM_PROVIDER` for preference),
-/// with heuristic fallback on failure. Otherwise uses offline heuristics.
+/// Prefers **local Qwen3** when model + llama-server are installed; otherwise
+/// offline heuristics. Cloud keys are intentionally ignored.
 pub fn default_provider() -> Box<dyn DiagnosisProvider> {
     if let Some(llm) = crate::diagnosis::llm::LlmProvider::from_env() {
         Box::new(llm)

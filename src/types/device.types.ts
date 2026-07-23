@@ -757,6 +757,8 @@ export interface CleanupResult {
   deletedBytes: number;
   failedCount: number;
   deletedPaths: string[];
+  /** Candidate paths still found after the cleanup verification scan. */
+  remainingPaths: string[];
   errors: string[];
   categoriesCleaned?: string[];
 }
@@ -844,15 +846,43 @@ export interface BenchmarkResult {
 }
 
 /**
- * Copilot / diagnosis provider status.
+ * Copilot / diagnosis provider status (local Qwen3 only).
  * When `llmConfigured` is false, answers use the on-device heuristic provider.
+ * Cloud providers (OpenAI / xAI / Gemini) are not supported.
  */
 export interface CopilotStatus {
   llmConfigured: boolean;
   provider: string;
-  /** Providers that currently have API keys set (xai, openai, gemini). */
+  /** Providers available on this device (typically `local-qwen3` or empty). */
   availableProviders?: string[];
   model: string;
+  local?: {
+    provider: string;
+    model: string;
+    endpoint: string;
+    modelPath: string | null;
+    runtimePath: string | null;
+    modelInstalled: boolean;
+    runtimeInstalled: boolean;
+    ready: boolean;
+    modelDownloadUrl: string;
+    runtimeDownloadUrl: string;
+    /** idle | downloading_* | extracting_* | verifying | ready | error */
+    installPhase?: string;
+    installPercent?: number;
+    installMessage?: string;
+    installError?: string | null;
+    installBusy?: boolean;
+  };
+}
+
+/** Progress of in-app local Qwen3 install. */
+export interface LocalQwenInstallProgress {
+  phase: string;
+  percent: number;
+  message: string;
+  error: string | null;
+  busy: boolean;
 }
 
 /** Patch My PC–class third-party update row. */

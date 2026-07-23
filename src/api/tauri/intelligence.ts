@@ -15,6 +15,7 @@ import type {
   CopilotStatus,
   DashboardIntelligence,
   IntelligenceFinding,
+  LocalQwenInstallProgress,
 } from '../../types/device.types';
 
 /** Fetch the dashboard intelligence read model (findings + top processes). */
@@ -48,6 +49,15 @@ export const proposeSafeCleanup = (): Promise<ActionAuditEntry> =>
 export const executeSafeCleanup = (confirm: boolean): Promise<CleanupResult> =>
   invoke<CleanupResult>('execute_safe_cleanup', { confirm });
 
-/** Whether cloud LLM is configured, plus provider/model labels. */
+/** Local Qwen3 / heuristic Copilot status (no cloud providers). */
 export const getCopilotStatus = (): Promise<CopilotStatus> =>
   invoke<CopilotStatus>('get_copilot_status');
+
+/** Start in-app download of llama-server + Qwen3 (~640 MB). */
+export const startLocalQwenInstall = (): Promise<LocalQwenInstallProgress> =>
+  invoke<LocalQwenInstallProgress>('start_local_qwen_install');
+
+/** Poll in-app local model install progress. */
+export const getLocalQwenInstallProgress =
+  (): Promise<LocalQwenInstallProgress> =>
+    invoke<LocalQwenInstallProgress>('get_local_qwen_install_progress');

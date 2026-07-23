@@ -496,7 +496,7 @@ export function StorageCenter() {
       )}
 
       {/* Folder map controls + treemap */}
-      <section className="panel" data-storage-ui="mock-v1">
+      <section className="panel">
         <div className="panel-header flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <p className="panel-title">Folder map</p>
@@ -770,7 +770,7 @@ export function StorageCenter() {
               }}
               className="inline-flex items-center gap-1 text-xs font-medium text-text-secondary hover:text-text-primary"
             >
-              Learn more
+              Preview cleanup
               <ExternalLink className="h-3 w-3" strokeWidth={1.75} aria-hidden />
             </button>
             <button

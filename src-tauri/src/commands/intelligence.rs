@@ -66,15 +66,50 @@ pub fn execute_safe_cleanup(
     actions::execute_safe_cleanup(&conn, confirm)
 }
 
-/// Whether a cloud LLM is configured (xAI, OpenAI, and/or Gemini).
+/// Returns local-only Copilot status (Qwen3 + heuristics). No cloud providers.
 #[tauri::command]
 pub fn get_copilot_status() -> Result<serde_json::Value, CoreError> {
     let configured = crate::diagnosis::llm::configured_providers();
     let (provider, model, llm_configured) = crate::diagnosis::llm::active_provider_status();
+    let local = crate::diagnosis::llm::local_qwen_status();
+    let install = crate::diagnosis::llm::local_qwen_install_progress();
     Ok(serde_json::json!({
         "llmConfigured": llm_configured,
         "provider": provider,
         "model": model,
         "availableProviders": configured,
+        "local": {
+            "provider": "local-qwen3",
+            "model": local.model,
+            "endpoint": local.endpoint,
+            "modelPath": local.model_path,
+            "runtimePath": local.runtime_path,
+            "modelInstalled": local.model_installed,
+            "runtimeInstalled": local.runtime_installed,
+            "ready": local.ready,
+            "modelDownloadUrl": local.model_download_url,
+            "runtimeDownloadUrl": local.runtime_download_url,
+            "installPhase": install.phase,
+            "installPercent": install.percent,
+            "installMessage": install.message,
+            "installError": install.error,
+            "installBusy": install.busy,
+        },
     }))
+}
+
+/// Starts in-app download of llama-server + Qwen3 into the user app-data folder.
+#[tauri::command]
+pub fn start_local_qwen_install() -> Result<serde_json::Value, CoreError> {
+    crate::diagnosis::llm::start_local_qwen_install()
+        .map_err(CoreError::Internal)?;
+    let p = crate::diagnosis::llm::local_qwen_install_progress();
+    Ok(serde_json::to_value(p).unwrap_or_else(|_| serde_json::json!({})))
+}
+
+/// Poll progress of an in-app local model install.
+#[tauri::command]
+pub fn get_local_qwen_install_progress() -> Result<serde_json::Value, CoreError> {
+    let p = crate::diagnosis::llm::local_qwen_install_progress();
+    Ok(serde_json::to_value(p).unwrap_or_else(|_| serde_json::json!({})))
 }
