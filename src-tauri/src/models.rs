@@ -1071,6 +1071,59 @@ pub struct DriverInfo {
     pub risk_reasons: Vec<String>,
 }
 
+/// Driver update available from Windows Update (Type=Driver).
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DriverUpdate {
+    /// Windows Update identity (UpdateID) used for install selection.
+    pub id: String,
+    pub revision: i64,
+    pub title: String,
+    pub description: Option<String>,
+    pub kb_article: Option<String>,
+    pub manufacturer: Option<String>,
+    pub driver_class: Option<String>,
+    pub provider: Option<String>,
+    pub version: Option<String>,
+    pub hardware_id: Option<String>,
+    pub size_bytes: i64,
+    pub is_downloaded: bool,
+    pub categories: Vec<String>,
+}
+
+/// Result of scanning Windows Update for driver packages.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DriverUpdateScanResult {
+    pub scanned_at: String,
+    pub updates: Vec<DriverUpdate>,
+    pub total_count: i64,
+    pub total_bytes: i64,
+    /// Non-fatal notes (e.g. offline, policy blocked).
+    #[serde(default)]
+    pub warnings: Vec<String>,
+}
+
+/// One failed driver update install.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DriverUpdateFailure {
+    pub id: String,
+    pub title: String,
+    pub message: String,
+}
+
+/// Outcome of installing selected Windows Update driver packages.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct DriverUpdateInstallResult {
+    pub attempted: i64,
+    pub succeeded: Vec<String>,
+    pub failed: Vec<DriverUpdateFailure>,
+    pub reboot_required: bool,
+    pub message: String,
+}
+
 /// Behavioral security finding (persistence, privilege, suspicious process).
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]

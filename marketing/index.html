@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DeviceLifeline — PC history, diagnosis, and recovery</title>
+    <meta
+      name="description"
+      content="DeviceLifeline is the operating memory of your Windows PC. Track what changed, diagnose slowdowns and crashes, clean safely, and restore setups — with data that stays on your machine."
+    />
+    <meta name="theme-color" content="#0a0c10" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="wordmark" href="#top" aria-label="DeviceLifeline home">
+          <svg class="wordmark-icon" width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+            <rect width="22" height="22" rx="6" fill="#12b981" />
+            <path
+              d="M6 12.2c1.6-3.2 3.1-4.8 5-4.8s3.4 1.6 5 4.8"
+              stroke="#042f1e"
+              stroke-width="1.6"
+              fill="none"
+              stroke-linecap="round"
+            />
+            <circle cx="11" cy="13.5" r="1.4" fill="#042f1e" />
+          </svg>
+          <span>DeviceLifeline</span>
+        </a>
+
+        <nav class="primary-nav" aria-label="Primary">
+          <a href="#product">Product</a>
+          <a href="#capabilities">Capabilities</a>
+          <a href="#privacy">Privacy</a>
+          <a href="#download">Download</a>
+        </nav>
+
+        <div class="header-cta">
+          <a class="text-link" href="../README.md">Documentation</a>
+          <a class="button button-primary" href="#download">Get the app</a>
+        </div>
+
+        <button
+          class="nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="mobile-nav"
+          data-nav-toggle
+        >
+          <span class="sr-only">Menu</span>
+          <span></span><span></span>
+        </button>
+      </div>
+      <div class="mobile-nav shell" id="mobile-nav" hidden data-mobile-nav>
+        <a href="#product">Product</a>
+        <a href="#capabilities">Capabilities</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#download">Download</a>
+        <a class="button button-primary" href="#download">Get the app</a>
+      </div>
+    </header>
+
+    <main id="content">
+      <!-- HERO -->
+      <section class="hero" id="top">
+        <div class="shell hero-grid">
+          <div class="hero-copy">
+            <h1>Know what changed.<br />Fix what broke.</h1>
+            <p class="hero-lede">
+              DeviceLifeline keeps a living record of your Windows PC — software,
+              configuration, health, and crashes — so you can stop guessing and
+              start resolving.
+            </p>
+            <div class="hero-actions">
+              <a class="button button-primary button-lg" href="#download"
+                >Download for Windows</a
+              >
+              <a class="button button-secondary button-lg" href="#product"
+                >See how it works</a
+              >
+            </div>
+            <p class="hero-meta">
+              Windows 10 &amp; 11 · Local data · Optional on-device model
+            </p>
+          </div>
+
+          <div class="hero-stage" aria-hidden="false">
+            <div class="app-window">
+              <div class="app-chrome">
+                <div class="app-dots" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </div>
+                <div class="app-title">DeviceLifeline</div>
+                <div class="app-chrome-spacer"></div>
+              </div>
+              <div class="app-body">
+                <aside class="app-rail">
+                  <div class="rail-item is-active">Overview</div>
+                  <div class="rail-item">Health</div>
+                  <div class="rail-item">Storage</div>
+                  <div class="rail-item">Copilot</div>
+                  <div class="rail-item">Cleanup</div>
+                </aside>
+                <div class="app-main">
+                  <div class="app-kicker">This PC · Live</div>
+                  <div class="app-score-row">
+                    <div class="score-block">
+                      <span class="score-label">Health</span>
+                      <span class="score-value">72</span>
+                    </div>
+                    <div class="mini-bars">
+                      <div class="mini-bar">
+                        <span>CPU</span>
+                        <i style="--w: 34%"></i>
+                      </div>
+                      <div class="mini-bar">
+                        <span>Memory</span>
+                        <i style="--w: 61%"></i>
+                      </div>
+                      <div class="mini-bar">
+                        <span>Disk</span>
+                        <i class="warn" style="--w: 94%"></i>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="app-cards">
+                    <div class="app-card">
+                      <strong>Disk pressure</strong>
+                      <p>C: is 94% full. Temp and browser cache are the largest reclaimable groups.</p>
+                    </div>
+                    <div class="app-card">
+                      <strong>Last change</strong>
+                      <p>Graphics driver update correlated with a 12% rise in idle GPU power draw.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p class="stage-caption">
+              Native Windows app — not a web wrapper around cloud scans.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PRODUCT STORY -->
+      <section class="section" id="product">
+        <div class="shell">
+          <div class="section-intro">
+            <h2>Utilities show the present. You need the story.</h2>
+            <p>
+              Task Manager, Event Viewer, and one-shot cleaners never answer the
+              questions people actually ask: what changed last week, why free
+              space vanishes overnight, which install made boot slower.
+              DeviceLifeline is built around that history.
+            </p>
+          </div>
+
+          <div class="story-grid">
+            <article class="story-card">
+              <h3>Before</h3>
+              <ul>
+                <li>Fragmented tools, no shared timeline</li>
+                <li>Crash logs nobody can read</li>
+                <li>Cleanup that freeds space until it fills again</li>
+                <li>Restore means starting from scratch</li>
+              </ul>
+            </article>
+            <article class="story-card story-card-accent">
+              <h3>With DeviceLifeline</h3>
+              <ul>
+                <li>One continuous device record on disk</li>
+                <li>Plain-language diagnosis from live samples</li>
+                <li>Cleanup with categories, evidence, and verification</li>
+                <li>DNA snapshots and recovery paths you control</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- CAPABILITIES -->
+      <section class="section section-tight" id="capabilities">
+        <div class="shell">
+          <div class="cap-header">
+            <h2>Built as a full ops surface for one machine</h2>
+            <p>
+              Capture, explain, and act in the same application — with safe
+              defaults and deep links between tools.
+            </p>
+          </div>
+
+          <div class="cap-table" role="list">
+            <div class="cap-row" role="listitem">
+              <div class="cap-name">Device DNA</div>
+              <div class="cap-desc">
+                Versioned inventory of apps, configuration, and environment so
+                you can compare baselines and export a setup.
+              </div>
+            </div>
+            <div class="cap-row" role="listitem">
+              <div class="cap-name">Health &amp; sensors</div>
+              <div class="cap-desc">
+                Sampled CPU, memory, disk, and hardware readings with scores and
+                alerts you can acknowledge and track.
+              </div>
+            </div>
+            <div class="cap-row" role="listitem">
+              <div class="cap-name">Performance timeline</div>
+              <div class="cap-desc">
+                Correlate installs, updates, and config changes with what the
+                machine was doing when symptoms started.
+              </div>
+            </div>
+            <div class="cap-row" role="listitem">
+              <div class="cap-name">Copilot</div>
+              <div class="cap-desc">
+                Ask in plain English. Replies are grounded in telemetry on this
+                PC; an optional local model never leaves the device.
+              </div>
+            </div>
+            <div class="cap-row" role="listitem">
+              <div class="cap-name">Storage &amp; cleanup</div>
+              <div class="cap-desc">
+                Per-volume maps, safe categories, sample file evidence, and
+                post-clean verification — not vanity free-space theater.
+              </div>
+            </div>
+            <div class="cap-row" role="listitem">
+              <div class="cap-name">Crashes &amp; recovery</div>
+              <div class="cap-desc">
+                Readable crash intelligence plus vault and restore workflows when
+                you need to roll back or move environments.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DETAIL BAND -->
+      <section class="section section-panel">
+        <div class="shell detail-split">
+          <div class="detail-copy">
+            <h2>Answers that point somewhere useful</h2>
+            <p>
+              When Copilot or a health alert flags disk pressure, you are one
+              click into Storage or Cleanup. When a process is the problem, you
+              land in Processes with the sample context still attached. Diagnosis
+              is not a dead-end chat window.
+            </p>
+            <dl class="detail-stats">
+              <div>
+                <dt>Data plane</dt>
+                <dd>Local SQLite on the endpoint</dd>
+              </div>
+              <div>
+                <dt>AI path</dt>
+                <dd>Optional Qwen3 via llama-server</dd>
+              </div>
+              <div>
+                <dt>Runtime</dt>
+                <dd>Tauri · Rust · React</dd>
+              </div>
+            </dl>
+          </div>
+          <figure class="detail-figure">
+            <img
+              src="./assets/app-visual.jpg"
+              width="960"
+              height="720"
+              alt="Abstract product interface panels representing DeviceLifeline analytics"
+              loading="lazy"
+            />
+          </figure>
+        </div>
+      </section>
+
+      <!-- PRIVACY -->
+      <section class="section" id="privacy">
+        <div class="shell privacy-block">
+          <h2>Your machine’s history stays on your machine</h2>
+          <div class="privacy-grid">
+            <p>
+              DeviceLifeline is local-first. There is no cloud chat provider in
+              the diagnosis path. If you never install a local model, offline
+              rules still answer from samples collected on this PC. If you do
+              install one, inference stays on-box.
+            </p>
+            <ul class="privacy-list">
+              <li>No third-party LLM API keys required for core use</li>
+              <li>Privacy-sensitive cleanup categories remain opt-in</li>
+              <li>Destructive actions require explicit confirmation</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- DOWNLOAD -->
+      <section class="section section-download" id="download">
+        <div class="shell download-card">
+          <div class="download-copy">
+            <h2>Get DeviceLifeline for Windows</h2>
+            <p>
+              Install the native app, run a health sample, and open Copilot.
+              Your data stays under your user profile unless you choose to
+              export it.
+            </p>
+          </div>
+          <div class="download-actions">
+            <a
+              class="button button-primary button-lg"
+              href="../release-0.3.0/DeviceLifeline_0.3.0_x64-setup.exe"
+              >Download installer</a
+            >
+            <a class="button button-secondary button-lg" href="../README.md"
+              >Read documentation</a
+            >
+            <p class="download-note">Windows 10 (19041+) and Windows 11 · x64</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-inner">
+        <div class="footer-brand">
+          <a class="wordmark" href="#top">
+            <svg class="wordmark-icon" width="18" height="18" viewBox="0 0 22 22" aria-hidden="true">
+              <rect width="22" height="22" rx="6" fill="#12b981" />
+              <path
+                d="M6 12.2c1.6-3.2 3.1-4.8 5-4.8s3.4 1.6 5 4.8"
+                stroke="#042f1e"
+                stroke-width="1.6"
+                fill="none"
+                stroke-linecap="round"
+              />
+              <circle cx="11" cy="13.5" r="1.4" fill="#042f1e" />
+            </svg>
+            DeviceLifeline
+          </a>
+          <p>The operating memory of a computer.</p>
+        </div>
+        <nav class="footer-nav" aria-label="Footer">
+          <a href="#product">Product</a>
+          <a href="#capabilities">Capabilities</a>
+          <a href="#privacy">Privacy</a>
+          <a href="#download">Download</a>
+          <a href="../README.md">Docs</a>
+        </nav>
+        <p class="footer-legal">&copy; 2026 DeviceLifeline</p>
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        var toggle = document.querySelector("[data-nav-toggle]");
+        var panel = document.querySelector("[data-mobile-nav]");
+        if (!toggle || !panel) return;
+        toggle.addEventListener("click", function () {
+          var open = toggle.getAttribute("aria-expanded") === "true";
+          toggle.setAttribute("aria-expanded", open ? "false" : "true");
+          if (open) panel.setAttribute("hidden", "");
+          else panel.removeAttribute("hidden");
+        });
+        panel.querySelectorAll("a").forEach(function (link) {
+          link.addEventListener("click", function () {
+            toggle.setAttribute("aria-expanded", "false");
+            panel.setAttribute("hidden", "");
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

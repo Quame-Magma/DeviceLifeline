@@ -25,6 +25,8 @@ pub struct FindingDraft {
 /// Detected natural-language intent for a diagnosis query.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum QueryIntent {
+    /// Greetings / small talk — conversational reply, not a full diagnosis dump.
+    Chat,
     /// Performance / slowness.
     Slow,
     /// Crash / instability.
@@ -47,6 +49,7 @@ impl QueryIntent {
     /// Stable slug stored on [`DiagnosisContext::query_intent`].
     pub fn as_str(self) -> &'static str {
         match self {
+            QueryIntent::Chat => "chat",
             QueryIntent::Slow => "slow",
             QueryIntent::Crash => "crash",
             QueryIntent::Disk => "disk",
@@ -59,8 +62,135 @@ impl QueryIntent {
     }
 }
 
+/// True for greetings and short social pings that should not run a full scan dump.
+pub fn is_chat_query(query: &str) -> bool {
+    let t = query.trim().to_lowercase();
+    if t.is_empty() {
+        return false;
+    }
+    const EXACT: &[&str] = &[
+        "hi",
+        "hi!",
+        "hi.",
+        "hello",
+        "hello!",
+        "hey",
+        "hey!",
+        "yo",
+        "sup",
+        "hiya",
+        "howdy",
+        "thanks",
+        "thank you",
+        "thx",
+        "ty",
+        "ok",
+        "okay",
+        "cool",
+        "nice",
+        "great",
+        "bye",
+        "goodbye",
+        "good morning",
+        "good afternoon",
+        "good evening",
+        "good night",
+        "what's up",
+        "whats up",
+        "how are you",
+        "how r you",
+        "who are you",
+        "what are you",
+        "help",
+        "?",
+    ];
+    if EXACT.iter().any(|e| *e == t) {
+        return true;
+    }
+    if t.starts_with("hi ")
+        || t.starts_with("hello ")
+        || t.starts_with("hey ")
+        || t.starts_with("good morning")
+        || t.starts_with("good afternoon")
+        || t.starts_with("thanks")
+        || t.starts_with("thank you")
+    {
+        // Still chat unless they attach a real diagnostic ask.
+        if !contains_any(
+            &t,
+            &[
+                "slow",
+                "crash",
+                "disk",
+                "memory",
+                "cpu",
+                "startup",
+                "boot",
+                "storage",
+                "why",
+                "fix",
+                "broken",
+                "error",
+            ],
+        ) {
+            return true;
+        }
+    }
+    // Very short non-diagnostic pings ("yo copilot", "hi there")
+    let words: Vec<&str> = t.split_whitespace().collect();
+    if words.len() <= 3
+        && !contains_any(
+            &t,
+            &[
+                "slow",
+                "crash",
+                "disk",
+                "space",
+                "memory",
+                "ram",
+                "cpu",
+                "startup",
+                "boot",
+                "storage",
+                "why",
+                "what is",
+                "what's",
+                "how do",
+                "fix",
+                "broken",
+                "error",
+                "lag",
+                "freeze",
+                "full",
+                "network",
+                "wifi",
+                "wi-fi",
+                "internet",
+                "offline",
+                "latency",
+                "dns",
+                "ethernet",
+                "process",
+                "driver",
+                "update",
+                "clean",
+                "temp",
+                "recycle",
+                "bsod",
+                "hang",
+            ],
+        )
+    {
+        return true;
+    }
+    false
+}
+
 /// Detects intent keywords from a free-text diagnosis query.
 pub fn detect_intent(query: &str) -> QueryIntent {
+    if is_chat_query(query) {
+        return QueryIntent::Chat;
+    }
     let q = query.to_lowercase();
 
     // Order matters: more specific intents before general "slow".
@@ -128,6 +258,94 @@ pub fn detect_intent(query: &str) -> QueryIntent {
 
 fn contains_any(haystack: &str, needles: &[&str]) -> bool {
     needles.iter().any(|n| haystack.contains(n))
+}
+
+/// True when a finding is on-topic for the user's intent (drops LLM noise).
+pub fn finding_matches_intent(finding: &FindingDraft, intent: QueryIntent) -> bool {
+    let hay = format!(
+        "{} {} {} {}",
+        finding.title, finding.cause, finding.evidence, finding.suggested_action
+    )
+    .to_lowercase();
+
+    match intent {
+        QueryIntent::Chat => false,
+        QueryIntent::Disk => contains_any(
+            &hay,
+            &[
+                "disk",
+                "storage",
+                "space",
+                "drive",
+                "volume",
+                "temp",
+                "cleanup",
+                "full",
+                "gb",
+                "free",
+                "ssd",
+                "hdd",
+                "recycle",
+                "cache",
+            ],
+        ),
+        QueryIntent::Memory => {
+            contains_any(&hay, &["memory", "ram", "paging", "swap", "working set"])
+        }
+        QueryIntent::Cpu => {
+            contains_any(&hay, &["cpu", "processor", "thermal", "core", "compute"])
+        }
+        QueryIntent::Crash => contains_any(
+            &hay,
+            &["crash", "bsod", "blue screen", "hang", "frozen", "kernel", "fault"],
+        ),
+        QueryIntent::Startup => {
+            contains_any(&hay, &["startup", "boot", "login", "logon", "autorun"])
+        }
+        QueryIntent::Network => contains_any(
+            &hay,
+            &[
+                "network", "wifi", "wi-fi", "internet", "dns", "latency", "ethernet", "adapter",
+            ],
+        ),
+        // Slow / open-ended: allow resource and stability signals.
+        QueryIntent::Slow => contains_any(
+            &hay,
+            &[
+                "slow",
+                "memory",
+                "ram",
+                "cpu",
+                "disk",
+                "storage",
+                "space",
+                "process",
+                "startup",
+                "boot",
+                "performance",
+                "health",
+                "lag",
+            ],
+        ),
+        QueryIntent::General => true,
+    }
+}
+
+/// Drop off-topic findings (common failure mode of tiny local LLMs).
+pub fn filter_findings_for_intent(
+    findings: Vec<FindingDraft>,
+    intent: QueryIntent,
+) -> Vec<FindingDraft> {
+    if matches!(intent, QueryIntent::Chat) {
+        return Vec::new();
+    }
+    if matches!(intent, QueryIntent::General) {
+        return findings;
+    }
+    findings
+        .into_iter()
+        .filter(|f| finding_matches_intent(f, intent))
+        .collect()
 }
 
 /// A source of diagnosis findings for a query + context.
@@ -295,6 +513,7 @@ impl DiagnosisProvider for HeuristicProvider {
             .query_intent
             .as_deref()
             .and_then(|s| match s {
+                "chat" => Some(QueryIntent::Chat),
                 "slow" => Some(QueryIntent::Slow),
                 "crash" => Some(QueryIntent::Crash),
                 "disk" => Some(QueryIntent::Disk),
@@ -307,14 +526,19 @@ impl DiagnosisProvider for HeuristicProvider {
             })
             .unwrap_or_else(|| detect_intent(query));
 
+        // Greetings / small talk — no findings dump (summary is conversational).
+        if intent == QueryIntent::Chat {
+            return Vec::new();
+        }
+
         let mut findings = Vec::new();
 
         let memory_pct = context.memory_pct.unwrap_or(0.0);
-        let memory_relevant = matches!(
-            intent,
-            QueryIntent::Memory | QueryIntent::Slow | QueryIntent::General
-        );
-        if memory_pct >= 85.0 || has(&context.active_alert_kinds, "memory_critical") {
+        // Only attach resource findings when the user asked about them (or overall slowness).
+        let memory_relevant = matches!(intent, QueryIntent::Memory | QueryIntent::Slow);
+        if memory_relevant
+            && (memory_pct >= 85.0 || has(&context.active_alert_kinds, "memory_critical"))
+        {
             let mut title = "High memory pressure".to_string();
             if intent == QueryIntent::Memory {
                 title = "Memory pressure matches your query".to_string();
@@ -356,50 +580,75 @@ impl DiagnosisProvider for HeuristicProvider {
         }
 
         let disk_pct = context.disk_pct.unwrap_or(0.0);
-        let disk_relevant = matches!(
-            intent,
-            QueryIntent::Disk | QueryIntent::Slow | QueryIntent::General
-        );
-        if disk_pct >= 85.0 || has(&context.active_alert_kinds, "disk_low_space") {
-            let title = if intent == QueryIntent::Disk {
-                "Low disk space matches your query".to_string()
-            } else {
-                "Low disk space".to_string()
-            };
+        let disk_relevant = matches!(intent, QueryIntent::Disk | QueryIntent::Slow);
+        if disk_relevant
+            && (disk_pct >= 85.0 || has(&context.active_alert_kinds, "disk_low_space"))
+        {
+            let filled = disk_pct.round() as i64;
+            let confidence = intent_boost(
+                if filled >= 95 {
+                    92
+                } else if filled >= 90 {
+                    85
+                } else {
+                    75
+                },
+                true,
+            );
             findings.push(FindingDraft {
-                title,
-                cause: "At least one detected disk is nearly full, which can degrade performance and updates."
+                title: if filled >= 95 {
+                    "Disk is critically full".to_string()
+                } else {
+                    "Low free disk space".to_string()
+                },
+                cause: "At least one volume is nearly full. Windows and apps keep writing temp files, caches, updates, and downloads — so free space disappears again quickly unless you clean those categories."
                     .to_string(),
                 evidence: format!(
-                    "Most constrained detected disk {}% full.",
-                    disk_pct.round() as i64
+                    "Most constrained disk is about {filled}% full (from the latest health sample){}.",
+                    if has(&context.active_alert_kinds, "disk_low_space") {
+                        "; active disk-low-space alert is open"
+                    } else {
+                        ""
+                    }
                 ),
-                confidence: intent_boost(75, disk_relevant),
-                suggested_action: "Free up space (temp files, downloads) or extend storage."
-                    .to_string(),
+                confidence,
+                suggested_action:
+                    "Open Storage or Cleanup, clear temp/browser caches you recognize, empty Recycle Bin, then rescan free space."
+                        .to_string(),
             });
+            if intent == QueryIntent::Disk {
+                findings.push(FindingDraft {
+                    title: "Why it keeps filling up".to_string(),
+                    cause: "Full disks refill from recurring writers: browser/GPU caches, Windows Update delivery, temp folders, and large downloads — not usually from one-time personal files alone."
+                        .to_string(),
+                    evidence: format!(
+                        "Query mentioned persistent fullness; current fill level ≈ {filled}%."
+                    ),
+                    confidence: intent_boost(70, true),
+                    suggested_action:
+                        "After a cleanup, check Storage again in a day — if free space vanishes quickly, inspect Downloads and large app caches next."
+                            .to_string(),
+                });
+            }
         } else if intent == QueryIntent::Disk {
             // Intent-specific nudge even when thresholds are not breached.
             findings.push(FindingDraft {
-                title: "Disk health appears acceptable".to_string(),
-                cause: "No critical disk-pressure threshold was crossed in the latest sample."
+                title: "Disk not critically full right now".to_string(),
+                cause: "The latest sample is below the critical free-space threshold, but space can still feel tight if a volume spiked earlier."
                     .to_string(),
                 evidence: format!(
                     "Most constrained detected disk {}% full.",
                     disk_pct.round() as i64
                 ),
                 confidence: 45,
-                suggested_action: "Run Storage Intelligence for large files and temp bloat."
+                suggested_action: "Open Storage to see large folders, or Cleanup for safe temp targets."
                     .to_string(),
             });
         }
 
         let cpu_usage = context.cpu_usage.unwrap_or(0.0);
-        let cpu_relevant = matches!(
-            intent,
-            QueryIntent::Cpu | QueryIntent::Slow | QueryIntent::General
-        );
-        if cpu_usage >= 90.0 || has(&context.active_alert_kinds, "cpu_high") {
+        let cpu_relevant = matches!(intent, QueryIntent::Cpu | QueryIntent::Slow);
+        if cpu_relevant && (cpu_usage >= 90.0 || has(&context.active_alert_kinds, "cpu_high")) {
             let title = if intent == QueryIntent::Cpu {
                 "Sustained high CPU matches your query".to_string()
             } else if intent == QueryIntent::Slow {
@@ -437,8 +686,9 @@ impl DiagnosisProvider for HeuristicProvider {
 
         let severe_crash = has(&context.recent_crash_categories, "bsod")
             || has(&context.recent_crash_categories, "kernel_power");
-        let crash_relevant = matches!(intent, QueryIntent::Crash | QueryIntent::General);
-        if severe_crash {
+        let crash_relevant = matches!(intent, QueryIntent::Crash);
+        // For non-crash intents, only surface severe instability as a soft note on Slow.
+        if severe_crash && matches!(intent, QueryIntent::Crash | QueryIntent::Slow) {
             let title = if intent == QueryIntent::Crash {
                 "System instability matches your crash query".to_string()
             } else {
@@ -456,13 +706,9 @@ impl DiagnosisProvider for HeuristicProvider {
                 suggested_action: "Update or roll back drivers; check recent Windows updates and hardware health."
                     .to_string(),
             });
-        } else if !context.recent_crash_categories.is_empty() {
+        } else if intent == QueryIntent::Crash && !context.recent_crash_categories.is_empty() {
             findings.push(FindingDraft {
-                title: if intent == QueryIntent::Crash {
-                    "Application crashes related to your query".to_string()
-                } else {
-                    "Application crashes detected".to_string()
-                },
+                title: "Application crashes related to your query".to_string(),
                 cause: "One or more applications crashed or stopped responding recently."
                     .to_string(),
                 evidence: format!(
@@ -486,18 +732,32 @@ impl DiagnosisProvider for HeuristicProvider {
             });
         }
 
-        if let Some(finding) = recent_change_finding(context) {
-            let mut finding = finding;
-            if intent == QueryIntent::Startup && finding.evidence.to_lowercase().contains("startup")
-            {
-                finding.confidence = intent_boost(finding.confidence, true);
-                finding.title = "Recent startup-related change".to_string();
+        // Recent changes only when on-topic for this question.
+        let changes_ok = matches!(
+            intent,
+            QueryIntent::Slow | QueryIntent::Startup | QueryIntent::Network | QueryIntent::General
+        );
+        if changes_ok {
+            if let Some(finding) = recent_change_finding(context) {
+                let mut finding = finding;
+                if intent == QueryIntent::Startup
+                    && finding.evidence.to_lowercase().contains("startup")
+                {
+                    finding.confidence = intent_boost(finding.confidence, true);
+                    finding.title = "Recent startup-related change".to_string();
+                }
+                if intent == QueryIntent::Network && finding.title.to_lowercase().contains("network")
+                {
+                    finding.confidence = intent_boost(finding.confidence, true);
+                }
+                findings.push(finding);
             }
-            if intent == QueryIntent::Network && finding.title.to_lowercase().contains("network") {
-                finding.confidence = intent_boost(finding.confidence, true);
-            }
-            findings.push(finding);
-        } else if intent == QueryIntent::Startup {
+        }
+        if intent == QueryIntent::Startup
+            && !findings
+                .iter()
+                .any(|f| f.title.to_lowercase().contains("startup"))
+        {
             findings.push(FindingDraft {
                 title: "Startup performance review".to_string(),
                 cause: "Startup slowness is often driven by login apps and services.".to_string(),
@@ -510,11 +770,15 @@ impl DiagnosisProvider for HeuristicProvider {
                     "Review startup items and services in Device DNA; disable non-essential ones."
                         .to_string(),
             });
-        } else if intent == QueryIntent::Network {
+        }
+        if intent == QueryIntent::Network
+            && !findings
+                .iter()
+                .any(|f| f.title.to_lowercase().contains("network"))
+        {
             findings.push(FindingDraft {
                 title: "Network symptom check".to_string(),
-                cause: "Network issues can be adapter, driver, or ISP related."
-                    .to_string(),
+                cause: "Network issues can be adapter, driver, or ISP related.".to_string(),
                 evidence: "No recent network adapter change was present in the Timeline sample."
                     .to_string(),
                 confidence: 40,
@@ -524,17 +788,53 @@ impl DiagnosisProvider for HeuristicProvider {
             });
         }
 
-        if let Some(score) = context.health_score {
-            if score < 50 {
+        if matches!(intent, QueryIntent::Slow) {
+            if let Some(score) = context.health_score {
+                if score < 50 {
+                    findings.push(FindingDraft {
+                        title: "Overall device health is low".to_string(),
+                        cause:
+                            "The composite HealthScore is low, indicating combined resource pressure."
+                                .to_string(),
+                        evidence: format!("HealthScore is {score}/100."),
+                        confidence: intent_boost(70, true),
+                        suggested_action:
+                            "Address the resource findings above and re-sample health.".to_string(),
+                    });
+                }
+            }
+        }
+
+        // Lightweight overview for open-ended asks ("what's wrong?", "status").
+        if intent == QueryIntent::General {
+            let mut tips = Vec::new();
+            if context.disk_pct.unwrap_or(0.0) >= 90.0 {
+                tips.push(format!(
+                    "disk ~{:.0}% full",
+                    context.disk_pct.unwrap_or(0.0)
+                ));
+            }
+            if context.memory_pct.unwrap_or(0.0) >= 90.0 {
+                tips.push(format!(
+                    "memory ~{:.0}%",
+                    context.memory_pct.unwrap_or(0.0)
+                ));
+            }
+            if context.cpu_usage.unwrap_or(0.0) >= 90.0 {
+                tips.push(format!(
+                    "CPU ~{:.0}%",
+                    context.cpu_usage.unwrap_or(0.0)
+                ));
+            }
+            if !tips.is_empty() {
                 findings.push(FindingDraft {
-                    title: "Overall device health is low".to_string(),
-                    cause:
-                        "The composite HealthScore is low, indicating combined resource pressure."
+                    title: "Quick health snapshot".to_string(),
+                    cause: "A few signals look elevated on this PC right now.".to_string(),
+                    evidence: format!("Notable: {}.", tips.join("; ")),
+                    confidence: 55,
+                    suggested_action:
+                        "Ask about the specific symptom (slow, disk, memory, crashes) for a deeper pass."
                             .to_string(),
-                    evidence: format!("HealthScore is {score}/100."),
-                    confidence: intent_boost(70, intent == QueryIntent::Slow),
-                    suggested_action: "Address the resource findings above and re-sample health."
-                        .to_string(),
                 });
             }
         }
@@ -590,9 +890,10 @@ mod tests {
     fn high_memory_yields_memory_finding() {
         let context = DiagnosisContext {
             memory_pct: Some(95.0),
+            query_intent: Some("memory".into()),
             ..Default::default()
         };
-        let findings = HeuristicProvider::new().diagnose("", &context);
+        let findings = HeuristicProvider::new().diagnose("why is memory so high?", &context);
         assert!(findings
             .iter()
             .any(|f| f.title.contains("memory") || f.title.contains("Memory")));
@@ -602,9 +903,10 @@ mod tests {
     fn bsod_yields_instability_finding_with_high_confidence() {
         let context = DiagnosisContext {
             recent_crash_categories: vec!["bsod".to_string()],
+            query_intent: Some("crash".into()),
             ..Default::default()
         };
-        let findings = HeuristicProvider::new().diagnose("", &context);
+        let findings = HeuristicProvider::new().diagnose("blue screen crash", &context);
         let instability = findings
             .iter()
             .find(|f| f.title.contains("instability") || f.title.contains("System"))
@@ -616,12 +918,68 @@ mod tests {
     fn alert_kinds_trigger_findings_without_raw_metrics() {
         let context = DiagnosisContext {
             active_alert_kinds: vec!["disk_low_space".to_string()],
+            query_intent: Some("disk".into()),
             ..Default::default()
         };
-        let findings = HeuristicProvider::new().diagnose("", &context);
+        let findings = HeuristicProvider::new().diagnose("disk almost full", &context);
         assert!(findings.iter().any(|f| f.title.contains("disk")
             || f.title.contains("Disk")
             || f.title.contains("space")));
+    }
+
+    #[test]
+    fn chat_query_yields_no_findings() {
+        let context = DiagnosisContext {
+            memory_pct: Some(98.0),
+            disk_pct: Some(99.0),
+            cpu_usage: Some(99.0),
+            ..Default::default()
+        };
+        let findings = HeuristicProvider::new().diagnose("hi", &context);
+        assert!(findings.is_empty());
+        assert_eq!(detect_intent("hi"), QueryIntent::Chat);
+        assert_eq!(detect_intent("hello!"), QueryIntent::Chat);
+    }
+
+    #[test]
+    fn disk_query_does_not_include_cpu_findings() {
+        let context = DiagnosisContext {
+            disk_pct: Some(100.0),
+            cpu_usage: Some(96.0),
+            memory_pct: Some(90.0),
+            query_intent: Some("disk".into()),
+            ..Default::default()
+        };
+        let findings =
+            HeuristicProvider::new().diagnose("why is my pc disk always full?", &context);
+        assert!(findings
+            .iter()
+            .any(|f| f.title.to_lowercase().contains("disk") || f.title.contains("full")));
+        assert!(!findings.iter().any(|f| {
+            let t = f.title.to_lowercase();
+            t.contains("cpu") || t.contains("memory") || t.contains("Memory")
+        }));
+        let filtered = filter_findings_for_intent(
+            vec![
+                FindingDraft {
+                    title: "Disk Low Space".into(),
+                    cause: "full".into(),
+                    evidence: "100%".into(),
+                    confidence: 90,
+                    suggested_action: "cleanup".into(),
+                },
+                FindingDraft {
+                    title: "CPU High Usage".into(),
+                    cause: "busy".into(),
+                    evidence: "96%".into(),
+                    confidence: 80,
+                    suggested_action: "kill".into(),
+                },
+            ],
+            QueryIntent::Disk,
+        );
+        assert_eq!(filtered.len(), 1);
+        assert!(filtered[0].title.contains("Disk"));
     }
 
     #[test]

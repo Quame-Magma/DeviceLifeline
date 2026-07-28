@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -31,6 +31,7 @@ import type { View } from '../components/layout/Sidebar';
 import { formatTimestamp } from '../lib/format';
 import { toastInfo } from '../lib/feedback';
 import type {
+  DiagnosisContext,
   DiagnosisFinding,
   DiagnosisSession,
 } from '../types/device.types';
@@ -71,12 +72,13 @@ export function AIDetective({ onNavigate }: AIDetectiveProps) {
   const {
     sessions,
     current,
-    findings,
+    turns,
     running,
     error,
     loadSessions,
     ask,
     selectSession,
+    newChat,
   } = useDiagnosis();
   const {
     copilotStatus,
@@ -91,6 +93,7 @@ export function AIDetective({ onNavigate }: AIDetectiveProps) {
 
   const [query, setQuery] = useState('');
   const [followUp, setFollowUp] = useState('');
+  const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void loadSessions();
@@ -110,18 +113,45 @@ export function AIDetective({ onNavigate }: AIDetectiveProps) {
     return () => window.clearInterval(id);
   }, [installProgress?.busy, refreshInstallProgress, loadCopilotStatus]);
 
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [turns.length, running]);
+
+  const [thinkPhase, setThinkPhase] = useState(0);
+  useEffect(() => {
+    if (!running) {
+      setThinkPhase(0);
+      return;
+    }
+    const id = window.setInterval(() => {
+      setThinkPhase((p) => p + 1);
+    }, 1600);
+    return () => window.clearInterval(id);
+  }, [running]);
+
+  const thinkingLabel = useMemo(() => {
+    const phases = [
+      'Reading live telemetry…',
+      'Matching your question to signals…',
+      'Writing a grounded answer…',
+      'Almost ready…',
+    ];
+    return phases[thinkPhase % phases.length];
+  }, [thinkPhase]);
+
   const handleAsk = (override?: string) => {
     const trimmed = (override ?? query).trim();
-    if (trimmed.length === 0) return;
-    if (override) setQuery(override);
+    if (trimmed.length === 0 || running) return;
+    setQuery('');
+    setFollowUp('');
     void ask(trimmed);
   };
 
   const handleFollowUp = () => {
     const trimmed = followUp.trim();
-    if (trimmed.length === 0) return;
-    setQuery(trimmed);
+    if (trimmed.length === 0 || running) return;
     setFollowUp('');
+    setQuery('');
     void ask(trimmed);
   };
 
@@ -196,30 +226,8 @@ export function AIDetective({ onNavigate }: AIDetectiveProps) {
     return n;
   }, [dashboard, healthScore, samples.length, copilotStatus, current?.context]);
 
-  const answeredAt = current?.createdAt
-    ? formatClock(current.createdAt)
-    : null;
-
-  const causeCards = useMemo(
-    () => findings.slice(0, 3).map((f) => toCauseCard(f)),
-    [findings],
-  );
-
-  const recommended = useMemo(() => {
-    if (findings.length === 0) return null;
-    const top = findings[0];
-    return {
-      text:
-        top.suggestedAction ||
-        'Review the top finding and open the related tool to fix it.',
-      impact:
-        findings.length > 1
-          ? `Addressing these ${findings.length} findings can improve stability and responsiveness.`
-          : 'Fixing this primary cause often improves overall system feel.',
-    };
-  }, [findings]);
-
   const recentSessions = sessions.slice(0, 5);
+  const hasThread = turns.length > 0;
 
   return (
     <div className="page-shell page-section">
@@ -364,144 +372,88 @@ export function AIDetective({ onNavigate }: AIDetectiveProps) {
             </div>
           </section>
 
-          {/* Transcript / empty / loading */}
-          {running && current === null ? (
-            <div className="flex justify-center rounded-card border border-hairline bg-surface-card py-16 shadow-card">
-              <Spinner label="Analyzing local telemetry…" />
-            </div>
-          ) : current ? (
+          {/* Multi-turn transcript */}
+          {hasThread ? (
             <section className="panel overflow-hidden">
               <div className="flex items-center justify-between border-b border-hairline px-panel-x py-2.5">
                 <p className="text-2xs text-text-muted">
-                  {answeredAt ? `Today · ${answeredAt}` : 'Conversation'}
+                  Conversation · {turns.filter((t) => t.role === 'user').length}{' '}
+                  message
+                  {turns.filter((t) => t.role === 'user').length === 1
+                    ? ''
+                    : 's'}
                 </p>
-                {running ? (
-                  <span className="text-2xs text-sky-400">Updating…</span>
-                ) : null}
+                <div className="flex items-center gap-2">
+                  {running ? (
+                    <span
+                      className="inline-flex items-center gap-1.5 text-2xs font-medium text-sky-400"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <TypingDots />
+                      Thinking
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="text-2xs font-medium text-text-muted hover:text-text-primary"
+                    onClick={() => {
+                      newChat();
+                      setQuery('');
+                      setFollowUp('');
+                    }}
+                  >
+                    New chat
+                  </button>
+                </div>
               </div>
 
-              <div className="space-y-5 px-panel-x py-4">
-                {/* User bubble */}
-                <div className="flex items-start gap-3">
-                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-500 text-xs font-bold text-white">
-                    A
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-2xs text-text-muted">
-                      <span className="font-semibold text-text-secondary">
-                        You
+              <div className="max-h-[min(62vh,720px)] space-y-5 overflow-y-auto px-panel-x py-4">
+                {turns.map((turn) =>
+                  turn.role === 'user' ? (
+                    <div key={turn.id} className="flex items-start gap-3">
+                      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-500 text-xs font-bold text-white">
+                        A
                       </span>
-                      {answeredAt ? (
-                        <span className="ml-2">{answeredAt}</span>
-                      ) : null}
-                    </p>
-                    <p className="mt-1 text-sm font-medium text-text-primary">
-                      {current.query}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Copilot bubble */}
-                <div className="flex items-start gap-3">
-                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-500/15 text-purple-300">
-                    <Sparkles
-                      className="h-3.5 w-3.5"
-                      strokeWidth={1.75}
-                      aria-hidden
-                    />
-                  </span>
-                  <div className="min-w-0 flex-1 space-y-4">
-                    <div>
-                      <p className="text-2xs text-text-muted">
-                        <span className="font-semibold text-text-secondary">
-                          Copilot
-                        </span>
-                        {answeredAt ? (
-                          <span className="ml-2">{answeredAt}</span>
-                        ) : null}
-                      </p>
-                      <p className="mt-1.5 text-sm leading-relaxed text-text-secondary">
-                        {current.summary ||
-                          (findings.length > 0
-                            ? `I analyzed on-device telemetry and found ${findings.length} primary cause${findings.length === 1 ? '' : 's'} affecting this system.`
-                            : 'I analyzed local telemetry for this question.')}
-                      </p>
-                    </div>
-
-                    {/* Cause cards */}
-                    {causeCards.length > 0 ? (
-                      <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                        {causeCards.map((card) => (
-                          <CauseCard
-                            key={card.id}
-                            card={card}
-                            onNavigate={onNavigate}
-                          />
-                        ))}
-                      </div>
-                    ) : null}
-
-                    {/* Recommended next step */}
-                    {recommended ? (
-                      <div className="flex flex-col gap-3 rounded-xl border border-hairline bg-surface-elevated/40 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex min-w-0 items-start gap-2.5">
-                          <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 text-sky-400">
-                            <Lightbulb
-                              className="h-3.5 w-3.5"
-                              strokeWidth={1.75}
-                              aria-hidden
-                            />
+                      <div className="min-w-0">
+                        <p className="text-2xs text-text-muted">
+                          <span className="font-semibold text-text-secondary">
+                            You
                           </span>
-                          <div className="min-w-0">
-                            <p className="text-xs font-semibold text-text-primary">
-                              Recommended next step
-                            </p>
-                            <p className="mt-0.5 text-2xs leading-relaxed text-text-secondary">
-                              {recommended.text}{' '}
-                              <span className="text-text-muted">
-                                {recommended.impact}
-                              </span>
-                            </p>
-                          </div>
-                        </div>
-                        {(() => {
-                          const dest = pickNavigateTarget(findings[0]);
-                          const canGo = Boolean(dest && onNavigate);
-                          return (
-                            <Button
-                              variant="primary"
-                              size="sm"
-                              className="shrink-0"
-                              disabled={!canGo}
-                              onClick={() => {
-                                if (dest && onNavigate) onNavigate(dest);
-                              }}
-                            >
-                              <Zap
-                                className="h-3.5 w-3.5"
-                                strokeWidth={1.75}
-                                aria-hidden
-                              />
-                              {dest
-                                ? optimizeLabel(dest)
-                                : 'Review findings above'}
-                            </Button>
-                          );
-                        })()}
+                          <span className="ml-2">
+                            {formatClock(turn.createdAt)}
+                          </span>
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-text-primary">
+                          {turn.content}
+                        </p>
                       </div>
-                    ) : null}
+                    </div>
+                  ) : (
+                    <AssistantTurn
+                      key={turn.id}
+                      content={turn.content}
+                      createdAt={turn.createdAt}
+                      findings={turn.findings ?? []}
+                      showTelemetry={
+                        turn.sessionId != null &&
+                        current?.id === turn.sessionId &&
+                        current.context != null
+                      }
+                      context={
+                        turn.sessionId != null && current?.id === turn.sessionId
+                          ? current.context
+                          : null
+                      }
+                      onNavigate={onNavigate}
+                    />
+                  ),
+                )}
 
-                    {/* Collapsible raw context for power users */}
-                    <details className="rounded-lg border border-hairline/80 bg-surface-elevated/20">
-                      <summary className="cursor-pointer px-3 py-2 text-2xs font-medium text-text-muted hover:text-text-secondary">
-                        Telemetry used for this answer
-                      </summary>
-                      <div className="border-t border-hairline px-3 py-2">
-                        <DiagnosisContextViewer context={current.context} />
-                      </div>
-                    </details>
-                  </div>
-                </div>
+                {running ? (
+                  <ThinkingBubble label={thinkingLabel} />
+                ) : null}
+                <div ref={transcriptEndRef} />
               </div>
 
               {/* Follow-up composer */}
@@ -510,8 +462,10 @@ export function AIDetective({ onNavigate }: AIDetectiveProps) {
                   <button
                     type="button"
                     className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-text-muted hover:bg-surface-elevated hover:text-text-primary"
-                    aria-label="New question"
+                    aria-label="New chat"
+                    title="New chat"
                     onClick={() => {
+                      newChat();
                       setQuery('');
                       setFollowUp('');
                     }}
@@ -525,8 +479,8 @@ export function AIDetective({ onNavigate }: AIDetectiveProps) {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleFollowUp();
                     }}
-                    placeholder="Ask a follow-up…"
-                    aria-label="Follow-up question"
+                    placeholder="Message Copilot…"
+                    aria-label="Message Copilot"
                     className="min-w-0 flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
                     disabled={running}
                   />
@@ -545,8 +499,8 @@ export function AIDetective({ onNavigate }: AIDetectiveProps) {
           ) : (
             <section className="rounded-card border border-dashed border-hairline bg-surface-card/40 px-panel-x py-10 text-center shadow-card">
               <p className="text-sm text-text-secondary">
-                Pick a prompt above or type a question — answers use telemetry
-                on this device only.
+                Say hi, pick a prompt, or ask anything about this PC — the
+                conversation stays open for follow-ups.
               </p>
               <p className="mt-1 text-2xs text-text-muted">
                 {localReady
@@ -881,6 +835,46 @@ function pickNavigateTarget(finding?: DiagnosisFinding): View | null {
   return toCauseCard(finding).navigateTo;
 }
 
+/** Bouncing dots used in chat "thinking" / typing states. */
+function TypingDots({ className = '' }: { className?: string }) {
+  return (
+    <span
+      className={['inline-flex items-center gap-1', className].join(' ')}
+      aria-hidden
+    >
+      <span className="dl-typing-dot" />
+      <span className="dl-typing-dot" />
+      <span className="dl-typing-dot" />
+    </span>
+  );
+}
+
+/** In-thread bubble while Copilot is working (status rotates). */
+function ThinkingBubble({ label }: { label: string }) {
+  return (
+    <div
+      className="flex items-start gap-3"
+      role="status"
+      aria-live="polite"
+      aria-label={label}
+    >
+      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-500/15 text-purple-300">
+        <Sparkles className="h-3.5 w-3.5 animate-pulse" strokeWidth={1.75} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-2xs text-text-muted">
+          <span className="font-semibold text-text-secondary">Copilot</span>
+          <span className="ml-2">now</span>
+        </p>
+        <div className="mt-1.5 inline-flex max-w-full items-center gap-2.5 rounded-2xl rounded-tl-md border border-hairline bg-surface-elevated/50 px-3.5 py-2.5 text-sm text-text-secondary">
+          <TypingDots className="text-purple-300" />
+          <span className="min-w-0 truncate">{label}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function optimizeLabel(view: View): string {
   switch (view) {
     case 'storage':
@@ -900,6 +894,102 @@ function optimizeLabel(view: View): string {
     default:
       return 'Open related tool';
   }
+}
+
+function AssistantTurn({
+  content,
+  createdAt,
+  findings,
+  showTelemetry,
+  context,
+  onNavigate,
+}: {
+  content: string;
+  createdAt: string;
+  findings: DiagnosisFinding[];
+  showTelemetry: boolean;
+  context: DiagnosisContext | null;
+  onNavigate?: (view: View) => void;
+}) {
+  const causeCards = findings.slice(0, 3).map((f) => toCauseCard(f));
+  const top = findings[0];
+  const dest = top ? pickNavigateTarget(top) : null;
+
+  return (
+    <div className="flex items-start gap-3">
+      <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-500/15 text-purple-300">
+        <Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+      </span>
+      <div className="min-w-0 flex-1 space-y-3">
+        <div>
+          <p className="text-2xs text-text-muted">
+            <span className="font-semibold text-text-secondary">Copilot</span>
+            <span className="ml-2">{formatClock(createdAt)}</span>
+          </p>
+          <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-text-secondary">
+            {content}
+          </p>
+        </div>
+
+        {causeCards.length > 0 ? (
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {causeCards.map((card) => (
+              <CauseCard
+                key={card.id}
+                card={card}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
+        ) : null}
+
+        {top ? (
+          <div className="flex flex-col gap-3 rounded-xl border border-hairline bg-surface-elevated/40 px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-2.5">
+              <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 text-sky-400">
+                <Lightbulb
+                  className="h-3.5 w-3.5"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-text-primary">
+                  Recommended next step
+                </p>
+                <p className="mt-0.5 text-2xs leading-relaxed text-text-secondary">
+                  {top.suggestedAction}
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="primary"
+              size="sm"
+              className="shrink-0"
+              disabled={!dest || !onNavigate}
+              onClick={() => {
+                if (dest && onNavigate) onNavigate(dest);
+              }}
+            >
+              <Zap className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+              {dest ? optimizeLabel(dest) : 'Got it'}
+            </Button>
+          </div>
+        ) : null}
+
+        {showTelemetry && context ? (
+          <details className="rounded-lg border border-hairline/80 bg-surface-elevated/20">
+            <summary className="cursor-pointer px-3 py-2 text-2xs font-medium text-text-muted hover:text-text-secondary">
+              Telemetry used for this answer
+            </summary>
+            <div className="border-t border-hairline px-3 py-2">
+              <DiagnosisContextViewer context={context} />
+            </div>
+          </details>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 function CauseCard({

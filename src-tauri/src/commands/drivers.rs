@@ -4,7 +4,10 @@ use tauri::State;
 
 use crate::drivers;
 use crate::error::CoreError;
-use crate::models::{DriverInfo, GpuCleanPlan, GpuCleanResult, VaultEntry};
+use crate::models::{
+    DriverInfo, DriverUpdateInstallResult, DriverUpdateScanResult, GpuCleanPlan, GpuCleanResult,
+    VaultEntry,
+};
 use crate::storage::driver_repo;
 use crate::AppState;
 
@@ -18,6 +21,26 @@ pub fn scan_drivers(state: State<'_, AppState>) -> Result<Vec<DriverInfo>, CoreE
 pub fn list_drivers(state: State<'_, AppState>) -> Result<Vec<DriverInfo>, CoreError> {
     let conn = state.conn()?;
     driver_repo::list_drivers(&conn)
+}
+
+/// Search Windows Update for available driver packages (Type=Driver).
+#[tauri::command]
+pub fn scan_driver_updates(
+    state: State<'_, AppState>,
+) -> Result<DriverUpdateScanResult, CoreError> {
+    let conn = state.conn()?;
+    drivers::scan_driver_updates(&conn)
+}
+
+/// Download + install selected Windows Update driver packages.
+#[tauri::command]
+pub fn install_driver_updates(
+    state: State<'_, AppState>,
+    update_ids: Vec<String>,
+    confirm: bool,
+) -> Result<DriverUpdateInstallResult, CoreError> {
+    let conn = state.conn()?;
+    drivers::install_driver_updates(&conn, update_ids, confirm)
 }
 
 /// Dry-run GPU driver clean plan (DDU-class). `vendor`: nvidia|amd|intel|auto.

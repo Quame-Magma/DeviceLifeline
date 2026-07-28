@@ -12,15 +12,17 @@ use crate::models::{DiagnosisFinding, DiagnosisSession};
 use crate::storage::diagnosis_repo;
 use crate::AppState;
 
-/// Runs a single-shot diagnosis for `query`, persists the session and findings,
+/// Runs a diagnosis for `query`, persists the session and findings,
 /// and returns the session (findings are fetched separately by id).
+/// Optional `history` is prior chat turns so replies stay multi-turn aware.
 #[tauri::command]
 pub fn run_diagnosis(
     state: State<'_, AppState>,
     query: String,
+    history: Option<String>,
 ) -> Result<DiagnosisSession, CoreError> {
     let mut conn = state.conn()?;
-    diagnosis::run_diagnosis(&mut conn, &query)
+    diagnosis::run_diagnosis(&mut conn, &query, history.as_deref())
 }
 
 /// Returns all diagnosis sessions, newest first.

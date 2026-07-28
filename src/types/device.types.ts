@@ -699,6 +699,45 @@ export interface DriverInfo {
   riskReasons: string[];
 }
 
+/** Driver package offered by Windows Update (Type=Driver). */
+export interface DriverUpdate {
+  id: string;
+  revision: number;
+  title: string;
+  description: string | null;
+  kbArticle: string | null;
+  manufacturer: string | null;
+  driverClass: string | null;
+  provider: string | null;
+  version: string | null;
+  hardwareId: string | null;
+  sizeBytes: number;
+  isDownloaded: boolean;
+  categories: string[];
+}
+
+export interface DriverUpdateScanResult {
+  scannedAt: string;
+  updates: DriverUpdate[];
+  totalCount: number;
+  totalBytes: number;
+  warnings: string[];
+}
+
+export interface DriverUpdateFailure {
+  id: string;
+  title: string;
+  message: string;
+}
+
+export interface DriverUpdateInstallResult {
+  attempted: number;
+  succeeded: string[];
+  failed: DriverUpdateFailure[];
+  rebootRequired: boolean;
+  message: string;
+}
+
 /**
  * Behavioral security finding (persistence, privilege, suspicious process).
  * `severity` ∈ critical | warning | info. `confidence` is 0–100.

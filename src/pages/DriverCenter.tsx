@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Activity,
   ChevronRight,
+  Download,
   HardDrive,
   Monitor,
   MoreVertical,
@@ -26,19 +27,13 @@ import { Spinner } from '../components/common/Spinner';
 import { StatusPill } from '../components/common/StatusPill';
 import { PageShell } from '../components/layout/PageShell';
 import { confirmAction, toastInfo } from '../lib/feedback';
-import { formatTimestamp } from '../lib/format';
+import { formatBytes, formatTimestamp } from '../lib/format';
 import type { DriverInfo } from '../types/device.types';
 
 function healthTone(score: number): 'success' | 'warning' | 'error' {
   if (score < 40) return 'error';
   if (score < 70) return 'warning';
   return 'success';
-}
-
-function healthLabel(score: number): string {
-  if (score < 40) return 'Critical';
-  if (score < 70) return 'Needs attention';
-  return 'Good';
 }
 
 function driverCategory(driver: DriverInfo): string {
@@ -114,7 +109,7 @@ const CHECKLIST = [
 ] as const;
 
 /**
- * Drivers — mock layout: stat strip, guided GPU clean workflow, health table.
+ * Drivers — inventory analysis, Windows Update driver updates, GPU clean.
  */
 export function DriverCenter() {
   const {
@@ -122,13 +117,20 @@ export function DriverCenter() {
     loading,
     scanning,
     cleaning,
+    updateScanning,
+    updateInstalling,
     plan,
     cleanResult,
     restorePoint,
+    availableUpdates,
+    updateScan,
+    updateInstallResult,
     error,
     message,
     loadDrivers,
     scan,
+    scanUpdates,
+    installUpdates,
     previewClean,
     createRestoreGate,
     executeClean,
@@ -140,6 +142,9 @@ export function DriverCenter() {
   const [filter, setFilter] = useState('');
   const [checks, setChecks] = useState<boolean[]>(() =>
     CHECKLIST.map(() => false),
+  );
+  const [selectedUpdates, setSelectedUpdates] = useState<Set<string>>(
+    () => new Set(),
   );
 
   useEffect(() => {
@@ -186,11 +191,18 @@ export function DriverCenter() {
 
   const unsignedCount = drivers.filter((d) => !d.isSigned).length;
   const lowHealthCount = drivers.filter((d) => d.healthScore < 70).length;
-  const overallHealth = drivers.length
-    ? Math.round(
-        drivers.reduce((sum, d) => sum + d.healthScore, 0) / drivers.length,
-      )
-    : 0;
+  const staleCount = drivers.filter((d) =>
+    (d.riskReasons ?? []).some((r) => r.toLowerCase().includes('years old')),
+  ).length;
+
+  // Keep selection valid when the update list changes.
+  useEffect(() => {
+    const ids = new Set(availableUpdates.map((u) => u.id));
+    setSelectedUpdates((prev) => {
+      const next = new Set([...prev].filter((id) => ids.has(id)));
+      return next;
+    });
+  }, [availableUpdates]);
   const healthSparkline = useMemo(
     () =>
       [...drivers]
@@ -221,17 +233,59 @@ export function DriverCenter() {
     void executeClean(true);
   };
 
+  const handleInstallUpdates = async () => {
+    const ids = [...selectedUpdates];
+    if (ids.length === 0) return;
+    const ok = await confirmAction({
+      title: 'Install driver updates?',
+      description:
+        `Windows Update will download and install ${ids.length} selected driver package(s).\n\n` +
+        `This may take several minutes. A reboot is often required afterward.\n` +
+        `Run DeviceLifeline elevated if install fails with access errors.`,
+      confirmLabel: 'Install updates',
+      tone: 'primary',
+    });
+    if (!ok) return;
+    void installUpdates(ids, true);
+  };
+
+  const toggleUpdate = (id: string) => {
+    setSelectedUpdates((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllUpdates = () => {
+    setSelectedUpdates(new Set(availableUpdates.map((u) => u.id)));
+  };
+
+  const clearUpdateSelection = () => setSelectedUpdates(new Set());
+
   return (
     <PageShell
       title="Drivers"
-      description="Signature status, health scores, and guided GPU clean."
+      description="Inventory analysis, Windows Update drivers, and guided GPU clean."
       titleExtra={
         <span className="rounded-md bg-status-success/15 px-2 py-0.5 text-[11px] font-bold tracking-wide text-status-success">
           {drivers.length} total
         </span>
       }
       actions={
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={updateScanning}
+            onClick={() => void scanUpdates()}
+          >
+            {!updateScanning ? (
+              <Download className="h-3.5 w-3.5" strokeWidth={1.75} />
+            ) : null}
+            {updateScanning ? 'Checking updates…' : 'Check for updates'}
+          </Button>
           <Button
             variant="primary"
             size="sm"
@@ -271,20 +325,24 @@ export function DriverCenter() {
         <StatCard
           icon={ShieldAlert}
           iconClass="bg-status-error/15 text-status-error"
-          label="Drivers under 70"
+          label="Needs attention"
           value={lowHealthCount.toLocaleString()}
-          hint="Low health score"
+          hint={
+            staleCount > 0
+              ? `${staleCount} aged 3+ years`
+              : 'Health score under 70'
+          }
           hintClass="text-status-error"
         />
         <StatCard
-          icon={Activity}
+          icon={Download}
           iconClass="bg-sky-500/20 text-sky-400"
-          label="Overall driver health"
-          value={String(overallHealth)}
+          label="Updates available"
+          value={String(availableUpdates.length)}
           hint={
-            drivers.length > 0
-              ? `Avg of ${drivers.length} scored drivers`
-              : healthLabel(overallHealth)
+            updateScan
+              ? formatBytes(updateScan.totalBytes)
+              : 'Via Windows Update'
           }
           hintClass="text-sky-400"
           chart={
@@ -300,6 +358,153 @@ export function DriverCenter() {
           }
         />
       </div>
+
+      {/* Windows Update driver packages */}
+      <section className="panel overflow-hidden">
+        <div className="panel-header flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="panel-title">Driver updates</p>
+            <p className="panel-subtitle">
+              Windows Update packages (Type=Driver) not yet installed on this PC
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusPill tone={elevated ? 'success' : 'warning'}>
+              {elevated ? 'Elevated' : 'Not elevated'}
+            </StatusPill>
+            {!elevated ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void elevate()}
+              >
+                Elevate
+              </Button>
+            ) : null}
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={updateScanning}
+              onClick={() => void scanUpdates()}
+            >
+              {updateScanning ? 'Searching…' : 'Refresh updates'}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              loading={updateInstalling}
+              disabled={selectedUpdates.size === 0 || updateInstalling}
+              onClick={() => {
+                void handleInstallUpdates();
+              }}
+            >
+              Install selected
+              {selectedUpdates.size > 0 ? ` (${selectedUpdates.size})` : ''}
+            </Button>
+          </div>
+        </div>
+
+        {updateScanning && availableUpdates.length === 0 ? (
+          <div className="flex items-center justify-center gap-3 px-panel-x py-12 text-sm text-text-secondary">
+            <Spinner size="sm" label="Searching Windows Update" />
+            Searching Windows Update for driver packages… this can take a minute.
+          </div>
+        ) : availableUpdates.length === 0 ? (
+          <div className="px-panel-x py-8 text-sm text-text-secondary">
+            {updateScan
+              ? 'No pending driver updates from Windows Update. OEM GPU packages may still need NVIDIA / AMD / Intel installers.'
+              : 'Click Check for updates to query Windows Update for driver packages.'}
+            {updateScan?.warnings?.length ? (
+              <p className="mt-2 text-2xs text-status-warning">
+                {updateScan.warnings[0]}
+              </p>
+            ) : null}
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-wrap items-center gap-3 border-b border-hairline px-panel-x py-2.5 text-2xs text-text-muted">
+              <button
+                type="button"
+                className="font-medium text-sky-400 hover:text-sky-300"
+                onClick={selectAllUpdates}
+              >
+                Select all
+              </button>
+              <button
+                type="button"
+                className="font-medium text-text-muted hover:text-text-secondary"
+                onClick={clearUpdateSelection}
+              >
+                Clear
+              </button>
+              <span className="tabular-nums">
+                {availableUpdates.length} package
+                {availableUpdates.length === 1 ? '' : 's'} ·{' '}
+                {formatBytes(updateScan?.totalBytes ?? 0)}
+              </span>
+            </div>
+            <ul className="divide-y divide-hairline">
+              {availableUpdates.map((u) => (
+                <li key={u.id}>
+                  <label className="flex cursor-pointer items-start gap-3 px-panel-x py-3 text-sm transition-colors hover:bg-surface-elevated/35">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-hairline accent-sky-500"
+                      checked={selectedUpdates.has(u.id)}
+                      onChange={() => toggleUpdate(u.id)}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="font-medium text-text-primary">
+                        {u.title}
+                      </span>
+                      <span className="mt-0.5 block text-2xs text-text-muted">
+                        {[
+                          u.manufacturer,
+                          u.provider,
+                          u.driverClass,
+                          u.version ? `as of ${u.version}` : null,
+                          u.kbArticle ? `KB${u.kbArticle}` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ') || 'Windows Update driver package'}
+                      </span>
+                      {u.description ? (
+                        <span className="mt-1 block line-clamp-2 text-2xs text-text-secondary">
+                          {u.description}
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-2xs text-text-muted">
+                      {formatBytes(u.sizeBytes)}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+            {updateInstallResult ? (
+              <div className="border-t border-hairline px-panel-x py-3 text-xs text-text-secondary">
+                <p className="font-medium text-text-primary">
+                  {updateInstallResult.message}
+                </p>
+                {updateInstallResult.rebootRequired ? (
+                  <p className="mt-1 text-status-warning">
+                    Reboot required to finish applying driver updates.
+                  </p>
+                ) : null}
+                {updateInstallResult.failed.length > 0 ? (
+                  <ul className="mt-2 list-disc space-y-0.5 pl-4 text-2xs text-text-muted">
+                    {updateInstallResult.failed.slice(0, 4).map((f) => (
+                      <li key={f.id}>
+                        {f.title}: {f.message}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+          </>
+        )}
+      </section>
 
       {/* GPU clean guided */}
       <section className="panel overflow-hidden">

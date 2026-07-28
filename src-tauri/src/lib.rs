@@ -171,6 +171,8 @@ pub fn run() {
             commands::hardware::get_disk_health_summaries,
             commands::drivers::scan_drivers,
             commands::drivers::list_drivers,
+            commands::drivers::scan_driver_updates,
+            commands::drivers::install_driver_updates,
             commands::drivers::preview_gpu_driver_clean,
             commands::drivers::create_gpu_clean_restore_point,
             commands::drivers::execute_gpu_driver_clean,

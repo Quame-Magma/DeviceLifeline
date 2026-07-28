@@ -12,9 +12,18 @@ import type {
   DiagnosisSession,
 } from '../../types/device.types';
 
-/** Run a single-shot diagnosis for a query; returns the persisted session. */
-export const runDiagnosis = (query: string): Promise<DiagnosisSession> =>
-  invoke<DiagnosisSession>('run_diagnosis', { query });
+/**
+ * Run a diagnosis for a query; returns the persisted session.
+ * Optional `history` is prior chat turns so replies stay multi-turn aware.
+ */
+export const runDiagnosis = (
+  query: string,
+  history?: string | null,
+): Promise<DiagnosisSession> =>
+  invoke<DiagnosisSession>('run_diagnosis', {
+    query,
+    history: history ?? null,
+  });
 
 /** Retrieve all diagnosis sessions, newest first. */
 export const getDiagnosisSessions = (): Promise<DiagnosisSession[]> =>

@@ -2,11 +2,14 @@
 
 use rusqlite::Connection;
 
-use crate::actions::{self, RISK_DESTRUCTIVE, RISK_SAFE};
+use crate::actions::{self, RISK_DESTRUCTIVE, RISK_PRIVILEGED, RISK_SAFE};
 use crate::dna::snapshot::now_rfc3339;
 use crate::elevation;
 use crate::error::CoreError;
-use crate::models::{DriverInfo, GpuCleanPlan, GpuCleanResult, GpuCleanTarget};
+use crate::models::{
+    DriverInfo, DriverUpdate, DriverUpdateFailure, DriverUpdateInstallResult, DriverUpdateScanResult,
+    GpuCleanPlan, GpuCleanResult, GpuCleanTarget,
+};
 use crate::storage::{device_repo, driver_repo, vault_repo};
 use crate::vault;
 
@@ -55,8 +58,554 @@ fn score_driver(d: &mut DriverInfo) {
         score -= 15;
         reasons.push("Generic display driver may limit GPU features".into());
     }
+    // Age-based analysis (installed driver date, not Windows Update catalog).
+    if let Some(years) = driver_age_years(d.driver_date.as_deref()) {
+        if years >= 5 {
+            score -= 20;
+            reasons.push(format!(
+                "Driver date is about {years} years old — check for a vendor update"
+            ));
+        } else if years >= 3 {
+            score -= 10;
+            reasons.push(format!(
+                "Driver date is about {years} years old — may be outdated"
+            ));
+        }
+    }
     d.health_score = score.clamp(0, 100);
     d.risk_reasons = reasons;
+}
+
+/// Approximate age in whole years from `YYYY-MM-DD` (or prefix).
+fn driver_age_years(date: Option<&str>) -> Option<i64> {
+    let raw = date?.trim();
+    if raw.len() < 4 {
+        return None;
+    }
+    let year: i64 = raw.get(0..4)?.parse().ok()?;
+    let month: i64 = raw
+        .get(5..7)
+        .and_then(|m| m.parse().ok())
+        .unwrap_or(1)
+        .clamp(1, 12);
+    let now = time::OffsetDateTime::now_utc();
+    let cy = i64::from(now.year());
+    let cm = i64::from(u8::from(now.month()));
+    let mut years = cy - year;
+    if cm < month {
+        years -= 1;
+    }
+    if years < 0 {
+        return Some(0);
+    }
+    Some(years)
+}
+
+// ---------------------------------------------------------------------------
+// Windows Update driver updates (scan + install)
+// ---------------------------------------------------------------------------
+
+/// Search Windows Update for available Type=Driver packages (not installed).
+pub fn scan_driver_updates(conn: &Connection) -> Result<DriverUpdateScanResult, CoreError> {
+    let _device = device_repo::ensure_local_device(conn)?;
+    let scanned_at = now_rfc3339()?;
+
+    #[cfg(windows)]
+    {
+        let (updates, warnings) = windows_scan_driver_updates();
+        let total_bytes: i64 = updates.iter().map(|u| u.size_bytes.max(0)).sum();
+        let total_count = updates.len() as i64;
+        let _ = actions::record_action(
+            conn,
+            "driver_update_scan",
+            RISK_SAFE,
+            "Scan Windows Update for drivers",
+            Some(&format!("{total_count} driver update(s) found")),
+            "completed",
+            None,
+        );
+        return Ok(DriverUpdateScanResult {
+            scanned_at,
+            updates,
+            total_count,
+            total_bytes,
+            warnings,
+        });
+    }
+
+    #[cfg(not(windows))]
+    {
+        Ok(DriverUpdateScanResult {
+            scanned_at,
+            updates: Vec::new(),
+            total_count: 0,
+            total_bytes: 0,
+            warnings: vec![
+                "Driver update scan uses Windows Update and is only available on Windows.".into(),
+            ],
+        })
+    }
+}
+
+/// Download and install selected Windows Update driver packages.
+/// Requires `confirm == true`. Works best when elevated.
+pub fn install_driver_updates(
+    conn: &Connection,
+    update_ids: Vec<String>,
+    confirm: bool,
+) -> Result<DriverUpdateInstallResult, CoreError> {
+    if !confirm {
+        return Err(CoreError::Internal(
+            "Driver update install requires confirm: true".into(),
+        ));
+    }
+    let ids: Vec<String> = update_ids
+        .into_iter()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .collect();
+    if ids.is_empty() {
+        return Err(CoreError::Internal(
+            "Select at least one driver update to install.".into(),
+        ));
+    }
+
+    let elevated = elevation::is_elevated();
+    let preview = format!("{} update(s); elevated={elevated}", ids.len());
+    let _ = actions::record_action(
+        conn,
+        "driver_update_install",
+        RISK_PRIVILEGED,
+        "Install Windows Update drivers",
+        Some(&preview),
+        "running",
+        Some(&preview),
+    );
+
+    #[cfg(windows)]
+    {
+        let result = windows_install_driver_updates(&ids);
+        let status = if result.failed.is_empty() && result.attempted > 0 {
+            "completed"
+        } else if result.succeeded.is_empty() {
+            "failed"
+        } else {
+            "completed"
+        };
+        let _ = actions::record_action(
+            conn,
+            "driver_update_install_result",
+            RISK_PRIVILEGED,
+            "Driver update install finished",
+            Some(&result.message),
+            status,
+            None,
+        );
+        // Refresh inventory after install so versions/dates update.
+        let _ = scan_drivers(conn);
+        return Ok(result);
+    }
+
+    #[cfg(not(windows))]
+    {
+        Ok(DriverUpdateInstallResult {
+            attempted: ids.len() as i64,
+            succeeded: Vec::new(),
+            failed: ids
+                .into_iter()
+                .map(|id| DriverUpdateFailure {
+                    id: id.clone(),
+                    title: id,
+                    message: "Driver updates are only available on Windows.".into(),
+                })
+                .collect(),
+            reboot_required: false,
+            message: "Driver updates are only available on Windows.".into(),
+        })
+    }
+}
+
+#[cfg(windows)]
+fn windows_scan_driver_updates() -> (Vec<DriverUpdate>, Vec<String>) {
+    let script = r#"
+$ErrorActionPreference = 'Stop'
+try {
+  $session = New-Object -ComObject Microsoft.Update.Session
+  $searcher = $session.CreateUpdateSearcher()
+  $searcher.ServerSelection = 0
+  $result = $searcher.Search("IsInstalled=0 and Type='Driver' and IsHidden=0")
+  $rows = @()
+  foreach ($u in @($result.Updates)) {
+    $cats = @()
+    try { foreach ($c in @($u.Categories)) { if ($c.Name) { $cats += [string]$c.Name } } } catch {}
+    $kb = $null
+    try { if ($u.KBArticleIDs -and $u.KBArticleIDs.Count -gt 0) { $kb = [string]$u.KBArticleIDs.Item(0) } } catch {}
+    $desc = $null
+    try {
+      if ($u.Description) {
+        $d = [string]$u.Description
+        if ($d.Length -gt 480) { $d = $d.Substring(0, 480) }
+        $desc = $d
+      }
+    } catch {}
+    $driverClass = $null; $mfr = $null; $provider = $null; $ver = $null; $hwid = $null
+    try { if ($u.DriverClass) { $driverClass = [string]$u.DriverClass } } catch {}
+    try { if ($u.DriverManufacturer) { $mfr = [string]$u.DriverManufacturer } } catch {}
+    try { if ($u.DriverProvider) { $provider = [string]$u.DriverProvider } } catch {}
+    try {
+      if ($u.DriverVerDate) {
+        $ver = ([datetime]$u.DriverVerDate).ToString('yyyy-MM-dd')
+      }
+    } catch {}
+    try { if ($u.DriverHardwareID) { $hwid = [string]$u.DriverHardwareID } } catch {}
+    $size = 0
+    try { $size = [int64]$u.MaxDownloadSize } catch { $size = 0 }
+    $rows += [pscustomobject]@{
+      id = [string]$u.Identity.UpdateID
+      revision = [int64]$u.Identity.RevisionNumber
+      title = [string]$u.Title
+      description = $desc
+      kbArticle = $kb
+      manufacturer = $mfr
+      driverClass = $driverClass
+      provider = $provider
+      version = $ver
+      hardwareId = $hwid
+      sizeBytes = $size
+      isDownloaded = [bool]$u.IsDownloaded
+      categories = $cats
+    }
+  }
+  (@{ ok = $true; updates = $rows; warning = $null } | ConvertTo-Json -Compress -Depth 6)
+} catch {
+  (@{ ok = $false; updates = @(); warning = [string]$_.Exception.Message } | ConvertTo-Json -Compress -Depth 4)
+}
+"#;
+
+    let output = crate::process_win::silent_command("powershell")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script,
+        ])
+        .output();
+
+    let Ok(output) = output else {
+        return (
+            Vec::new(),
+            vec!["Could not start Windows Update search.".into()],
+        );
+    };
+    let text = String::from_utf8_lossy(&output.stdout);
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        return (
+            Vec::new(),
+            vec![format!(
+                "Windows Update search returned no data. {}",
+                err.trim()
+            )],
+        );
+    }
+    let value: serde_json::Value = match serde_json::from_str(trimmed) {
+        Ok(v) => v,
+        Err(e) => {
+            return (
+                Vec::new(),
+                vec![format!("Failed to parse Windows Update response: {e}")],
+            );
+        }
+    };
+    let mut warnings = Vec::new();
+    if value.get("ok").and_then(|v| v.as_bool()) == Some(false) {
+        if let Some(w) = value.get("warning").and_then(|v| v.as_str()) {
+            warnings.push(w.to_string());
+        } else {
+            warnings.push("Windows Update search failed.".into());
+        }
+    } else if let Some(w) = value.get("warning").and_then(|v| v.as_str()) {
+        if !w.is_empty() {
+            warnings.push(w.to_string());
+        }
+    }
+
+    let arr = value
+        .get("updates")
+        .and_then(|v| v.as_array())
+        .cloned()
+        .unwrap_or_default();
+
+    let mut updates: Vec<DriverUpdate> = arr
+        .into_iter()
+        .filter_map(|v| {
+            let id = v.get("id")?.as_str()?.trim().to_string();
+            if id.is_empty() {
+                return None;
+            }
+            let title = v
+                .get("title")
+                .and_then(|x| x.as_str())
+                .unwrap_or("Driver update")
+                .to_string();
+            let categories = v
+                .get("categories")
+                .and_then(|c| c.as_array())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                        .collect()
+                })
+                .unwrap_or_default();
+            Some(DriverUpdate {
+                id,
+                revision: v.get("revision").and_then(|x| x.as_i64()).unwrap_or(0),
+                title,
+                description: v
+                    .get("description")
+                    .and_then(|x| x.as_str())
+                    .map(|s| s.to_string()),
+                kb_article: v
+                    .get("kbArticle")
+                    .and_then(|x| x.as_str())
+                    .map(|s| s.to_string()),
+                manufacturer: v
+                    .get("manufacturer")
+                    .and_then(|x| x.as_str())
+                    .map(|s| s.to_string()),
+                driver_class: v
+                    .get("driverClass")
+                    .and_then(|x| x.as_str())
+                    .map(|s| s.to_string()),
+                provider: v
+                    .get("provider")
+                    .and_then(|x| x.as_str())
+                    .map(|s| s.to_string()),
+                version: v
+                    .get("version")
+                    .and_then(|x| x.as_str())
+                    .map(|s| s.to_string()),
+                hardware_id: v
+                    .get("hardwareId")
+                    .and_then(|x| x.as_str())
+                    .map(|s| s.to_string()),
+                size_bytes: v.get("sizeBytes").and_then(|x| x.as_i64()).unwrap_or(0),
+                is_downloaded: v
+                    .get("isDownloaded")
+                    .and_then(|x| x.as_bool())
+                    .unwrap_or(false),
+                categories,
+            })
+        })
+        .collect();
+
+    updates.sort_by(|a, b| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
+    (updates, warnings)
+}
+
+#[cfg(windows)]
+fn windows_install_driver_updates(update_ids: &[String]) -> DriverUpdateInstallResult {
+    let ids_json = serde_json::to_string(update_ids).unwrap_or_else(|_| "[]".into());
+    // Escape for single-quoted PowerShell here-string edge cases: avoid embedding quotes in -Command badly.
+    // Write JSON to a temp file and read it in PS.
+    let temp = std::env::temp_dir().join(format!(
+        "dll-driver-updates-{}.json",
+        uuid::Uuid::new_v4()
+    ));
+    if std::fs::write(&temp, ids_json.as_bytes()).is_err() {
+        return DriverUpdateInstallResult {
+            attempted: update_ids.len() as i64,
+            succeeded: Vec::new(),
+            failed: vec![DriverUpdateFailure {
+                id: "io".into(),
+                title: "Install failed".into(),
+                message: "Could not write temporary selection file.".into(),
+            }],
+            reboot_required: false,
+            message: "Could not prepare driver update install.".into(),
+        };
+    }
+    let path = temp.display().to_string().replace('\'', "''");
+    let script = format!(
+        r#"
+$ErrorActionPreference = 'Stop'
+$wantedRaw = Get-Content -LiteralPath '{path}' -Raw
+$wanted = ConvertFrom-Json -InputObject $wantedRaw
+if ($wanted -isnot [System.Array]) {{ $wanted = @($wanted) }}
+$wantedSet = New-Object 'System.Collections.Generic.HashSet[string]'
+foreach ($id in $wanted) {{ [void]$wantedSet.Add([string]$id) }}
+try {{
+  $session = New-Object -ComObject Microsoft.Update.Session
+  $searcher = $session.CreateUpdateSearcher()
+  $result = $searcher.Search("IsInstalled=0 and Type='Driver' and IsHidden=0")
+  $coll = New-Object -ComObject Microsoft.Update.UpdateColl
+  $titles = @{{}}
+  foreach ($u in @($result.Updates)) {{
+    $uid = [string]$u.Identity.UpdateID
+    if ($wantedSet.Contains($uid)) {{
+      try {{ if (-not $u.EulaAccepted) {{ $u.AcceptEula() | Out-Null }} }} catch {{}}
+      [void]$coll.Add($u)
+      $titles[$uid] = [string]$u.Title
+    }}
+  }}
+  if ($coll.Count -eq 0) {{
+    (@{{ ok=$false; attempted=0; succeeded=@(); failed=@(@{{ id='none'; title='none'; message='No matching driver updates found. Re-scan and try again.' }}); rebootRequired=$false; message='No matching updates.' }} | ConvertTo-Json -Compress -Depth 6)
+    exit 0
+  }}
+  $downloader = $session.CreateUpdateDownloader()
+  $downloader.Updates = $coll
+  [void]$downloader.Download()
+  $installer = $session.CreateUpdateInstaller()
+  $installer.Updates = $coll
+  $ir = $installer.Install()
+  $succeeded = New-Object System.Collections.Generic.List[string]
+  $failed = New-Object System.Collections.Generic.List[object]
+  for ($i = 0; $i -lt $coll.Count; $i++) {{
+    $u = $coll.Item($i)
+    $uid = [string]$u.Identity.UpdateID
+    $title = if ($titles.ContainsKey($uid)) {{ $titles[$uid] }} else {{ [string]$u.Title }}
+    $hr = $ir.GetUpdateResult($i)
+    $code = [int]$hr.ResultCode
+    if ($code -eq 2 -or $code -eq 3) {{
+      $succeeded.Add($title) | Out-Null
+    }} else {{
+      $failed.Add(@{{ id=$uid; title=$title; message=("Windows Update ResultCode=" + $code) }}) | Out-Null
+    }}
+  }}
+  $reboot = [bool]$ir.RebootRequired
+  $msg = ("Installed $($succeeded.Count) of $($coll.Count) driver update(s).")
+  if ($reboot) {{ $msg += " A reboot is required to finish." }}
+  (@{{ ok=$true; attempted=[int]$coll.Count; succeeded=@($succeeded); failed=@($failed); rebootRequired=$reboot; message=$msg }} | ConvertTo-Json -Compress -Depth 6)
+}} catch {{
+  (@{{ ok=$false; attempted=$wantedSet.Count; succeeded=@(); failed=@(@{{ id='error'; title='Install failed'; message=[string]$_.Exception.Message }}); rebootRequired=$false; message=[string]$_.Exception.Message }} | ConvertTo-Json -Compress -Depth 6)
+}}
+"#,
+        path = path
+    );
+
+    let output = crate::process_win::silent_command("powershell")
+        .args([
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &script,
+        ])
+        .output();
+
+    let _ = std::fs::remove_file(&temp);
+
+    let Ok(output) = output else {
+        return DriverUpdateInstallResult {
+            attempted: update_ids.len() as i64,
+            succeeded: Vec::new(),
+            failed: vec![DriverUpdateFailure {
+                id: "spawn".into(),
+                title: "Install failed".into(),
+                message: "Could not start Windows Update installer.".into(),
+            }],
+            reboot_required: false,
+            message: "Could not start Windows Update installer.".into(),
+        };
+    };
+
+    let text = String::from_utf8_lossy(&output.stdout);
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        let err = String::from_utf8_lossy(&output.stderr);
+        return DriverUpdateInstallResult {
+            attempted: update_ids.len() as i64,
+            succeeded: Vec::new(),
+            failed: vec![DriverUpdateFailure {
+                id: "empty".into(),
+                title: "Install failed".into(),
+                message: if err.trim().is_empty() {
+                    "Windows Update returned no result. Try running DeviceLifeline elevated."
+                        .into()
+                } else {
+                    err.trim().to_string()
+                },
+            }],
+            reboot_required: false,
+            message: "Driver update install failed.".into(),
+        };
+    }
+
+    let value: serde_json::Value = match serde_json::from_str(trimmed) {
+        Ok(v) => v,
+        Err(e) => {
+            return DriverUpdateInstallResult {
+                attempted: update_ids.len() as i64,
+                succeeded: Vec::new(),
+                failed: vec![DriverUpdateFailure {
+                    id: "parse".into(),
+                    title: "Install failed".into(),
+                    message: format!("Could not parse install result: {e}"),
+                }],
+                reboot_required: false,
+                message: "Could not parse install result.".into(),
+            };
+        }
+    };
+
+    let succeeded: Vec<String> = value
+        .get("succeeded")
+        .and_then(|v| v.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| x.as_str().map(|s| s.to_string()))
+                .collect()
+        })
+        .unwrap_or_default();
+    let failed: Vec<DriverUpdateFailure> = value
+        .get("failed")
+        .and_then(|v| v.as_array())
+        .map(|a| {
+            a.iter()
+                .filter_map(|x| {
+                    Some(DriverUpdateFailure {
+                        id: x
+                            .get("id")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown")
+                            .to_string(),
+                        title: x
+                            .get("title")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("Update")
+                            .to_string(),
+                        message: x
+                            .get("message")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("failed")
+                            .to_string(),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    DriverUpdateInstallResult {
+        attempted: value
+            .get("attempted")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(update_ids.len() as i64),
+        succeeded,
+        failed,
+        reboot_required: value
+            .get("rebootRequired")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false),
+        message: value
+            .get("message")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Driver update install finished.")
+            .to_string(),
+    }
 }
 
 fn collect_raw(device_id: &str, captured_at: &str) -> Vec<DriverInfo> {

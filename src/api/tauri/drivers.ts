@@ -11,6 +11,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
   DriverInfo,
+  DriverUpdateInstallResult,
+  DriverUpdateScanResult,
   GpuCleanPlan,
   GpuCleanResult,
   VaultEntry,
@@ -23,6 +25,20 @@ export const scanDrivers = (): Promise<DriverInfo[]> =>
 /** List previously scanned drivers for the local device. */
 export const listDrivers = (): Promise<DriverInfo[]> =>
   invoke<DriverInfo[]>('list_drivers');
+
+/** Search Windows Update for available driver packages. */
+export const scanDriverUpdates = (): Promise<DriverUpdateScanResult> =>
+  invoke<DriverUpdateScanResult>('scan_driver_updates');
+
+/** Download + install selected Windows Update driver packages. */
+export const installDriverUpdates = (
+  updateIds: string[],
+  confirm: boolean,
+): Promise<DriverUpdateInstallResult> =>
+  invoke<DriverUpdateInstallResult>('install_driver_updates', {
+    updateIds,
+    confirm,
+  });
 
 /** Dry-run DDU-class GPU driver clean plan. */
 export const previewGpuDriverClean = (
