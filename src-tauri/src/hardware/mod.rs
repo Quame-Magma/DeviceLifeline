@@ -10,16 +10,36 @@ use crate::models::{
 };
 use crate::storage::{device_repo, hardware_repo};
 
+/// How deep a hardware sample goes. Quick is for Overview smart-check UX;
+/// Full is for the Performance page.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SampleDepth {
+    /// sysinfo + light thermal + basic disk identity. No full SMART reliability
+    /// counters, no HWiNFO-class PDH harvest. Bounded timeouts.
+    Quick,
+    /// Full sensor pack + SMART reliability (still timeout-capped).
+    Full,
+}
+
+impl SampleDepth {
+    pub fn from_str_opt(s: Option<&str>) -> Self {
+        match s.map(|x| x.trim().to_ascii_lowercase()).as_deref() {
+            Some("quick") | Some("light") | Some("smart") => SampleDepth::Quick,
+            _ => SampleDepth::Full,
+        }
+    }
+}
+
 /// Captures a hardware sample (OS I/O first, then short DB write).
 pub fn capture_sample(conn: &Connection) -> Result<HardwareSample, CoreError> {
     let device = device_repo::ensure_local_device(conn)?;
-    let sample = sample_hardware(&device.id)?;
+    let sample = sample_hardware(&device.id, SampleDepth::Full)?;
     hardware_repo::insert_sample(conn, &sample)?;
     Ok(sample)
 }
 
 /// Pure collection without persistence.
-pub fn sample_hardware(device_id: &str) -> Result<HardwareSample, CoreError> {
+pub fn sample_hardware(device_id: &str, depth: SampleDepth) -> Result<HardwareSample, CoreError> {
     let mut sys = System::new();
     sys.refresh_cpu_all();
 
@@ -34,8 +54,12 @@ pub fn sample_hardware(device_id: &str) -> Result<HardwareSample, CoreError> {
     };
 
     let (cpu_temp_c, gpu_temp_c, component_notes) = sample_temps();
-    let (gpu_name, gpu_usage_pct, gpu_vram_used, gpu_vram_total) = sample_gpu();
-    let smart = sample_smart()?;
+    let (gpu_name, gpu_usage_pct, gpu_vram_used, gpu_vram_total) = match depth {
+        // GPU PDH counters are expensive; skip on quick smart-check.
+        SampleDepth::Quick => (None, None, None, None),
+        SampleDepth::Full => sample_gpu(),
+    };
+    let smart = sample_smart(depth)?;
     let mut sensors = component_notes_to_sensors(&component_notes);
 
     // HWiNFO-class Windows sensor pack (thermal zones, GPU load, fans).
@@ -46,30 +70,47 @@ pub fn sample_hardware(device_id: &str) -> Result<HardwareSample, CoreError> {
         let mut gpu_temp_c = gpu_temp_c;
         let mut gpu_usage_pct = gpu_usage_pct;
 
-        // Fast path first: ThermalZone + nvidia-smi only (often works without admin).
-        let fast = windows_fast_temps();
-        if cpu_temp_c.is_none() {
-            cpu_temp_c = fast.cpu_temp_c;
-        }
-        if gpu_temp_c.is_none() {
-            gpu_temp_c = fast.gpu_temp_c;
-        }
-        if gpu_usage_pct.is_none() {
-            gpu_usage_pct = fast.gpu_usage_pct;
-        }
-        sensors.extend(fast.sensors);
+        match depth {
+            // Overview smart-check must stay responsive. Prefer sysinfo only;
+            // if no package temp, one tiny ThermalZone probe (≤3s) — never LHM /
+            // nvidia-smi / PDH during a smart-check.
+            SampleDepth::Quick => {
+                if cpu_temp_c.is_none() {
+                    let light = windows_thermal_zone_only();
+                    if cpu_temp_c.is_none() {
+                        cpu_temp_c = light.cpu_temp_c;
+                    }
+                    sensors.extend(light.sensors);
+                }
+            }
+            SampleDepth::Full => {
+                // ThermalZone + nvidia-smi + optional LHM (timeout-capped).
+                let fast = windows_fast_temps();
+                if cpu_temp_c.is_none() {
+                    cpu_temp_c = fast.cpu_temp_c;
+                }
+                if gpu_temp_c.is_none() {
+                    gpu_temp_c = fast.gpu_temp_c;
+                }
+                if gpu_usage_pct.is_none() {
+                    gpu_usage_pct = fast.gpu_usage_pct;
+                }
+                sensors.extend(fast.sensors);
 
-        let pack = windows_sensor_pack();
-        if cpu_temp_c.is_none() {
-            cpu_temp_c = pack.cpu_temp_c;
+                // Full pack (PDH GPU engines, many LHM sensors). Performance page only.
+                let pack = windows_sensor_pack();
+                if cpu_temp_c.is_none() {
+                    cpu_temp_c = pack.cpu_temp_c;
+                }
+                if gpu_temp_c.is_none() {
+                    gpu_temp_c = pack.gpu_temp_c;
+                }
+                if gpu_usage_pct.is_none() {
+                    gpu_usage_pct = pack.gpu_usage_pct;
+                }
+                sensors.extend(pack.sensors);
+            }
         }
-        if gpu_temp_c.is_none() {
-            gpu_temp_c = pack.gpu_temp_c;
-        }
-        if gpu_usage_pct.is_none() {
-            gpu_usage_pct = pack.gpu_usage_pct;
-        }
-        sensors.extend(pack.sensors);
         (cpu_temp_c, gpu_temp_c, gpu_usage_pct)
     };
 
@@ -287,6 +328,35 @@ struct WindowsSensorPack {
     sensors: Vec<SensorReading>,
 }
 
+/// Ultra-light thermal probe for Overview smart-check — one CIM class, short timeout.
+/// Never touches LibreHardwareMonitor, PDH, or nvidia-smi (those freeze weaker PCs).
+#[cfg(windows)]
+fn windows_thermal_zone_only() -> WindowsSensorPack {
+    let script = r#"
+$ErrorActionPreference = 'SilentlyContinue'
+$cpuTemp = $null
+$sensors = @()
+foreach ($z in @(Get-CimInstance Win32_PerfFormattedData_Counters_ThermalZoneInformation -ErrorAction SilentlyContinue | Select-Object -First 4)) {
+  if ($null -eq $z.Temperature) { continue }
+  $c = [double]$z.Temperature
+  if ($c -gt 200) { $c = $c - 273.15 }
+  if ($c -lt 0 -or $c -gt 150) { continue }
+  $c = [math]::Round($c, 2)
+  $name = 'Thermal zone'
+  if ($z.Name) { $name = 'Thermal · ' + [string]$z.Name }
+  $sensors += [pscustomobject]@{ name = $name; value = $c; unit = 'C'; source = 'ThermalZoneInfo'; category = 'thermal' }
+  if ($null -eq $cpuTemp) { $cpuTemp = $c }
+}
+[pscustomobject]@{
+  cpuTemp = $cpuTemp
+  gpuTemp = $null
+  gpuUsage = $null
+  sensors = @($sensors)
+} | ConvertTo-Json -Compress -Depth 4
+"#;
+    parse_windows_sensor_json(&run_powershell_json_timeout(script, std::time::Duration::from_secs(3)))
+}
+
 /// Lightweight thermal probe — runs first so Performance tiles get a value even
 /// when the full sensor pack fails, hangs, or needs LibreHardwareMonitor.
 #[cfg(windows)]
@@ -376,6 +446,11 @@ foreach ($ns in @('root/LibreHardwareMonitor', 'root/OpenHardwareMonitor')) {
 
 #[cfg(windows)]
 fn run_powershell_json(script: &str) -> String {
+    run_powershell_json_timeout(script, std::time::Duration::from_secs(8))
+}
+
+#[cfg(windows)]
+fn run_powershell_json_timeout(script: &str, timeout: std::time::Duration) -> String {
     // CIM thermal probes + CREATE_NO_WINDOW + piped stdout often yield empty
     // captures. Write the script body to a .ps1 that dumps JSON to a result file.
     let dir = std::env::temp_dir().join("devicelifeline-hw");
@@ -406,16 +481,22 @@ try {{
     }
 
     let script_str = script_path.to_string_lossy().to_string();
-    let _ = crate::process_win::silent_command("powershell")
-        .args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            &script_str,
-        ])
-        .output();
+    let timed_out = crate::process_win::run_silent_timeout(
+        {
+            let mut c = crate::process_win::silent_command("powershell");
+            c.args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                &script_str,
+            ]);
+            c
+        },
+        timeout,
+    )
+    .is_none();
 
     let text = std::fs::read_to_string(&out_path)
         .unwrap_or_default()
@@ -428,19 +509,30 @@ try {{
         return text;
     }
 
+    // On timeout or empty output, do not chain a second PowerShell on Quick budgets
+    // (≤4s). Full probes may try one tiny thermal fallback.
+    if timed_out || timeout <= std::time::Duration::from_secs(4) {
+        return String::new();
+    }
+
     // Last resort: tiny -Command that only hits thermal zones.
     let fallback = r#"$z=Get-CimInstance Win32_PerfFormattedData_Counters_ThermalZoneInformation -EA SilentlyContinue|Select-Object -First 1; if($z){$c=[double]$z.Temperature; if($c -gt 200){$c=$c-273.15}; Write-Output ('{"cpuTemp":'+$c+',"gpuTemp":null,"gpuUsage":null,"sensors":[{"name":"Thermal","value":'+$c+',"unit":"C","source":"ThermalZoneInfo","category":"thermal"}]}')} else { Write-Output '{"cpuTemp":null,"gpuTemp":null,"gpuUsage":null,"sensors":[]}' }"#;
-    let output = crate::process_win::silent_command("powershell")
-        .args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            fallback,
-        ])
-        .output();
-    let Ok(output) = output else {
+    let output = crate::process_win::run_silent_timeout(
+        {
+            let mut c = crate::process_win::silent_command("powershell");
+            c.args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                fallback,
+            ]);
+            c
+        },
+        std::time::Duration::from_secs(3),
+    );
+    let Some(output) = output else {
         return String::new();
     };
     String::from_utf8_lossy(&output.stdout).trim().to_string()
@@ -572,7 +664,7 @@ try {
 # --- LibreHardwareMonitor / OpenHardwareMonitor WMI if installed ---
 foreach ($ns in @('root/LibreHardwareMonitor','root/OpenHardwareMonitor')) {
   try {
-    foreach ($s in (Get-CimInstance -Namespace $ns -ClassName Sensor -EA SilentlyContinue | Select-Object -First 400)) {
+    foreach ($s in (Get-CimInstance -Namespace $ns -ClassName Sensor -EA SilentlyContinue | Select-Object -First 80)) {
       $val = $s.Value; if ($null -eq $val) { continue }
       $type = [string]$s.SensorType
       $name = [string]$s.Name
@@ -814,10 +906,14 @@ if (-not $g -and $null -eq $usage) { '{}' | ConvertTo-Json; exit }
   driver = if ($g) { $g.DriverVersion } else { $null }
 } | ConvertTo-Json -Compress
 "#;
-    let output = crate::process_win::silent_command("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", script])
-        .output()
-        .ok()?;
+    let output = crate::process_win::run_silent_timeout(
+        {
+            let mut c = crate::process_win::silent_command("powershell");
+            c.args(["-NoProfile", "-NonInteractive", "-Command", script]);
+            c
+        },
+        std::time::Duration::from_secs(6),
+    )?;
     if !output.status.success() {
         return None;
     }
@@ -832,13 +928,14 @@ if (-not $g -and $null -eq $usage) { '{}' | ConvertTo-Json; exit }
     Some((name, usage, None, vram))
 }
 
-fn sample_smart() -> Result<Vec<SmartReading>, CoreError> {
+fn sample_smart(depth: SampleDepth) -> Result<Vec<SmartReading>, CoreError> {
     #[cfg(windows)]
     {
-        Ok(windows_smart_via_powershell())
+        Ok(windows_smart_via_powershell(depth))
     }
     #[cfg(not(windows))]
     {
+        let _ = depth;
         Ok(mock_smart())
     }
 }
@@ -891,7 +988,13 @@ fn mock_smart() -> Vec<SmartReading> {
 }
 
 #[cfg(windows)]
-fn windows_smart_via_powershell() -> Vec<SmartReading> {
+fn windows_smart_via_powershell(depth: SampleDepth) -> Vec<SmartReading> {
+    // Quick path: Win32_DiskDrive only — no StorageReliabilityCounter (the
+    // usual hang / elevation stall), no IOCTL sweep of 16 physical drives.
+    if depth == SampleDepth::Quick {
+        return windows_smart_from_win32_diskdrive();
+    }
+
     // Ship a real .ps1 (include_str) — complex format! strings were producing empty results.
     const SMART_PROBE_PS1: &str = include_str!("../../scripts/smart_probe.ps1");
 
@@ -916,8 +1019,12 @@ fn windows_smart_via_powershell() -> Vec<SmartReading> {
             "-File",
             &script_str,
         ]);
-        let output = cmd.output();
-        if let Ok(ref o) = output {
+        // Reliability counters can hang for a long time without elevation.
+        let output = crate::process_win::run_silent_timeout(
+            cmd,
+            std::time::Duration::from_secs(12),
+        );
+        if let Some(ref o) = output {
             if !o.status.success() {
                 log::warn!(
                     "smart probe exit {:?}; stderr={}",
@@ -925,6 +1032,8 @@ fn windows_smart_via_powershell() -> Vec<SmartReading> {
                     String::from_utf8_lossy(&o.stderr)
                 );
             }
+        } else {
+            log::warn!("smart probe timed out after 12s — falling back to Win32_DiskDrive");
         }
         std::fs::read_to_string(&out_path)
             .unwrap_or_default()
@@ -949,7 +1058,8 @@ fn windows_smart_via_powershell() -> Vec<SmartReading> {
         let _ = std::fs::remove_file(&out_path);
     }
 
-    let ioctl_temps = windows_physical_drive_temperatures();
+    // Limit IOCTL probes to first 4 drives to avoid multi-second freezes.
+    let ioctl_temps = windows_physical_drive_temperatures(4);
     for r in &mut readings {
         if r.temperature_c.is_none() {
             if let Some(id) = r
@@ -1021,16 +1131,22 @@ fn windows_smart_from_win32_diskdrive() -> Vec<SmartReading> {
     let mut bytes = vec![0xEFu8, 0xBB, 0xBF];
     bytes.extend_from_slice(script.as_bytes());
     let text = if std::fs::write(&script_path, &bytes).is_ok() {
-        let _ = crate::process_win::silent_command("powershell")
-            .args([
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                &script_path.to_string_lossy(),
-            ])
-            .output();
+        let _ = crate::process_win::run_silent_timeout(
+            {
+                let mut c = crate::process_win::silent_command("powershell");
+                c.args([
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    &script_path.to_string_lossy(),
+                ]);
+                c
+            },
+            // Keep Overview smart-check snappy — Win32_DiskDrive is usually <1s.
+            std::time::Duration::from_secs(3),
+        );
         std::fs::read_to_string(&out_path)
             .unwrap_or_default()
             .trim()
@@ -1160,7 +1276,9 @@ fn enrich_smart_from_attributes(reading: &mut SmartReading) {
 /// Query drive temperature via IOCTL_STORAGE_QUERY_PROPERTY / Temperature property.
 /// Works for many NVMe/SATA devices without StorageReliabilityCounter elevation.
 #[cfg(windows)]
-fn windows_physical_drive_temperatures() -> std::collections::HashMap<u32, f64> {
+fn windows_physical_drive_temperatures(
+    max_drives: u32,
+) -> std::collections::HashMap<u32, f64> {
     use std::collections::HashMap;
     use std::os::windows::fs::OpenOptionsExt;
     use std::os::windows::io::AsRawHandle;
@@ -1170,7 +1288,8 @@ fn windows_physical_drive_temperatures() -> std::collections::HashMap<u32, f64> 
     const FILE_SHARE_WRITE: u32 = 0x0000_0002;
 
     let mut out = HashMap::new();
-    for index in 0u32..16 {
+    let limit = max_drives.clamp(1, 8);
+    for index in 0u32..limit {
         let path = format!(r"\\.\PhysicalDrive{index}");
         let file = std::fs::OpenOptions::new()
             .read(true)
@@ -1312,17 +1431,27 @@ pub fn finalize_smart_ids(sample: &mut HardwareSample) {
 /// Capture with SMART sample_ids fixed.
 pub fn capture_sample_full(conn: &Connection) -> Result<HardwareSample, CoreError> {
     let device = device_repo::ensure_local_device(conn)?;
-    let mut sample = sample_hardware(&device.id)?;
+    let mut sample = sample_hardware(&device.id, SampleDepth::Full)?;
     finalize_smart_ids(&mut sample);
     hardware_repo::insert_sample(conn, &sample)?;
     Ok(sample)
 }
 
-/// CrystalDisk-style health scores with full attribute dump (live collect).
+/// CrystalDisk-style health scores from the latest sample when available.
+/// Avoids re-running full SMART/sensor harvest on every UI poll (that freezes PCs).
 pub fn disk_health_summaries(conn: &Connection) -> Result<Vec<DiskHealthSummary>, CoreError> {
-    // Always sample live so reliability/SMART attributes are complete for testing.
+    if let Some(sample) = hardware_repo::latest_sample(conn)? {
+        if !sample.smart.is_empty() {
+            return Ok(sample
+                .smart
+                .into_iter()
+                .map(|r| score_disk_health(&r))
+                .collect());
+        }
+    }
+    // No cached SMART rows — one full sample only.
     let device = device_repo::ensure_local_device(conn)?;
-    let mut sample = sample_hardware(&device.id)?;
+    let mut sample = sample_hardware(&device.id, SampleDepth::Full)?;
     finalize_smart_ids(&mut sample);
     let _ = hardware_repo::insert_sample(conn, &sample);
     Ok(sample
@@ -1421,7 +1550,7 @@ mod tests {
 
     #[test]
     fn sample_hardware_returns_struct() {
-        let sample = sample_hardware("dev-1").expect("sample");
+        let sample = sample_hardware("dev-1", SampleDepth::Quick).expect("sample");
         assert_eq!(sample.device_id, "dev-1");
         assert!(!sample.id.is_empty());
     }
@@ -1456,7 +1585,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn sample_hardware_records_cpu_temp_when_available() {
-        let sample = sample_hardware("dev-temp").expect("sample");
+        let sample = sample_hardware("dev-temp", SampleDepth::Quick).expect("sample");
         // After the file-based thermal probe, top-level cpu_temp_c should fill in
         // from ACPI thermal zones on typical Windows laptops/desktops.
         assert!(

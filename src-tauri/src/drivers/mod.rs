@@ -253,13 +253,19 @@ try {
     try { if ($u.DriverManufacturer) { $mfr = [string]$u.DriverManufacturer } } catch {}
     try { if ($u.DriverProvider) { $provider = [string]$u.DriverProvider } } catch {}
     try {
-      if ($u.DriverVerDate) {
-        $ver = ([datetime]$u.DriverVerDate).ToString('yyyy-MM-dd')
+      # DriverVerDate is often a COM DATE; bad values become 1899/1968 — ignore those.
+      if ($null -ne $u.DriverVerDate -and $u.DriverVerDate -ne '') {
+        $dt = [datetime]$u.DriverVerDate
+        if ($dt.Year -ge 1995 -and $dt.Year -le ([datetime]::UtcNow.Year + 1)) {
+          $ver = $dt.ToString('yyyy-MM-dd')
+        }
       }
     } catch {}
     try { if ($u.DriverHardwareID) { $hwid = [string]$u.DriverHardwareID } } catch {}
     $size = 0
-    try { $size = [int64]$u.MaxDownloadSize } catch { $size = 0 }
+    try {
+      if ($null -ne $u.MaxDownloadSize) { $size = [int64]$u.MaxDownloadSize }
+    } catch { $size = 0 }
     $rows += [pscustomobject]@{
       id = [string]$u.Identity.UpdateID
       revision = [int64]$u.Identity.RevisionNumber
@@ -409,13 +415,15 @@ try {
 #[cfg(windows)]
 fn windows_install_driver_updates(update_ids: &[String]) -> DriverUpdateInstallResult {
     let ids_json = serde_json::to_string(update_ids).unwrap_or_else(|_| "[]".into());
-    // Escape for single-quoted PowerShell here-string edge cases: avoid embedding quotes in -Command badly.
-    // Write JSON to a temp file and read it in PS.
-    let temp = std::env::temp_dir().join(format!(
-        "dll-driver-updates-{}.json",
-        uuid::Uuid::new_v4()
-    ));
-    if std::fs::write(&temp, ids_json.as_bytes()).is_err() {
+    // Write selection JSON + a .ps1 (avoid HashSet generics / -Command quoting bugs on PS 5.1).
+    let dir = std::env::temp_dir().join("devicelifeline-drivers");
+    let _ = std::fs::create_dir_all(&dir);
+    let id = uuid::Uuid::new_v4();
+    let json_path = dir.join(format!("wu-ids-{id}.json"));
+    let script_path = dir.join(format!("wu-install-{id}.ps1"));
+    let out_path = dir.join(format!("wu-install-{id}.out.json"));
+
+    if std::fs::write(&json_path, ids_json.as_bytes()).is_err() {
         return DriverUpdateInstallResult {
             attempted: update_ids.len() as i64,
             succeeded: Vec::new(),
@@ -428,106 +436,203 @@ fn windows_install_driver_updates(update_ids: &[String]) -> DriverUpdateInstallR
             message: "Could not prepare driver update install.".into(),
         };
     }
-    let path = temp.display().to_string().replace('\'', "''");
+
+    let json_lit = json_path.to_string_lossy().replace('\'', "''");
+    let out_lit = out_path.to_string_lossy().replace('\'', "''");
+    // Windows PowerShell 5.1: do NOT use New-Object HashSet[string] — it throws
+    // "Argument types do not match". Use a plain string[] + -contains instead.
     let script = format!(
-        r#"
-$ErrorActionPreference = 'Stop'
-$wantedRaw = Get-Content -LiteralPath '{path}' -Raw
-$wanted = ConvertFrom-Json -InputObject $wantedRaw
-if ($wanted -isnot [System.Array]) {{ $wanted = @($wanted) }}
-$wantedSet = New-Object 'System.Collections.Generic.HashSet[string]'
-foreach ($id in $wanted) {{ [void]$wantedSet.Add([string]$id) }}
+        r#"$ErrorActionPreference = 'Stop'
+$outPath = '{out}'
+$wantedRaw = Get-Content -LiteralPath '{json}' -Raw -ErrorAction Stop
+$wanted = @(ConvertFrom-Json -InputObject $wantedRaw)
+$wantedList = @()
+foreach ($id in $wanted) {{
+  if ($null -ne $id -and [string]$id -ne '') {{ $wantedList += [string]$id }}
+}}
+$attempted = $wantedList.Count
 try {{
+  if ($wantedList.Count -eq 0) {{
+    throw 'No driver update IDs were selected.'
+  }}
   $session = New-Object -ComObject Microsoft.Update.Session
   $searcher = $session.CreateUpdateSearcher()
+  $searcher.ServerSelection = 0
   $result = $searcher.Search("IsInstalled=0 and Type='Driver' and IsHidden=0")
   $coll = New-Object -ComObject Microsoft.Update.UpdateColl
   $titles = @{{}}
   foreach ($u in @($result.Updates)) {{
     $uid = [string]$u.Identity.UpdateID
-    if ($wantedSet.Contains($uid)) {{
-      try {{ if (-not $u.EulaAccepted) {{ $u.AcceptEula() | Out-Null }} }} catch {{}}
-      [void]$coll.Add($u)
+    if ($wantedList -contains $uid) {{
+      try {{
+        if (-not $u.EulaAccepted) {{ $u.AcceptEula() | Out-Null }}
+      }} catch {{}}
+      $null = $coll.Add($u)
       $titles[$uid] = [string]$u.Title
     }}
   }}
   if ($coll.Count -eq 0) {{
-    (@{{ ok=$false; attempted=0; succeeded=@(); failed=@(@{{ id='none'; title='none'; message='No matching driver updates found. Re-scan and try again.' }}); rebootRequired=$false; message='No matching updates.' }} | ConvertTo-Json -Compress -Depth 6)
+    $payload = [pscustomobject]@{{
+      ok = $false
+      attempted = $attempted
+      succeeded = @()
+      failed = @([pscustomobject]@{{
+        id = 'none'
+        title = 'No match'
+        message = 'No matching driver updates found in Windows Update. Re-scan and try again.'
+      }})
+      rebootRequired = $false
+      message = 'No matching updates. Re-scan Windows Update drivers and try again.'
+    }}
+    ($payload | ConvertTo-Json -Compress -Depth 6) | Set-Content -LiteralPath $outPath -Encoding utf8
     exit 0
   }}
   $downloader = $session.CreateUpdateDownloader()
   $downloader.Updates = $coll
-  [void]$downloader.Download()
+  $null = $downloader.Download()
   $installer = $session.CreateUpdateInstaller()
+  $installer.AllowSourcePrompts = $false
+  try {{ $installer.ForceQuiet = $true }} catch {{}}
   $installer.Updates = $coll
   $ir = $installer.Install()
-  $succeeded = New-Object System.Collections.Generic.List[string]
-  $failed = New-Object System.Collections.Generic.List[object]
+  $succeeded = New-Object System.Collections.ArrayList
+  $failed = New-Object System.Collections.ArrayList
   for ($i = 0; $i -lt $coll.Count; $i++) {{
     $u = $coll.Item($i)
     $uid = [string]$u.Identity.UpdateID
     $title = if ($titles.ContainsKey($uid)) {{ $titles[$uid] }} else {{ [string]$u.Title }}
     $hr = $ir.GetUpdateResult($i)
-    $code = [int]$hr.ResultCode
+    $code = 0
+    try {{ $code = [int]$hr.ResultCode }} catch {{ $code = -1 }}
+    # 2 = Succeeded, 3 = SucceededWithErrors
     if ($code -eq 2 -or $code -eq 3) {{
-      $succeeded.Add($title) | Out-Null
+      [void]$succeeded.Add($title)
     }} else {{
-      $failed.Add(@{{ id=$uid; title=$title; message=("Windows Update ResultCode=" + $code) }}) | Out-Null
+      $hresult = $null
+      try {{ if ($hr.HResult) {{ $hresult = ('0x{{0:X8}}' -f [uint32]$hr.HResult) }} }} catch {{}}
+      $msg = "Windows Update ResultCode=$code"
+      if ($hresult) {{ $msg = "$msg ($hresult)" }}
+      if ($code -eq 5) {{ $msg = "$msg — access denied or reboot pending. Run DeviceLifeline as Administrator." }}
+      [void]$failed.Add([pscustomobject]@{{ id = $uid; title = $title; message = $msg }})
     }}
   }}
-  $reboot = [bool]$ir.RebootRequired
-  $msg = ("Installed $($succeeded.Count) of $($coll.Count) driver update(s).")
-  if ($reboot) {{ $msg += " A reboot is required to finish." }}
-  (@{{ ok=$true; attempted=[int]$coll.Count; succeeded=@($succeeded); failed=@($failed); rebootRequired=$reboot; message=$msg }} | ConvertTo-Json -Compress -Depth 6)
+  $reboot = $false
+  try {{ $reboot = [bool]$ir.RebootRequired }} catch {{}}
+  $msg = "Installed $($succeeded.Count) of $($coll.Count) driver update(s)."
+  if ($reboot) {{ $msg += ' A reboot is required to finish.' }}
+  if ($failed.Count -gt 0 -and $succeeded.Count -eq 0) {{
+    $msg = "Driver update install failed for all packages. $msg"
+  }}
+  $payload = [pscustomobject]@{{
+    ok = ($failed.Count -eq 0)
+    attempted = [int]$coll.Count
+    succeeded = @($succeeded)
+    failed = @($failed)
+    rebootRequired = $reboot
+    message = $msg
+  }}
+  ($payload | ConvertTo-Json -Compress -Depth 6) | Set-Content -LiteralPath $outPath -Encoding utf8
 }} catch {{
-  (@{{ ok=$false; attempted=$wantedSet.Count; succeeded=@(); failed=@(@{{ id='error'; title='Install failed'; message=[string]$_.Exception.Message }}); rebootRequired=$false; message=[string]$_.Exception.Message }} | ConvertTo-Json -Compress -Depth 6)
+  $errMsg = [string]$_.Exception.Message
+  if (-not $errMsg) {{ $errMsg = 'Windows Update install failed.' }}
+  # Surface elevation hint for common COM/access failures.
+  if ($errMsg -match 'access|denied|0x802400|elevat|administrator') {{
+    $errMsg = "$errMsg Run DeviceLifeline as Administrator and retry."
+  }}
+  $payload = [pscustomobject]@{{
+    ok = $false
+    attempted = $attempted
+    succeeded = @()
+    failed = @([pscustomobject]@{{
+      id = 'error'
+      title = 'Install failed'
+      message = $errMsg
+    }})
+    rebootRequired = $false
+    message = $errMsg
+  }}
+  ($payload | ConvertTo-Json -Compress -Depth 6) | Set-Content -LiteralPath $outPath -Encoding utf8
 }}
 "#,
-        path = path
+        json = json_lit,
+        out = out_lit,
     );
 
-    let output = crate::process_win::silent_command("powershell")
-        .args([
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            &script,
-        ])
-        .output();
-
-    let _ = std::fs::remove_file(&temp);
-
-    let Ok(output) = output else {
+    let mut bytes = vec![0xEFu8, 0xBB, 0xBF];
+    bytes.extend_from_slice(script.as_bytes());
+    if std::fs::write(&script_path, &bytes).is_err() {
+        let _ = std::fs::remove_file(&json_path);
         return DriverUpdateInstallResult {
             attempted: update_ids.len() as i64,
             succeeded: Vec::new(),
             failed: vec![DriverUpdateFailure {
-                id: "spawn".into(),
+                id: "io".into(),
                 title: "Install failed".into(),
-                message: "Could not start Windows Update installer.".into(),
+                message: "Could not write install script.".into(),
             }],
             reboot_required: false,
-            message: "Could not start Windows Update installer.".into(),
+            message: "Could not prepare driver update install.".into(),
         };
-    };
+    }
 
-    let text = String::from_utf8_lossy(&output.stdout);
-    let trimmed = text.trim();
-    if trimmed.is_empty() {
-        let err = String::from_utf8_lossy(&output.stderr);
+    // Downloads can take a while — hard cap so the UI never hangs forever.
+    let timed = crate::process_win::run_silent_timeout(
+        {
+            let mut c = crate::process_win::silent_command("powershell");
+            c.args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                &script_path.to_string_lossy(),
+            ]);
+            c
+        },
+        std::time::Duration::from_secs(600),
+    );
+
+    let text = std::fs::read_to_string(&out_path)
+        .unwrap_or_default()
+        .trim()
+        .trim_start_matches('\u{feff}')
+        .to_string();
+
+    let _ = std::fs::remove_file(&json_path);
+    let _ = std::fs::remove_file(&script_path);
+    let _ = std::fs::remove_file(&out_path);
+
+    if timed.is_none() && text.is_empty() {
+        return DriverUpdateInstallResult {
+            attempted: update_ids.len() as i64,
+            succeeded: Vec::new(),
+            failed: vec![DriverUpdateFailure {
+                id: "timeout".into(),
+                title: "Install timed out".into(),
+                message: "Windows Update install exceeded 10 minutes and was stopped. Try fewer packages or install elevated."
+                    .into(),
+            }],
+            reboot_required: false,
+            message: "Driver update install timed out.".into(),
+        };
+    }
+
+    if text.is_empty() {
+        let err = timed
+            .as_ref()
+            .map(|o| String::from_utf8_lossy(&o.stderr).trim().to_string())
+            .unwrap_or_default();
         return DriverUpdateInstallResult {
             attempted: update_ids.len() as i64,
             succeeded: Vec::new(),
             failed: vec![DriverUpdateFailure {
                 id: "empty".into(),
                 title: "Install failed".into(),
-                message: if err.trim().is_empty() {
-                    "Windows Update returned no result. Try running DeviceLifeline elevated."
+                message: if err.is_empty() {
+                    "Windows Update returned no result. Try running DeviceLifeline as Administrator."
                         .into()
                 } else {
-                    err.trim().to_string()
+                    err
                 },
             }],
             reboot_required: false,
@@ -535,7 +640,7 @@ try {{
         };
     }
 
-    let value: serde_json::Value = match serde_json::from_str(trimmed) {
+    let value: serde_json::Value = match serde_json::from_str(&text) {
         Ok(v) => v,
         Err(e) => {
             return DriverUpdateInstallResult {

@@ -17,11 +17,13 @@ import { useAgent } from '../hooks/use-agent';
 import { useElevation } from '../hooks/use-elevation';
 import { useIntelligence } from '../hooks/use-intelligence';
 import {
+  applyTheme,
   DEFAULT_PREFERENCES,
   loadPreferences,
   savePreferences,
   type DensityPref,
   type StartPage,
+  type ThemePref,
   type UserPreferences,
 } from '../lib/preferences';
 import { APP_NAME, APP_TAGLINE, APP_VERSION } from '../lib/constants';
@@ -41,8 +43,13 @@ const DENSITY_OPTIONS: { value: DensityPref; label: string }[] = [
   { value: 'comfortable', label: 'Comfortable (Fluent)' },
 ];
 
+const THEME_OPTIONS: { value: ThemePref; label: string }[] = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
+
 /**
- * Settings surface — configuration without light/Mica experiments.
+ * Settings surface — appearance, Copilot, privileges, about.
  */
 export function Settings() {
   const [prefs, setPrefs] = useState<UserPreferences>(DEFAULT_PREFERENCES);
@@ -76,9 +83,7 @@ export function Settings() {
     document.documentElement.dataset.reduceMotion = next.reduceMotion
       ? 'true'
       : 'false';
-    document.documentElement.removeAttribute('data-theme');
-    document.documentElement.removeAttribute('data-mica');
-    document.documentElement.style.colorScheme = 'dark';
+    applyTheme(next.theme);
     setSavedFlash(true);
     window.setTimeout(() => setSavedFlash(false), 1600);
   }, []);
@@ -103,8 +108,26 @@ export function Settings() {
         <SettingsSection
           icon={SlidersHorizontal}
           title="Appearance & behavior"
-          description="Density and behavior controls — changes apply immediately on this device."
+          description="Theme, density, and behavior — changes apply immediately on this device."
         >
+          <SettingsRow
+            label="Theme"
+            description="Light matches the product site. Dark keeps the previous navy shell."
+          >
+            <select
+              value={prefs.theme}
+              onChange={(e) => patch({ theme: e.target.value as ThemePref })}
+              className="h-9 min-w-[10rem] rounded-control border border-hairline bg-surface-elevated px-2.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+              data-testid="theme-select"
+            >
+              {THEME_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </SettingsRow>
+
           <SettingsRow
             label="Start page"
             description="Which surface opens when you launch the app."
@@ -114,7 +137,7 @@ export function Settings() {
               onChange={(e) =>
                 patch({ startPage: e.target.value as StartPage })
               }
-              className="h-9 min-w-[10rem] rounded-control border border-hairline bg-surface-elevated px-2.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+              className="h-9 min-w-[10rem] rounded-control border border-hairline bg-surface-elevated px-2.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
             >
               {START_PAGE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -133,7 +156,7 @@ export function Settings() {
               onChange={(e) =>
                 patch({ density: e.target.value as DensityPref })
               }
-              className="h-9 min-w-[12rem] rounded-control border border-hairline bg-surface-elevated px-2.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
+              className="h-9 min-w-[12rem] rounded-control border border-hairline bg-surface-elevated px-2.5 text-sm text-text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
             >
               {DENSITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -322,7 +345,7 @@ export function Settings() {
           </SettingsRow>
           <SettingsRow
             label="Design system"
-            description="Fluent Ops Shell × Raycast Command Layer (dark)"
+            description="Fluent Ops Shell × Raycast Command Layer · light / dark themes"
           >
             <StatusPill tone="neutral">Dark · Raycast</StatusPill>
           </SettingsRow>

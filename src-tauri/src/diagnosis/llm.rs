@@ -9,11 +9,12 @@
 
 use crate::diagnosis::provider::{DiagnosisProvider, FindingDraft, HeuristicProvider};
 use crate::models::DiagnosisContext;
+use sha2::{Digest, Sha256};
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Stdio};
 use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::Duration;
@@ -291,6 +292,9 @@ fn run_local_qwen_install() -> Result<(), String> {
         promote_runtime_from_extract(&extract_dir, &ai_dir, runtime_name)?;
         let _ = fs::remove_dir_all(&extract_dir);
         let _ = fs::remove_file(&zip_path);
+        if cfg!(windows) {
+            verify_runtime_pe(&runtime_path)?;
+        }
         if !runtime_is_usable(&runtime_path) {
             let free_now = free_bytes_for_path(&ai_dir);
             return Err(format!(
@@ -484,6 +488,7 @@ fn download_file(url: &str, dest: &Path, pct_start: u8, pct_end: u8) -> Result<(
     let mut buf = [0u8; 64 * 1024];
     let mut done: u64 = 0;
     let span = (pct_end.saturating_sub(pct_start)) as u64;
+    let mut hasher = Sha256::new();
 
     loop {
         let n = reader
@@ -494,6 +499,7 @@ fn download_file(url: &str, dest: &Path, pct_start: u8, pct_end: u8) -> Result<(
         }
         file.write_all(&buf[..n])
             .map_err(|e| format!("write download: {e}"))?;
+        hasher.update(&buf[..n]);
         done += n as u64;
         let pct = if total > 0 {
             pct_start.saturating_add((((done.min(total) * span) / total) as u8).min(span as u8))
@@ -522,7 +528,71 @@ fn download_file(url: &str, dest: &Path, pct_start: u8, pct_end: u8) -> Result<(
         );
     }
     drop(file);
+    let digest = format!("{:x}", hasher.finalize());
+    log::info!("download complete path={} sha256={} bytes={}", dest.display(), digest, done);
+
+    // Optional pin: DEVICELIFELINE_EXPECT_SHA256_<suffix> or generic env for model/runtime.
+    if let Some(expected) = expected_sha256_for(dest) {
+        if !expected.eq_ignore_ascii_case(&digest) {
+            let _ = fs::remove_file(&partial);
+            return Err(format!(
+                "Integrity check failed for {}. Expected sha256 {expected}, got {digest}. Delete the file and retry on a trusted network.",
+                dest.display()
+            ));
+        }
+    }
+
+    // Magic-byte sanity (blocks HTML error pages renamed as zip/gguf).
+    verify_download_magic(&partial, dest)?;
+
     fs::rename(&partial, dest).map_err(|e| format!("finalize download: {e}"))?;
+    Ok(())
+}
+
+fn expected_sha256_for(dest: &Path) -> Option<String> {
+    let name = dest.file_name()?.to_string_lossy().to_ascii_lowercase();
+    if name.contains("runtime") || name.ends_with(".zip") {
+        return std::env::var("DEVICELIFELINE_LLAMA_ZIP_SHA256")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| s.len() == 64);
+    }
+    if name.ends_with(".gguf") {
+        return std::env::var("DEVICELIFELINE_QWEN_GGUF_SHA256")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| s.len() == 64);
+    }
+    None
+}
+
+fn verify_download_magic(partial: &Path, dest: &Path) -> Result<(), String> {
+    let mut f = File::open(partial).map_err(|e| format!("open download: {e}"))?;
+    let mut head = [0u8; 8];
+    let n = f.read(&mut head).map_err(|e| format!("read magic: {e}"))?;
+    let name = dest.file_name().and_then(|s| s.to_str()).unwrap_or("");
+    if name.ends_with(".zip") || name.contains("runtime") {
+        if n < 4 || &head[..2] != b"PK" {
+            let _ = fs::remove_file(partial);
+            return Err("Runtime download is not a valid ZIP (bad magic).".into());
+        }
+    }
+    if name.ends_with(".gguf") {
+        if n < 4 || &head[..4] != b"GGUF" {
+            let _ = fs::remove_file(partial);
+            return Err("Model download is not a valid GGUF file (bad magic).".into());
+        }
+    }
+    Ok(())
+}
+
+fn verify_runtime_pe(path: &Path) -> Result<(), String> {
+    let mut f = File::open(path).map_err(|e| format!("open runtime: {e}"))?;
+    let mut mz = [0u8; 2];
+    f.read_exact(&mut mz).map_err(|e| format!("read PE: {e}"))?;
+    if &mz != b"MZ" {
+        return Err("llama-server.exe failed PE (MZ) integrity check.".into());
+    }
     Ok(())
 }
 
@@ -968,9 +1038,12 @@ fn local_runtime_path() -> Option<PathBuf> {
         return Some(path);
     }
 
-    // PATH fallback
-    Command::new(executable)
+    // PATH fallback (silent — never flash a console while probing).
+    let mut probe = crate::process_win::silent_command(executable);
+    probe
         .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .output()
         .ok()
         .filter(|output| output.status.success())
@@ -1073,7 +1146,10 @@ fn try_start_local_server(endpoint: &str) -> Result<(), String> {
     // Runtime directory (for adjacent DLLs on Windows).
     let runtime_dir = runtime.parent().map(|p| p.to_path_buf());
 
-    let mut cmd = Command::new(&runtime);
+    // Console-subsystem llama-server must not own a visible terminal. Use the
+    // same CREATE_NO_WINDOW helper as other background probes so Copilot /
+    // diagnosis stay fully behind the scenes.
+    let mut cmd = crate::process_win::silent_command(&runtime);
     if let Some(dir) = runtime_dir {
         cmd.current_dir(dir);
     }
@@ -1089,6 +1165,7 @@ fn try_start_local_server(endpoint: &str) -> Result<(), String> {
         .arg("--jinja")
         .arg("--ctx-size")
         .arg("8192")
+        .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()

@@ -8,9 +8,8 @@
   />
   <description>DeviceLifeline - PC Intelligence Platform</description>
   <!--
-    asInvoker keeps tests/CI runnable without UAC.
-    The app still auto-elevates at startup via elevation::ensure_elevated()
-    (Start-Process -Verb RunAs) so users get one UAC prompt and full privileges.
+    asInvoker: least privilege by default. Elevation is opt-in via the in-app
+    Elevate control (ShellExecuteW runas) or DEVICELIFELINE_FORCE_ELEVATE=1.
   -->
   <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
     <security>

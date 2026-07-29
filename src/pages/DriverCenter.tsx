@@ -301,7 +301,18 @@ export function DriverCenter() {
       }
     >
       {error ? (
-        <AlertBanner title="Drivers / clean unavailable" message={error} />
+        <AlertBanner
+          title={
+            error.toLowerCase().includes('install') ||
+            error.toLowerCase().includes('update') ||
+            error.toLowerCase().includes('windows update') ||
+            error.toLowerCase().includes('administrator') ||
+            error.toLowerCase().includes('argument types')
+              ? 'Driver update failed'
+              : 'Drivers / clean unavailable'
+          }
+          message={error}
+        />
       ) : null}
 
       {/* Metric strip */}

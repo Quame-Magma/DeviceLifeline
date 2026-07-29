@@ -35,11 +35,18 @@ export const getRestorePlanSteps = (
 /**
  * Execute a restore plan synchronously and return the finished job.
  * Defaults to dry-run mode so testing cannot accidentally install apps.
+ * Real installs require `confirm: true` on the backend.
  */
 export const runRestore = (
   planId: string,
   mode: RestoreRunMode = 'dryRun',
-): Promise<RestoreJob> => invoke<RestoreJob>('run_restore', { planId, mode });
+  confirm = false,
+): Promise<RestoreJob> =>
+  invoke<RestoreJob>('run_restore', {
+    planId,
+    mode,
+    confirm,
+  });
 
 /** Retrieve all restore jobs, newest first. */
 export const getRestoreJobs = (): Promise<RestoreJob[]> =>

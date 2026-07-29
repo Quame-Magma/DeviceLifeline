@@ -173,7 +173,7 @@ export function SoftwareLifecycle() {
       tone: 'danger',
     });
     if (!ok) return;
-    void removeLeftovers(paths);
+    void removeLeftovers(leftoverScan.app.id, paths);
   };
 
   return (

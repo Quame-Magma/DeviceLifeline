@@ -32,7 +32,8 @@ export interface UseHardwareReturn {
   sampling: boolean;
   error: string | null;
   loadHardware: () => Promise<void>;
-  collectSample: () => Promise<void>;
+  /** @param depth `"quick"` keeps the UI responsive (Overview); `"full"` for Performance. */
+  collectSample: (depth?: 'quick' | 'full') => Promise<void>;
   loadDiskHealth: () => Promise<void>;
 }
 
@@ -81,14 +82,15 @@ export function useHardware(): UseHardwareReturn {
     }
   }, []);
 
-  const collectSample = useCallback(async () => {
+  const collectSample = useCallback(async (depth: 'quick' | 'full' = 'full') => {
     setSampling(true);
     setError(null);
     try {
-      const sample = await apiCollectHardwareSample();
+      const sample = await apiCollectHardwareSample(depth);
       setLatest(sample);
       const history = await getHardwareSamples(20);
       setSamples(history);
+      // Disk health summaries now read the latest cached sample (no second full harvest).
       try {
         const summaries = await getDiskHealthSummaries();
         setDiskHealth(summaries ?? []);

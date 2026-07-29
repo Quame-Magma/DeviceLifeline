@@ -82,12 +82,14 @@ pub fn create_dna_vault_backup(conn: &mut Connection) -> Result<VaultEntry, Core
 
 /// Creates a recursive directory image (file-level) of `source` into the vault.
 /// This is a practical disk-image alternative for user data folders (not a block device image).
+/// Source must be under a user-profile or other non-system allowlisted root.
 pub fn create_directory_image(conn: &Connection, source: String) -> Result<VaultEntry, CoreError> {
     let device = device_repo::ensure_local_device(conn)?;
     let src = PathBuf::from(&source);
     if !src.exists() {
         return Err(CoreError::NotFound(format!("path {source}")));
     }
+    validate_image_source(&src)?;
     let vault_dir = vault_root_dir()?.join("images");
     fs::create_dir_all(&vault_dir).map_err(|e| CoreError::Internal(e.to_string()))?;
     let stamp = now_rfc3339()?.replace(':', "-");
@@ -131,6 +133,52 @@ fn vault_root_dir() -> Result<PathBuf, CoreError> {
         .or_else(dirs::home_dir)
         .ok_or_else(|| CoreError::Internal("no data dir".into()))?;
     Ok(base.join("DeviceLifeline").join("vault"))
+}
+
+/// Block imaging of OS roots / system trees (admin copy into vault of secrets).
+fn validate_image_source(src: &Path) -> Result<(), CoreError> {
+    let s = src
+        .canonicalize()
+        .unwrap_or_else(|_| src.to_path_buf())
+        .to_string_lossy()
+        .to_ascii_lowercase()
+        .replace('/', "\\");
+    let blocked_contains = [
+        "\\windows\\system32",
+        "\\windows\\syswow64",
+        "\\windows\\winsxs",
+        "\\windows\\servicing",
+        "\\program files\\windows defender",
+        "\\$recycle.bin",
+        "\\system volume information",
+    ];
+    if s.ends_with("\\windows")
+        || s.ends_with(":\\windows")
+        || s.ends_with(":\\")
+        || s.ends_with(":\\program files")
+        || s.ends_with(":\\program files (x86)")
+        || blocked_contains.iter().any(|b| s.contains(b))
+    {
+        return Err(CoreError::Internal(
+            "directory image source is blocked (system / protected root). Choose a user data folder."
+                .into(),
+        ));
+    }
+    // Prefer paths under the user profile when available.
+    if let Some(home) = dirs::home_dir() {
+        let home_s = home
+            .canonicalize()
+            .unwrap_or(home)
+            .to_string_lossy()
+            .to_ascii_lowercase()
+            .replace('/', "\\");
+        // Allow home, or other fixed-drive non-system folders (e.g. D:\Projects).
+        if s.starts_with(&home_s) {
+            return Ok(());
+        }
+    }
+    // Non-home paths allowed only if not blocked above (e.g. D:\Work).
+    Ok(())
 }
 
 fn create_system_restore_point(description: &str) -> (String, String) {

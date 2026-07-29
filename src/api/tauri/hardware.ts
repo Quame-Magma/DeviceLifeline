@@ -14,9 +14,14 @@ import type {
   HardwareSample,
 } from '../../types/device.types';
 
-/** Sample hardware (temps/GPU/SMART) and persist the result. */
-export const collectHardwareSample = (): Promise<HardwareSample> =>
-  invoke<HardwareSample>('collect_hardware_sample');
+/**
+ * Sample hardware (temps/GPU/SMART) and persist the result.
+ * @param depth `"quick"` for Overview smart-check (light); `"full"` for Performance.
+ */
+export const collectHardwareSample = (
+  depth: 'quick' | 'full' = 'full',
+): Promise<HardwareSample> =>
+  invoke<HardwareSample>('collect_hardware_sample', { depth });
 
 /** Retrieve the most recent hardware sample, or null if none exist. */
 export const getLatestHardwareSample = (): Promise<HardwareSample | null> =>

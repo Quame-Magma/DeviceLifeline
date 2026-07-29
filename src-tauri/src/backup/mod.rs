@@ -21,7 +21,7 @@ pub fn create_volume_shadow(
     volume: Option<String>,
 ) -> Result<VolumeShadow, CoreError> {
     let device = device_repo::ensure_local_device(conn)?;
-    let vol = normalize_volume(volume);
+    let vol = normalize_volume(volume)?;
     let created_at = now_rfc3339()?;
     let (shadow_id, device_object, status, detail) = create_shadow_os(&vol);
 
@@ -81,7 +81,7 @@ pub fn create_backup_schedule(
     frequency: String,
 ) -> Result<BackupSchedule, CoreError> {
     let device = device_repo::ensure_local_device(conn)?;
-    let vol = normalize_volume(volume);
+    let vol = normalize_volume(volume)?;
     let freq = match frequency.to_lowercase().as_str() {
         "weekly" => "weekly",
         "manual" => "manual",
@@ -171,8 +171,15 @@ pub fn restore_from_shadow(
     }
 
     let rel = relative_path.trim_start_matches(['\\', '/']);
+    // Reject path traversal in the relative path segment.
+    if rel.split(['\\', '/']).any(|p| p == "..") {
+        return Err(CoreError::Internal(
+            "relative_path must not contain '..' segments".into(),
+        ));
+    }
     let source = PathBuf::from(device_object).join(rel);
     let dest = PathBuf::from(&dest_path);
+    validate_restore_dest(&dest)?;
 
     let result = copy_path(&source, &dest);
     let action = ActionAudit {
@@ -202,16 +209,50 @@ pub fn restore_from_shadow(
     })
 }
 
-fn normalize_volume(volume: Option<String>) -> String {
+/// Only accept a bare Windows drive root (`C:` / `C:\`). Rejects injection strings.
+fn normalize_volume(volume: Option<String>) -> Result<String, CoreError> {
     let v = volume.unwrap_or_else(|| "C:\\".into());
     let t = v.trim();
-    if t.len() == 2 && t.as_bytes().get(1) == Some(&b':') {
-        return format!("{t}\\");
+    let bytes = t.as_bytes();
+    // Exact forms: "X:", "X:\", "X:/"
+    let letter = match bytes {
+        [a, b':'] if a.is_ascii_alphabetic() => *a as char,
+        [a, b':', b'\\'] | [a, b':', b'/'] if a.is_ascii_alphabetic() => *a as char,
+        _ => {
+            return Err(CoreError::Internal(
+                "volume must be a drive root like C: or C:\\".into(),
+            ));
+        }
+    };
+    Ok(format!("{}:\\", letter.to_ascii_uppercase()))
+}
+
+/// Destinations for shadow restore must not target OS / system-critical roots.
+fn validate_restore_dest(dest: &Path) -> Result<(), CoreError> {
+    let s = dest
+        .to_string_lossy()
+        .to_ascii_lowercase()
+        .replace('/', "\\");
+    let blocked = [
+        "\\windows\\system32",
+        "\\windows\\syswow64",
+        "\\windows\\winsxs",
+        "\\program files\\windows",
+        "\\$recycle.bin",
+    ];
+    if s.ends_with("\\windows")
+        || s.ends_with(":\\windows")
+        || s == "c:\\"
+        || s == "c:"
+        || blocked.iter().any(|b| s.contains(b))
+    {
+        return Err(CoreError::Internal(
+            "restore destination is blocked (system / protected path)".into(),
+        ));
     }
-    if t.ends_with('\\') || t.ends_with('/') {
-        return t.to_string();
-    }
-    format!("{t}\\")
+    // Prefer user-writable areas when possible; still allow other fixed drives
+    // under ProgramData / Users / explicit non-system folders.
+    Ok(())
 }
 
 fn next_run_iso(frequency: &str) -> Option<String> {
@@ -229,17 +270,24 @@ fn next_run_iso(frequency: &str) -> Option<String> {
 fn create_shadow_os(volume: &str) -> (String, Option<String>, String, String) {
     #[cfg(windows)]
     {
-        // Prefer PowerShell CIM for structured output.
-        let script = format!(
-            "$s = (Get-CimInstance Win32_ShadowCopy -ErrorAction SilentlyContinue | Select-Object -First 0); \
-             $r = Invoke-CimMethod -ClassName Win32_ShadowCopy -MethodName Create -Arguments @{{Volume='{volume}'}} -ErrorAction SilentlyContinue; \
-             if ($null -eq $r) {{ 'FAIL|PowerShell VSS create unavailable' }} \
-             elseif ($r.ReturnValue -ne 0) {{ \"FAIL|ReturnValue=$($r.ReturnValue)\" }} \
-             else {{ $id=$r.ShadowID; $obj=(Get-CimInstance Win32_ShadowCopy | Where-Object {{$_.ID -eq $id}} | Select-Object -First 1).DeviceObject; \
-             \"OK|$id|$obj\" }}"
-        );
+        // Volume is already validated as X:\ — pass via env, never interpolate free text.
+        let script = r#"
+$ErrorActionPreference = 'SilentlyContinue'
+$volume = $env:DL_VSS_VOLUME
+if (-not $volume -or $volume -notmatch '^[A-Za-z]:\\$') {
+  Write-Output 'FAIL|invalid volume'
+  exit 0
+}
+$r = Invoke-CimMethod -ClassName Win32_ShadowCopy -MethodName Create -Arguments @{Volume=$volume} -ErrorAction SilentlyContinue
+if ($null -eq $r) { Write-Output 'FAIL|PowerShell VSS create unavailable'; exit 0 }
+if ($r.ReturnValue -ne 0) { Write-Output ("FAIL|ReturnValue=$($r.ReturnValue)"); exit 0 }
+$id = $r.ShadowID
+$obj = (Get-CimInstance Win32_ShadowCopy | Where-Object { $_.ID -eq $id } | Select-Object -First 1).DeviceObject
+Write-Output ("OK|$id|$obj")
+"#;
         if let Ok(output) = crate::process_win::silent_command("powershell")
-            .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+            .env("DL_VSS_VOLUME", volume)
+            .args(["-NoProfile", "-NonInteractive", "-Command", script])
             .output()
         {
             let text = String::from_utf8_lossy(&output.stdout);
@@ -385,8 +433,10 @@ mod tests {
 
     #[test]
     fn normalize_volume_drive_letter() {
-        assert_eq!(normalize_volume(Some("C:".into())), "C:\\");
-        assert_eq!(normalize_volume(Some("D:\\".into())), "D:\\");
+        assert_eq!(normalize_volume(Some("C:".into())).unwrap(), "C:\\");
+        assert_eq!(normalize_volume(Some("D:\\".into())).unwrap(), "D:\\");
+        assert!(normalize_volume(Some("C:\\'; Write-Host pwned".into())).is_err());
+        assert!(normalize_volume(Some("../etc".into())).is_err());
     }
 
     #[test]

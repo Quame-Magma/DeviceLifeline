@@ -315,6 +315,10 @@ fn is_path_hard_blocked(path: &str) -> bool {
         || s.contains("\\music\\")
         || s.contains("\\ntuser.dat")
         || s.contains("\\login data")
+        || s.contains("\\web data") // Chromium passwords/autofill store
+        || s.contains("\\logins.json") // Firefox logins
+        || s.contains("\\key4.db")
+        || s.contains("\\key3.db")
         || s.ends_with("\\windows")
         || s.ends_with("\\program files")
         || s.ends_with("\\program files (x86)")
@@ -1169,8 +1173,25 @@ pub fn propose_safe_cleanup_preview(
     Ok(action)
 }
 
+/// Truly safe categories only: temp / cache / recycle — never browser privacy
+/// or form data (which can hold credentials).
+const SAFE_CLEANUP_CATEGORIES: &[&str] = &[
+    "user_temp",
+    "windows_temp",
+    "inet_cache",
+    "browser_cache",
+    "thumbnail_cache",
+    "recycle_bin",
+    "dns_cache",
+    "clipboard",
+];
+
 pub fn execute_safe_cleanup(conn: &Connection, confirm: bool) -> Result<CleanupResult, CoreError> {
-    execute_cleanup(conn, None, confirm)
+    let cats: Vec<String> = SAFE_CLEANUP_CATEGORIES
+        .iter()
+        .map(|s| (*s).to_string())
+        .collect();
+    execute_cleanup(conn, Some(cats), confirm)
 }
 
 #[cfg(test)]

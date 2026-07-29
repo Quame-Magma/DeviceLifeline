@@ -34,6 +34,119 @@
 }
 
 @layer base {
+  /*
+   * Theme tokens — light by default (matches marketing site).
+   * Dark: <html data-theme="dark">
+   * Values are space-separated RGB channels for Tailwind alpha support.
+   */
+  :root,
+  :root[data-theme='light'] {
+    color-scheme: light;
+    --dl-canvas: 255 255 255;
+    --dl-canvas-elevated: 248 250 252;
+    --dl-canvas-glow: 246 250 248;
+    --dl-glass: 255 255 255;
+    --dl-glass-strong: 248 250 252;
+    --dl-glass-border: 226 232 240;
+    --dl-glass-highlight: 219 234 254;
+    --dl-sidebar: 248 250 252;
+    --dl-sidebar-hover: 241 245 249;
+    --dl-sidebar-active: 239 246 255;
+    --dl-sidebar-border: 226 232 240;
+    --dl-surface: 255 255 255;
+    --dl-surface-card: 255 255 255;
+    --dl-surface-elevated: 248 250 252;
+    --dl-surface-border: 226 232 240;
+    --dl-surface-muted: 241 245 249;
+    --dl-hairline: 226 232 240;
+    --dl-hairline-soft: 241 245 249;
+    --dl-hairline-strong: 203 213 225;
+    --dl-accent: 37 99 235;
+    --dl-accent-hover: 29 78 216;
+    --dl-accent-subtle: 239 246 255;
+    --dl-accent-muted: 96 165 250;
+    --dl-accent-glow: 191 219 254;
+    --dl-text-primary: 15 23 42;
+    --dl-text-secondary: 51 65 85;
+    --dl-text-muted: 100 116 139;
+    --dl-text-inverse: 255 255 255;
+    --dl-text-inverse-muted: 226 232 240;
+    --dl-text-ash: 100 116 139;
+    --dl-text-stone: 71 85 105;
+    --dl-status-error: 220 38 38;
+    --dl-status-warning: 217 119 6;
+    --dl-status-success: 5 150 105;
+    --dl-status-info: 37 99 235;
+    --dl-status-error-bg: 254 226 226;
+    --dl-status-warning-bg: 254 243 199;
+    --dl-status-success-bg: 209 250 229;
+    --dl-status-info-bg: 219 234 254;
+    --dl-shadow-glass: 0 8px 32px rgba(15, 23, 42, 0.08);
+    --dl-shadow-glass-lg: 0 16px 48px rgba(15, 23, 42, 0.12);
+    --dl-shadow-glow: 0 0 24px rgba(37, 99, 235, 0.18);
+    --dl-shadow-glow-sm: 0 0 12px rgba(37, 99, 235, 0.12);
+    --dl-shadow-palette: 0 16px 48px rgba(15, 23, 42, 0.12),
+      0 0 0 1px rgba(15, 23, 42, 0.06);
+    --dl-shadow-card: 0 1px 3px rgba(15, 23, 42, 0.06),
+      0 4px 16px rgba(15, 23, 42, 0.04);
+    --dl-shadow-elevated: 0 8px 28px rgba(15, 23, 42, 0.1);
+    --dl-content-wash: rgba(37, 99, 235, 0.03);
+  }
+
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --dl-canvas: 11 16 25;
+    --dl-canvas-elevated: 16 23 37;
+    --dl-canvas-glow: 18 26 42;
+    --dl-glass: 18 26 40;
+    --dl-glass-strong: 22 32 51;
+    /* Solid borders approximating former rgba(120,150,200,0.14) on navy */
+    --dl-glass-border: 36 48 68;
+    --dl-glass-highlight: 40 56 84;
+    --dl-sidebar: 10 15 24;
+    --dl-sidebar-hover: 20 29 44;
+    --dl-sidebar-active: 22 32 51;
+    --dl-sidebar-border: 32 44 64;
+    --dl-surface: 16 23 37;
+    --dl-surface-card: 20 29 44;
+    --dl-surface-elevated: 22 32 51;
+    --dl-surface-border: 36 48 68;
+    --dl-surface-muted: 24 34 52;
+    --dl-hairline: 36 48 68;
+    --dl-hairline-soft: 28 38 56;
+    --dl-hairline-strong: 52 72 104;
+    --dl-accent: 79 140 255;
+    --dl-accent-hover: 107 160 255;
+    --dl-accent-subtle: 24 40 68;
+    --dl-accent-muted: 143 180 255;
+    --dl-accent-glow: 40 70 120;
+    --dl-text-primary: 238 242 248;
+    --dl-text-secondary: 180 192 212;
+    --dl-text-muted: 127 143 168;
+    --dl-text-inverse: 11 16 25;
+    --dl-text-inverse-muted: 74 85 104;
+    --dl-text-ash: 92 107 130;
+    --dl-text-stone: 68 80 102;
+    --dl-status-error: 255 107 107;
+    --dl-status-warning: 245 185 66;
+    --dl-status-success: 61 214 140;
+    --dl-status-info: 79 140 255;
+    /* Tinted dark chips (were ~14% status color overlays) */
+    --dl-status-error-bg: 48 24 30;
+    --dl-status-warning-bg: 48 38 20;
+    --dl-status-success-bg: 20 44 36;
+    --dl-status-info-bg: 22 36 58;
+    --dl-shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.35);
+    --dl-shadow-glass-lg: 0 16px 48px rgba(0, 0, 0, 0.45);
+    --dl-shadow-glow: 0 0 24px rgba(79, 140, 255, 0.2);
+    --dl-shadow-glow-sm: 0 0 12px rgba(79, 140, 255, 0.15);
+    --dl-shadow-palette: 0 16px 48px rgba(0, 0, 0, 0.55),
+      0 0 0 1px rgba(120, 150, 200, 0.1);
+    --dl-shadow-card: 0 4px 24px rgba(0, 0, 0, 0.28);
+    --dl-shadow-elevated: 0 8px 28px rgba(0, 0, 0, 0.35);
+    --dl-content-wash: rgba(79, 140, 255, 0.04);
+  }
+
   *,
   *::before,
   *::after {
@@ -55,15 +168,15 @@
     font-style: normal;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #0b1019;
-    color: #eef2f8;
+    background-color: rgb(var(--dl-canvas));
+    color: rgb(var(--dl-text-primary));
     line-height: 1.5;
   }
 
   #root {
     min-height: 100%;
-    background-color: #0b1019;
-    color: #eef2f8;
+    background-color: rgb(var(--dl-canvas));
+    color: rgb(var(--dl-text-primary));
     font-family: 'Cause', system-ui, ui-sans-serif, 'Segoe UI', sans-serif;
   }
 
@@ -110,8 +223,8 @@
   }
 
   ::selection {
-    background: rgba(255, 255, 255, 0.16);
-    color: #f4f4f6;
+    background: rgb(var(--dl-accent) / 0.2);
+    color: rgb(var(--dl-text-primary));
   }
 }
 
@@ -561,7 +674,7 @@
     @apply min-h-0 flex-1 bg-canvas;
     background-image: linear-gradient(
       180deg,
-      rgba(79, 140, 255, 0.04) 0%,
+      var(--dl-content-wash) 0%,
       transparent 140px
     );
   }
@@ -620,13 +733,19 @@
 
   .keycap {
     @apply inline-flex h-5 items-center rounded px-1.5 font-mono text-2xs text-text-secondary;
+    background: rgb(var(--dl-surface-elevated));
+    border: 1px solid rgb(var(--dl-hairline));
+    box-shadow: inset 0 1px 0 rgb(var(--dl-canvas) / 0.6);
+  }
+
+  :root[data-theme='dark'] .keycap {
     background: linear-gradient(180deg, #121212 0%, #0d0d0d 100%);
     border: 1px solid #242728;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   }
 
   .focus-ring {
-    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25 focus-visible:ring-offset-1 focus-visible:ring-offset-canvas;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 focus-visible:ring-offset-1 focus-visible:ring-offset-canvas;
   }
 
   /* Shared form field — use on every text/search input for consistency */

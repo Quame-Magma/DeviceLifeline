@@ -12,11 +12,16 @@ export type StartPage =
 
 export type DensityPref = 'comfortable' | 'compact';
 
+/** Shell appearance — light matches the product marketing site. */
+export type ThemePref = 'light' | 'dark';
+
 export interface UserPreferences {
   /** Landing view when the app opens */
   startPage: StartPage;
   /** Prefer denser tables and tighter spacing (Raycast-like) */
   density: DensityPref;
+  /** Light (default) or dark shell */
+  theme: ThemePref;
   /** Show keycap hints in chrome and explorers */
   showKeyHints: boolean;
   /** Prefer reduced motion even if OS allows motion */
@@ -28,10 +33,20 @@ export interface UserPreferences {
 export const DEFAULT_PREFERENCES: UserPreferences = {
   startPage: 'dashboard',
   density: 'compact',
+  theme: 'light',
   showKeyHints: true,
   reduceMotion: false,
   confirmDestructive: true,
 };
+
+/** Apply theme tokens to the document root (idempotent). */
+export function applyTheme(theme: ThemePref): void {
+  if (typeof document === 'undefined') return;
+  const mode = theme === 'dark' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = mode;
+  document.documentElement.style.colorScheme = mode;
+  document.documentElement.removeAttribute('data-mica');
+}
 
 const STORAGE_KEY = 'devicelifeline.preferences.v1';
 
@@ -42,9 +57,14 @@ export function loadPreferences(): UserPreferences {
       return { ...DEFAULT_PREFERENCES };
     }
     const parsed = JSON.parse(raw) as Partial<UserPreferences>;
+    const theme: ThemePref =
+      parsed.theme === 'dark' || parsed.theme === 'light'
+        ? parsed.theme
+        : DEFAULT_PREFERENCES.theme;
     return {
       ...DEFAULT_PREFERENCES,
       ...parsed,
+      theme,
     };
   } catch {
     return { ...DEFAULT_PREFERENCES };

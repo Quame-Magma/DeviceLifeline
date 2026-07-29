@@ -33,9 +33,10 @@ pub fn uninstall_app(
 #[tauri::command]
 pub fn remove_uninstall_leftovers(
     state: State<'_, AppState>,
+    app_id: String,
     paths: Vec<String>,
     confirm: bool,
 ) -> Result<UninstallResult, CoreError> {
     let conn = state.conn()?;
-    uninstall::remove_leftovers(&conn, paths, confirm)
+    uninstall::remove_leftovers(&conn, &app_id, paths, confirm)
 }

@@ -82,11 +82,11 @@ export function useUninstall() {
   );
 
   const removeLeftovers = useCallback(
-    async (paths: string[]) => {
+    async (appId: string, paths: string[]) => {
       setActing(true);
       setError(null);
       try {
-        const r = await removeUninstallLeftovers(paths, true);
+        const r = await removeUninstallLeftovers(appId, paths, true);
         setResult(r);
         setMessage(r.message);
         setScan(null);

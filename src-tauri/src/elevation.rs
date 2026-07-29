@@ -36,15 +36,15 @@ pub fn detach_console() {
     }
 }
 
-/// If not elevated on Windows **release** builds, relaunch with UAC and exit.
+/// Formerly auto-elevated the entire UI on release builds. That amplified the
+/// IPC blast radius (XSS → admin). Elevation is now **opt-in** via
+/// [`request_elevation_relaunch`] (sidebar Elevate) or
+/// `DEVICELIFELINE_FORCE_ELEVATE=1`.
 ///
-/// Skipped when:
-/// - `DEVICELIFELINE_SKIP_ELEVATION` is set
-/// - compiled with debug assertions (`tauri dev` / `cargo run` debug)
+/// Call sites may still invoke this at startup; it only logs unless force-elevate
+/// is requested.
 pub fn ensure_elevated() {
-    // Skip when requested (tests/CI) or under debug/`tauri dev` (elevated child
-    // would lose Vite/Tauri env and show a blank WebView).
-    if std::env::var_os(SKIP_ELEVATION_ENV).is_some() || cfg!(debug_assertions) {
+    if std::env::var_os(SKIP_ELEVATION_ENV).is_some() {
         return;
     }
 
@@ -53,11 +53,14 @@ pub fn ensure_elevated() {
         if is_elevated() {
             return;
         }
-        if relaunch_elevated() {
-            std::process::exit(0);
+        // Opt-in auto-elevate for environments that still want full admin UI.
+        if std::env::var_os("DEVICELIFELINE_FORCE_ELEVATE").is_some() && !cfg!(debug_assertions) {
+            if relaunch_elevated() {
+                std::process::exit(0);
+            }
         }
-        log::warn!(
-            "DeviceLifeline is not elevated. Deep process maps, USN index, and some disk tools will be limited."
+        log::info!(
+            "DeviceLifeline running as standard user. Use Elevate for driver install, VSS, GPU clean, and deep process tools."
         );
     }
 }
@@ -85,10 +88,13 @@ pub fn request_elevation_relaunch() -> bool {
 
 /// Status payload for the UI.
 pub fn status_json() -> serde_json::Value {
-    let auto = std::env::var_os(SKIP_ELEVATION_ENV).is_none() && !cfg!(debug_assertions);
+    // Auto-elevate is off by default (least privilege). Force flag opts back in.
+    let force = std::env::var_os("DEVICELIFELINE_FORCE_ELEVATE").is_some()
+        && std::env::var_os(SKIP_ELEVATION_ENV).is_none()
+        && !cfg!(debug_assertions);
     serde_json::json!({
         "elevated": is_elevated(),
-        "autoElevate": auto,
+        "autoElevate": force,
         "platform": std::env::consts::OS,
         "devMode": cfg!(debug_assertions),
     })

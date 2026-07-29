@@ -51,12 +51,14 @@ pub fn get_restore_plan_steps(
 /// Executes a restore plan synchronously and returns the finished job.
 ///
 /// `mode` defaults to `"dryRun"`, which records a non-mutating simulation.
-/// Passing `"install"` opts into the real platform installer.
+/// Passing `"install"` opts into the real platform installer and **requires**
+/// `confirm: true` (same pattern as cleanup / driver install).
 #[tauri::command]
 pub fn run_restore(
     state: State<'_, AppState>,
     plan_id: String,
     mode: Option<String>,
+    confirm: Option<bool>,
 ) -> Result<RestoreJob, CoreError> {
     let mut conn = state.conn()?;
 
@@ -64,7 +66,14 @@ pub fn run_restore(
         .ok_or_else(|| CoreError::NotFound(format!("restore plan {plan_id}")))?;
     let steps = restore_repo::list_steps(&conn, &plan_id)?;
     let installer = match mode.as_deref() {
-        Some("install") => default_installer(),
+        Some("install") => {
+            if confirm != Some(true) {
+                return Err(CoreError::Internal(
+                    "run_restore mode=install requires confirm=true".into(),
+                ));
+            }
+            default_installer()
+        }
         _ => dry_run_installer(),
     };
     executor::run_job(&mut conn, &restore_plan, &steps, installer.as_ref())

@@ -18,7 +18,12 @@ export const uninstallApp = (
   invoke<UninstallResult>('uninstall_app', { appId, confirm });
 
 export const removeUninstallLeftovers = (
+  appId: string,
   paths: string[],
   confirm: boolean,
 ): Promise<UninstallResult> =>
-  invoke<UninstallResult>('remove_uninstall_leftovers', { paths, confirm });
+  invoke<UninstallResult>('remove_uninstall_leftovers', {
+    appId,
+    paths,
+    confirm,
+  });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Bot,
   Brush,
@@ -105,16 +105,12 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     timelineEvents,
     loadSnapshots,
     loadTimeline,
-    capture,
-    capturing,
   } = useDeviceDna();
   const { latest, samples, alerts, loadHealth, collectSample, sampling } =
     useHealth();
   const {
     events: crashes,
     loadCrashEvents,
-    scanCrashEvents,
-    scanning,
   } = useCrash();
   const {
     latest: hardware,
@@ -124,9 +120,10 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   } = useHardware();
   const {
     dashboard: intelligence,
-    loading: intelligenceLoading,
     loadDashboard: loadIntelligence,
   } = useIntelligence();
+  /** Smart-check phase label — keeps UI honest while work runs off the main thread. */
+  const [checkPhase, setCheckPhase] = useState<string | null>(null);
 
   useEffect(() => {
     void loadSnapshots();
@@ -134,15 +131,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     void loadCrashEvents();
     void loadIntelligence();
     void loadTimeline();
-    void (async () => {
-      await loadHardware();
-      // Auto-sample once so GPU / temp tiles populate on first open.
-      try {
-        await sampleHw();
-      } catch {
-        /* sensors may be unavailable */
-      }
-    })();
+    // Load last cached hardware sample only — do not auto-run a full SMART
+    // harvest on every Overview open (that freezes weaker PCs).
+    void loadHardware();
   }, [
     loadCrashEvents,
     loadHealth,
@@ -150,7 +141,6 @@ export function Dashboard({ onNavigate }: DashboardProps) {
     loadIntelligence,
     loadSnapshots,
     loadTimeline,
-    sampleHw,
   ]);
 
   const stats = summarize({
@@ -194,19 +184,47 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   const go = (view: View) => () => onNavigate?.(view);
 
+  /**
+   * Smart Check — keep the machine responsive:
+   * 1) Health sample (sysinfo only — fast)
+   * 2) Light hardware sample (no full SMART / PDH / LHM pack)
+   * 3) Intelligence refresh (DB only)
+   *
+   * DNA capture + crash event-log scans are intentionally NOT part of Smart
+   * Check — they thrash disk/registry and make the whole PC feel frozen.
+   * Use Device DNA / Stability pages for those deeper jobs.
+   */
   const runCheck = async () => {
-    await Promise.all([
-      capture(),
-      collectSample(),
-      scanCrashEvents(),
-      loadIntelligence(),
-      sampleHw().catch(() => undefined),
-    ]);
-    await loadHealth();
+    if (checkPhase) return;
+    try {
+      setCheckPhase('CPU, memory & disk…');
+      try {
+        await collectSample();
+      } catch {
+        /* continue */
+      }
+      // Yield a paint frame so the button/label update before the next IPC.
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      setCheckPhase('Sensors & storage…');
+      try {
+        await sampleHw('quick');
+      } catch {
+        /* sensors may be unavailable */
+      }
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      setCheckPhase('Updating score…');
+      try {
+        await loadIntelligence();
+      } catch {
+        /* optional */
+      }
+      await loadHealth();
+    } finally {
+      setCheckPhase(null);
+    }
   };
 
-  const checking =
-    capturing || sampling || scanning || intelligenceLoading || hwSampling;
+  const checking = checkPhase !== null || sampling || hwSampling;
 
   const memPct =
     latest && latest.memoryTotal > 0
@@ -351,7 +369,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                   fill="currentColor"
                 />
               ) : null}
-              Run smart check
+              {checkPhase ? checkPhase : 'Run smart check'}
             </Button>
           </div>
         </div>

@@ -135,7 +135,12 @@ export function useRecovery(): UseRecoveryReturn {
       setRunning(true);
       setError(null);
       try {
-        const job = await apiRunRestore(planId, mode);
+        // Real installs must pass confirm=true (backend gate).
+        const job = await apiRunRestore(
+          planId,
+          mode,
+          mode === 'install' ? true : false,
+        );
         setLatestJob(job);
         const results = await getRestoreStepResults(job.id);
         setStepResults(results);

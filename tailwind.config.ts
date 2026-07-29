@@ -1,8 +1,8 @@
 import type { Config } from 'tailwindcss';
 
 /**
- * Dashboard palette aligned to the product mock:
- * deep navy canvas, blue active accents, green health, amber warnings.
+ * Semantic palette via CSS variables (see global.css).
+ * Light is default; set `data-theme="dark"` on <html> for dark shell.
  * Typeface: Cause (Google Fonts variable).
  */
 const config: Config = {
@@ -11,59 +11,59 @@ const config: Config = {
     extend: {
       colors: {
         canvas: {
-          DEFAULT: '#0b1019',
-          elevated: '#101725',
-          glow: '#121a2a',
+          DEFAULT: 'rgb(var(--dl-canvas) / <alpha-value>)',
+          elevated: 'rgb(var(--dl-canvas-elevated) / <alpha-value>)',
+          glow: 'rgb(var(--dl-canvas-glow) / <alpha-value>)',
         },
         glass: {
-          DEFAULT: '#121a28',
-          strong: '#162033',
-          border: 'rgba(120, 150, 200, 0.14)',
-          highlight: 'rgba(120, 170, 255, 0.18)',
+          DEFAULT: 'rgb(var(--dl-glass) / <alpha-value>)',
+          strong: 'rgb(var(--dl-glass-strong) / <alpha-value>)',
+          border: 'rgb(var(--dl-glass-border) / <alpha-value>)',
+          highlight: 'rgb(var(--dl-glass-highlight) / <alpha-value>)',
         },
         sidebar: {
-          DEFAULT: '#0a0f18',
-          hover: '#141d2c',
-          active: '#162033',
-          border: 'rgba(120, 150, 200, 0.12)',
+          DEFAULT: 'rgb(var(--dl-sidebar) / <alpha-value>)',
+          hover: 'rgb(var(--dl-sidebar-hover) / <alpha-value>)',
+          active: 'rgb(var(--dl-sidebar-active) / <alpha-value>)',
+          border: 'rgb(var(--dl-sidebar-border) / <alpha-value>)',
         },
         surface: {
-          DEFAULT: '#101725',
-          card: '#141d2c',
-          elevated: '#162033',
-          border: 'rgba(120, 150, 200, 0.14)',
-          muted: 'rgba(120, 160, 220, 0.06)',
+          DEFAULT: 'rgb(var(--dl-surface) / <alpha-value>)',
+          card: 'rgb(var(--dl-surface-card) / <alpha-value>)',
+          elevated: 'rgb(var(--dl-surface-elevated) / <alpha-value>)',
+          border: 'rgb(var(--dl-surface-border) / <alpha-value>)',
+          muted: 'rgb(var(--dl-surface-muted) / <alpha-value>)',
         },
         hairline: {
-          DEFAULT: 'rgba(120, 150, 200, 0.14)',
-          soft: 'rgba(120, 160, 220, 0.08)',
-          strong: 'rgba(140, 180, 255, 0.22)',
+          DEFAULT: 'rgb(var(--dl-hairline) / <alpha-value>)',
+          soft: 'rgb(var(--dl-hairline-soft) / <alpha-value>)',
+          strong: 'rgb(var(--dl-hairline-strong) / <alpha-value>)',
         },
         accent: {
-          DEFAULT: '#4f8cff',
-          hover: '#6ba0ff',
-          subtle: 'rgba(79, 140, 255, 0.14)',
-          muted: '#8fb4ff',
-          glow: 'rgba(79, 140, 255, 0.35)',
+          DEFAULT: 'rgb(var(--dl-accent) / <alpha-value>)',
+          hover: 'rgb(var(--dl-accent-hover) / <alpha-value>)',
+          subtle: 'rgb(var(--dl-accent-subtle) / <alpha-value>)',
+          muted: 'rgb(var(--dl-accent-muted) / <alpha-value>)',
+          glow: 'rgb(var(--dl-accent-glow) / <alpha-value>)',
         },
         text: {
-          primary: '#eef2f8',
-          secondary: '#b4c0d4',
-          muted: '#7f8fa8',
-          inverse: '#0b1019',
-          'inverse-muted': '#4a5568',
-          ash: '#5c6b82',
-          stone: '#445066',
+          primary: 'rgb(var(--dl-text-primary) / <alpha-value>)',
+          secondary: 'rgb(var(--dl-text-secondary) / <alpha-value>)',
+          muted: 'rgb(var(--dl-text-muted) / <alpha-value>)',
+          inverse: 'rgb(var(--dl-text-inverse) / <alpha-value>)',
+          'inverse-muted': 'rgb(var(--dl-text-inverse-muted) / <alpha-value>)',
+          ash: 'rgb(var(--dl-text-ash) / <alpha-value>)',
+          stone: 'rgb(var(--dl-text-stone) / <alpha-value>)',
         },
         status: {
-          error: '#ff6b6b',
-          warning: '#f5b942',
-          success: '#3dd68c',
-          info: '#4f8cff',
-          'error-bg': 'rgba(255, 107, 107, 0.14)',
-          'warning-bg': 'rgba(245, 185, 66, 0.14)',
-          'success-bg': 'rgba(61, 214, 140, 0.14)',
-          'info-bg': 'rgba(79, 140, 255, 0.14)',
+          error: 'rgb(var(--dl-status-error) / <alpha-value>)',
+          warning: 'rgb(var(--dl-status-warning) / <alpha-value>)',
+          success: 'rgb(var(--dl-status-success) / <alpha-value>)',
+          info: 'rgb(var(--dl-status-info) / <alpha-value>)',
+          'error-bg': 'rgb(var(--dl-status-error-bg) / <alpha-value>)',
+          'warning-bg': 'rgb(var(--dl-status-warning-bg) / <alpha-value>)',
+          'success-bg': 'rgb(var(--dl-status-success-bg) / <alpha-value>)',
+          'info-bg': 'rgb(var(--dl-status-info-bg) / <alpha-value>)',
         },
       },
       fontFamily: {
@@ -96,23 +96,20 @@ const config: Config = {
         pill: '9999px',
       },
       boxShadow: {
-        glass: '0 8px 32px rgba(0, 0, 0, 0.35)',
-        'glass-lg': '0 16px 48px rgba(0, 0, 0, 0.45)',
-        glow: '0 0 24px rgba(79, 140, 255, 0.2)',
-        'glow-sm': '0 0 12px rgba(79, 140, 255, 0.15)',
-        palette:
-          '0 16px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(120,150,200,0.1)',
-        card: '0 4px 24px rgba(0, 0, 0, 0.28)',
-        elevated: '0 8px 28px rgba(0, 0, 0, 0.35)',
+        glass: 'var(--dl-shadow-glass)',
+        'glass-lg': 'var(--dl-shadow-glass-lg)',
+        glow: 'var(--dl-shadow-glow)',
+        'glow-sm': 'var(--dl-shadow-glow-sm)',
+        palette: 'var(--dl-shadow-palette)',
+        card: 'var(--dl-shadow-card)',
+        elevated: 'var(--dl-shadow-elevated)',
       },
       maxWidth: {
         content: '74rem',
       },
       spacing: {
-        /* Outer page gutter — close to sidebar wall, not a floating island */
         page: '1rem',
         'page-lg': '1.25rem',
-        /* Inner card padding — text should not hug panel edges */
         'panel-x': '1.25rem',
         'panel-y': '1rem',
         'sidebar-expanded': '220px',

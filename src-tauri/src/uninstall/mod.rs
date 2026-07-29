@@ -101,9 +101,11 @@ pub fn uninstall_app(
     }
 }
 
-/// Remove allowlisted leftover paths after uninstall. Requires confirm.
+/// Remove leftover paths after uninstall. Requires confirm + `app_id`.
+/// Only paths returned by a fresh `scan_leftovers(app_id)` may be deleted.
 pub fn remove_leftovers(
     conn: &Connection,
+    app_id: &str,
     paths: Vec<String>,
     confirm: bool,
 ) -> Result<UninstallResult, CoreError> {
@@ -112,13 +114,29 @@ pub fn remove_leftovers(
             "leftover removal requires confirm=true".into(),
         ));
     }
-    let preview = serde_json::json!({ "paths": paths }).to_string();
+    if app_id.trim().is_empty() {
+        return Err(CoreError::Internal(
+            "leftover removal requires app_id (re-scan leftovers for the app first)".into(),
+        ));
+    }
+    if paths.is_empty() {
+        return Err(CoreError::Internal("no leftover paths selected".into()));
+    }
+
+    let scan = scan_leftovers(app_id)?;
+    let scan_allowed: std::collections::HashSet<String> = scan
+        .leftovers
+        .iter()
+        .map(|l| normalize_path_key(&l.path))
+        .collect();
+
+    let preview = serde_json::json!({ "appId": app_id, "paths": paths }).to_string();
     let action = actions::record_action(
         conn,
         "software_leftover_remove",
         RISK_DESTRUCTIVE,
         "Remove uninstall leftovers",
-        Some(&format!("{} path(s)", paths.len())),
+        Some(&format!("{} path(s) for {}", paths.len(), scan.app.name)),
         "running",
         Some(&preview),
     )?;
@@ -126,6 +144,13 @@ pub fn remove_leftovers(
     let mut removed = Vec::new();
     let mut errors = Vec::new();
     for p in &paths {
+        let key = normalize_path_key(p);
+        if !scan_allowed.contains(&key) {
+            errors.push(format!(
+                "{p}: not in current leftover scan for this app (re-scan and retry)"
+            ));
+            continue;
+        }
         if !is_leftover_path_allowed(p) {
             errors.push(format!("{p}: not in allowlisted leftover roots"));
             continue;
@@ -163,10 +188,17 @@ pub fn remove_leftovers(
     Ok(UninstallResult {
         status: status.into(),
         message,
-        app_name: String::new(),
+        app_name: scan.app.name,
         leftovers: Vec::new(),
         removed_paths: removed,
     })
+}
+
+fn normalize_path_key(p: &str) -> String {
+    p.trim()
+        .trim_end_matches(['\\', '/'])
+        .to_ascii_lowercase()
+        .replace('/', "\\")
 }
 
 fn run_uninstall_command(cmd: &str) -> Result<String, String> {

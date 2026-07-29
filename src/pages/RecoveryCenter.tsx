@@ -12,6 +12,7 @@ import { RestorePlanStepsTable } from '../components/restore/RestorePlanStepsTab
 import { RestoreJobResult } from '../components/restore/RestoreJobResult';
 import type { RestoreRunMode } from '../api/tauri/restore';
 import { PageShell } from '../components/layout/PageShell';
+import { confirmAction } from '../lib/feedback';
 
 /**
  * Recovery Center page - Increment 4.
@@ -74,10 +75,19 @@ export function RecoveryCenter() {
     }
   };
 
-  const handleRunRestore = () => {
-    if (selectedPlanId) {
-      void runRestore(selectedPlanId, restoreMode);
+  const handleRunRestore = async () => {
+    if (!selectedPlanId) return;
+    if (restoreMode === 'install') {
+      const ok = await confirmAction({
+        title: 'Install packages from restore plan?',
+        description:
+          'This will run real WinGet installs for plan steps. Prefer dry-run first. Continue only if you trust this plan.',
+        confirmLabel: 'Install',
+        tone: 'danger',
+      });
+      if (!ok) return;
     }
+    void runRestore(selectedPlanId, restoreMode);
   };
 
   // Export the selected snapshot as a downloadable .dlsetup bundle.

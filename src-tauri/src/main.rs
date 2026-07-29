@@ -6,8 +6,8 @@
 fn main() {
     // Drop any inherited/attached console (belt-and-suspenders).
     devicelifeline_lib::elevation::detach_console();
-    // Auto-elevate on Windows so deep tools work without "Run as administrator".
-    // Skip with DEVICELIFELINE_SKIP_ELEVATION=1 (tests/CI). Debug skips auto-elevate.
+    // Least privilege: do not UAC-elevate the whole UI by default.
+    // Deep tools prompt via the in-app Elevate control (or DEVICELIFELINE_FORCE_ELEVATE=1).
     devicelifeline_lib::elevation::ensure_elevated();
     devicelifeline_lib::run()
 }

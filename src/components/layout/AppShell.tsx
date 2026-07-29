@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Bell, Search, Settings } from 'lucide-react';
+import { Bell, Moon, Search, Settings, Sun } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import type { View } from './Sidebar';
 import { CommandPalette, useCommandPaletteShortcut } from './CommandPalette';
 import { Keycap } from '../common/Keycap';
 import { FeedbackHost } from '../feedback/FeedbackHost';
 import {
+  applyTheme,
   loadPreferences,
   PREFERENCES_CHANGED_EVENT,
+  updatePreferences,
+  type ThemePref,
   type UserPreferences,
 } from '../../lib/preferences';
 
@@ -36,6 +39,7 @@ const SIDEBAR_COLLAPSED_KEY = 'devicelifeline.sidebar.collapsed';
 export function AppShell({ activeView, onNavigate, children }: AppShellProps) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [showKeyHints, setShowKeyHints] = useState(true);
+  const [theme, setTheme] = useState<ThemePref>(() => loadPreferences().theme);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
@@ -47,14 +51,12 @@ export function AppShell({ activeView, onNavigate, children }: AppShellProps) {
   useEffect(() => {
     const apply = (prefs: UserPreferences) => {
       setShowKeyHints(prefs.showKeyHints);
+      setTheme(prefs.theme);
       document.documentElement.dataset.density = prefs.density;
       document.documentElement.dataset.reduceMotion = prefs.reduceMotion
         ? 'true'
         : 'false';
-      // Force dark shell — clear any leftover light/mica attrs from prior builds
-      document.documentElement.removeAttribute('data-theme');
-      document.documentElement.removeAttribute('data-mica');
-      document.documentElement.style.colorScheme = 'dark';
+      applyTheme(prefs.theme);
     };
 
     apply(loadPreferences());
@@ -76,6 +78,11 @@ export function AppShell({ activeView, onNavigate, children }: AppShellProps) {
       window.removeEventListener('storage', onStorage);
     };
   }, []);
+
+  const toggleTheme = useCallback(() => {
+    const next: ThemePref = theme === 'dark' ? 'light' : 'dark';
+    updatePreferences({ theme: next });
+  }, [theme]);
 
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed((prev) => {
@@ -120,7 +127,7 @@ export function AppShell({ activeView, onNavigate, children }: AppShellProps) {
               'border border-hairline bg-surface-elevated px-3.5 py-2 text-left text-sm text-text-muted',
               'transition-colors duration-150 ease-ray',
               'hover:border-hairline-strong hover:bg-surface-card hover:text-text-secondary',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30',
             ].join(' ')}
           >
             <Search
@@ -142,12 +149,34 @@ export function AppShell({ activeView, onNavigate, children }: AppShellProps) {
           <div className="ml-auto flex flex-shrink-0 items-center gap-1">
             <button
               type="button"
+              onClick={toggleTheme}
+              title={
+                theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
+              }
+              aria-label={
+                theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
+              }
+              data-testid="theme-toggle"
+              className={[
+                'flex h-9 w-9 items-center justify-center rounded-lg',
+                'text-text-muted hover:bg-surface-elevated hover:text-text-primary',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30',
+              ].join(' ')}
+            >
+              {theme === 'dark' ? (
+                <Sun className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              ) : (
+                <Moon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+              )}
+            </button>
+            <button
+              type="button"
               title="Notifications"
               aria-label="Notifications"
               className={[
                 'flex h-9 w-9 items-center justify-center rounded-lg',
                 'text-text-muted hover:bg-surface-elevated hover:text-text-primary',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30',
               ].join(' ')}
             >
               <Bell className="h-4 w-4" strokeWidth={1.75} aria-hidden />
@@ -161,7 +190,7 @@ export function AppShell({ activeView, onNavigate, children }: AppShellProps) {
               className={[
                 'flex h-9 w-9 items-center justify-center rounded-lg',
                 'text-text-muted hover:bg-surface-elevated hover:text-text-primary',
-                'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/25',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30',
                 activeView === 'settings'
                   ? 'bg-surface-card text-text-primary'
                   : '',

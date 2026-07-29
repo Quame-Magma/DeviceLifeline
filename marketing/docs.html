@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Documentation — DeviceLifeline</title>
+    <meta
+      name="description"
+      content="Learn how DeviceLifeline works: install on Windows, run a smart check, use Copilot, cleanup, recovery, and privacy. Product documentation for users."
+    />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+
+    <header class="site-header">
+      <div class="shell header-inner">
+        <a class="wordmark" href="./index.html" aria-label="DeviceLifeline home">
+          <img
+            class="wordmark-logo"
+            src="./assets/logo-128.png"
+            width="32"
+            height="32"
+            alt=""
+            decoding="async"
+          />
+          <span class="wordmark-text">DeviceLifeline</span>
+        </a>
+
+        <nav class="primary-nav" aria-label="Primary">
+          <a href="./index.html#product">Product</a>
+          <a href="./index.html#how-it-works">How it works</a>
+          <a href="./index.html#privacy">Privacy</a>
+          <a href="./docs.html" aria-current="page">Docs</a>
+          <a href="./index.html#blog">Blog</a>
+        </nav>
+
+        <div class="header-cta">
+          <a class="btn btn-primary btn-sm" href="./index.html#download">
+            <svg class="win-icon" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+              <path fill="currentColor" d="M0 2.2 6.6 1.3v6.1H0zm7.4-.9L16 0v7.4H7.4zM0 8.6h6.6v6.1L0 13.8zm7.4 0H16V16l-8.6-1.2z"/>
+            </svg>
+            Download for Windows
+          </a>
+        </div>
+
+        <button
+          class="nav-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="mobile-nav"
+          data-nav-toggle
+        >
+          <span class="sr-only">Menu</span>
+          <span></span><span></span>
+        </button>
+      </div>
+
+      <div class="mobile-nav" id="mobile-nav" hidden data-mobile-nav>
+        <a href="./index.html#product">Product</a>
+        <a href="./index.html#how-it-works">How it works</a>
+        <a href="./index.html#privacy">Privacy</a>
+        <a href="./docs.html" aria-current="page">Docs</a>
+        <a href="./index.html#blog">Blog</a>
+        <a class="btn btn-primary" href="./index.html#download">Download for Windows</a>
+      </div>
+    </header>
+
+    <main id="content" class="docs-main">
+      <div class="shell docs-layout">
+        <aside class="docs-toc" aria-label="On this page">
+          <p class="docs-toc-label">On this page</p>
+          <nav>
+            <a href="#overview">Overview</a>
+            <a href="#install">Install</a>
+            <a href="#first-run">First run</a>
+            <a href="#features">Features</a>
+            <a href="#copilot">Copilot</a>
+            <a href="#privacy">Privacy &amp; data</a>
+            <a href="#requirements">Requirements</a>
+            <a href="#faq">FAQ</a>
+            <a href="#support">Support</a>
+          </nav>
+        </aside>
+
+        <article class="docs-article">
+          <header class="docs-hero">
+            <p class="eyebrow">Documentation</p>
+            <h1>DeviceLifeline docs</h1>
+            <p class="docs-lede">
+              How to install, understand, and use DeviceLifeline on Windows —
+              the operating memory of your PC.
+            </p>
+          </header>
+
+          <section id="overview" class="docs-section">
+            <h2>Overview</h2>
+            <p>
+              DeviceLifeline is a native Windows app that continuously captures
+              what changed on your PC — software, configuration, performance,
+              health, and crashes — so you can explain problems in plain
+              language, clean up safely, and recover setups when something
+              breaks.
+            </p>
+            <ul class="docs-list">
+              <li><strong>Local-first.</strong> History lives in a SQLite database under your user profile.</li>
+              <li><strong>No cloud chat required.</strong> Copilot uses offline heuristics, or optional on-device Qwen3.</li>
+              <li><strong>Ops surface.</strong> Overview, Health, Performance, Storage, Cleanup, Processes, Drivers, Crashes, Recovery, and more in one shell.</li>
+            </ul>
+          </section>
+
+          <section id="install" class="docs-section">
+            <h2>Install</h2>
+            <ol class="docs-steps">
+              <li>
+                <strong>Download the Windows installer</strong> from the
+                <a href="./index.html#download">product site</a>
+                (x64 setup for Windows 10 19041+ or Windows 11).
+              </li>
+              <li>
+                <strong>Run the installer</strong> and follow the prompts. A black
+                console window should not appear for normal installs.
+              </li>
+              <li>
+                <strong>Launch DeviceLifeline</strong> from the Start menu. The
+                first open loads the Overview dashboard.
+              </li>
+            </ol>
+            <div class="docs-callout">
+              <strong>Tip.</strong> Prefer the MSI or NSIS package from a
+              trusted release folder. Sideload only builds you built yourself
+              from this repository.
+            </div>
+          </section>
+
+          <section id="first-run" class="docs-section">
+            <h2>First run</h2>
+            <p>After launch:</p>
+            <ol class="docs-steps">
+              <li>
+                Open <strong>Overview</strong> and click
+                <strong>Run smart check</strong>. This samples CPU, memory, disk,
+                and a light hardware pass without freezing the machine on a full
+                SMART harvest.
+              </li>
+              <li>
+                Review the <strong>health score</strong>, resource tiles, and any
+                open findings.
+              </li>
+              <li>
+                Use <strong>Ctrl+K</strong> (command palette) to jump to Health,
+                Performance, Storage, Cleanup, Copilot, or Settings.
+              </li>
+              <li>
+                Optional: open <strong>Settings → Theme</strong> to switch Light
+                (default) or Dark.
+              </li>
+            </ol>
+          </section>
+
+          <section id="features" class="docs-section">
+            <h2>Features</h2>
+            <div class="docs-feature-grid">
+              <div>
+                <h3>Health &amp; Performance</h3>
+                <p>
+                  Live metrics, health scores, alerts, sensors, clocks, and SMART
+                  disk identity. Full sensor packs run on Performance; smart check
+                  stays light on Overview.
+                </p>
+              </div>
+              <div>
+                <h3>Storage &amp; Cleanup</h3>
+                <p>
+                  Per-volume maps, large files, and safe cleanup categories with
+                  evidence paths — not vanity free-space theater.
+                </p>
+              </div>
+              <div>
+                <h3>Startup, Processes, Drivers</h3>
+                <p>
+                  Control what runs at boot, inspect process risk signals, and
+                  review driver inventory with Windows Update driver install when
+                  available.
+                </p>
+              </div>
+              <div>
+                <h3>Crashes &amp; Recovery</h3>
+                <p>
+                  Crash events in plain English, Device DNA baselines, recovery
+                  vault, and restore plans when you need a way back.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section id="copilot" class="docs-section">
+            <h2>Copilot</h2>
+            <p>
+              Copilot answers in plain English using telemetry on <em>this</em>
+              PC. It never requires a cloud LLM API key for core use.
+            </p>
+            <ul class="docs-list">
+              <li>
+                <strong>Heuristic mode</strong> works offline from samples and
+                rules when no local model is installed.
+              </li>
+              <li>
+                <strong>Local Qwen3</strong> (optional) runs via
+                <code>llama-server</code> on your machine — install from Settings
+                when free disk space allows (~1.5&nbsp;GB free recommended).
+              </li>
+              <li>
+                Ask focused questions (“Why is C: full?”, “What changed
+                yesterday?”) for the most useful answers.
+              </li>
+            </ul>
+          </section>
+
+          <section id="privacy" class="docs-section">
+            <h2>Privacy &amp; data</h2>
+            <p>
+              DeviceLifeline is designed so your PC history stays on your PC.
+            </p>
+            <ul class="docs-list">
+              <li>No cloud scanning of personal files for core product use.</li>
+              <li>Samples are system and inventory oriented (apps, config, metrics, crash logs).</li>
+              <li>Destructive actions (cleanup, restore) require explicit confirmation.</li>
+              <li>Exports are optional — you choose what to share.</li>
+            </ul>
+            <p>
+              More on the product site:
+              <a href="./index.html#privacy">Privacy principles</a>.
+            </p>
+          </section>
+
+          <section id="requirements" class="docs-section">
+            <h2>System requirements</h2>
+            <table class="docs-table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Requirement</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>OS</td>
+                  <td>Windows 10 64-bit (build 19041+) or Windows 11 64-bit</td>
+                </tr>
+                <tr>
+                  <td>Architecture</td>
+                  <td>x64</td>
+                </tr>
+                <tr>
+                  <td>Disk</td>
+                  <td>~200&nbsp;MB for the app; more if installing local Qwen3</td>
+                </tr>
+                <tr>
+                  <td>Privileges</td>
+                  <td>Standard user works; some driver/SMART detail improves with elevation</td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section id="faq" class="docs-section">
+            <h2>FAQ</h2>
+            <div class="docs-faq">
+              <details open>
+                <summary>Does DeviceLifeline need the internet?</summary>
+                <p>
+                  No for core health, storage, cleanup, and heuristic Copilot.
+                  Internet is only needed for downloads (app updates, optional
+                  local model, Windows Update driver install).
+                </p>
+              </details>
+              <details>
+                <summary>Why does Smart Check feel light on purpose?</summary>
+                <p>
+                  A full SMART + sensor pack can freeze weaker PCs. Overview smart
+                  check uses a quick path; open Performance for deep sensors.
+                </p>
+              </details>
+              <details>
+                <summary>Where is my data stored?</summary>
+                <p>
+                  Under the app data directory for your Windows user (local
+                  SQLite). It is not uploaded unless you export or enable a future
+                  sync feature.
+                </p>
+              </details>
+              <details>
+                <summary>Can I switch back to the dark UI?</summary>
+                <p>
+                  Yes. Use the moon/sun control in the app header, or
+                  Settings → Theme → Dark.
+                </p>
+              </details>
+            </div>
+          </section>
+
+          <section id="support" class="docs-section">
+            <h2>Support</h2>
+            <p>
+              For product help, start with this page and the in-app Copilot.
+              Engineering and architecture notes for contributors live in the
+              project repository under <code>docs/</code> (separate from this
+              product site).
+            </p>
+            <div class="docs-actions">
+              <a class="btn btn-primary btn-lg" href="./index.html#download">
+                <svg class="win-icon" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+                  <path fill="currentColor" d="M0 2.2 6.6 1.3v6.1H0zm7.4-.9L16 0v7.4H7.4zM0 8.6h6.6v6.1L0 13.8zm7.4 0H16V16l-8.6-1.2z"/>
+                </svg>
+                Download for Windows
+              </a>
+              <a class="btn btn-ghost btn-lg" href="./index.html">Back to home</a>
+            </div>
+          </section>
+        </article>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-inner">
+        <div class="footer-brand">
+          <a class="wordmark" href="./index.html">
+            <img
+              class="wordmark-logo"
+              src="./assets/logo-128.png"
+              width="28"
+              height="28"
+              alt=""
+              decoding="async"
+            />
+            DeviceLifeline
+          </a>
+          <p>The operating memory of a computer.</p>
+        </div>
+        <nav class="footer-nav" aria-label="Footer">
+          <a href="./index.html#product">Product</a>
+          <a href="./index.html#how-it-works">How it works</a>
+          <a href="./index.html#privacy">Privacy</a>
+          <a href="./docs.html">Docs</a>
+          <a href="./index.html#download">Download</a>
+        </nav>
+        <p class="footer-legal">&copy; 2026 DeviceLifeline</p>
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        var toggle = document.querySelector("[data-nav-toggle]");
+        var panel = document.querySelector("[data-mobile-nav]");
+        if (!toggle || !panel) return;
+        toggle.addEventListener("click", function () {
+          var open = toggle.getAttribute("aria-expanded") === "true";
+          toggle.setAttribute("aria-expanded", open ? "false" : "true");
+          if (open) panel.setAttribute("hidden", "");
+          else panel.removeAttribute("hidden");
+        });
+        panel.querySelectorAll("a").forEach(function (link) {
+          link.addEventListener("click", function () {
+            toggle.setAttribute("aria-expanded", "false");
+            panel.setAttribute("hidden", "");
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>

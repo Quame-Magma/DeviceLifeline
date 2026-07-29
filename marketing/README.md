@@ -1,6 +1,7 @@
 # DeviceLifeline product website
 
-Production-minded marketing page for the desktop product.
+Light, product-first marketing page aligned to the approved landing mock
+(“Your PC finally has a memory.”).
 
 ## Preview
 
@@ -13,11 +14,39 @@ Open `http://localhost:3000` (or the port `serve` prints).
 
 ## Design system (brief)
 
-- Canvas: near-black (`#0a0c10`), one emerald accent
-- Type: Segoe UI Variable / system (native Windows product voice)
-- Layout: 1120px shell, 8px rhythm, sticky 64px header
-- Hero product stage is a hand-built app chrome (not a stock SaaS collage)
-- Capabilities as rows, not a six-card template grid
-- No investor deck sections, no “trusted by” filler, no AI-purple
+- Canvas: white / soft mint (`#f6faf8`)
+- Accent: product green (`#0f9f6e` / deep `#0a6b4a`)
+- Type: Inter + system fallbacks
+- Layout: ~1180px shell, sticky header
+- **Hero + gallery use live app screenshots** (not mock UI chrome)
 
-Wire real download URLs and analytics before public launch.
+## Live screenshots
+
+| Asset | Source |
+|-------|--------|
+| `assets/hero-overview.png` | Overview (dashboard) captured from the running app |
+| `assets/hero-performance.png` | Performance (sensors / SMART) captured from the running app |
+| `assets/screens/` | Raw capture dumps + `capture.ps1` helper |
+
+To refresh: bring DeviceLifeline to the foreground, capture the window, crop
+window chrome if needed, and replace the `hero-*.png` files.
+
+## Structure
+
+| Page | Purpose |
+|------|---------|
+| `index.html` | Product landing (hero, gallery, privacy, download) |
+| `docs.html` | **Rendered product documentation** (not raw README) |
+
+| Landing section | Purpose |
+|-----------------|---------|
+| Hero | Headline, dual CTAs, trust row, live Overview screenshot |
+| Gallery | Overview + Performance live shots |
+| Capabilities | Health → Recovery Vault strip |
+| Privacy | Local-first claims + Windows requirements |
+| How it works | Capture → Explain → Act |
+| Download | Installer link into `release-0.3.0/` |
+
+Nav **Docs** and **Read documentation** point to `./docs.html`.
+
+Wire production download URLs and analytics before public launch.
