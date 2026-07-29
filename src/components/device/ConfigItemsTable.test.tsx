@@ -107,8 +107,9 @@ const MOCK_ITEMS: ConfigItem[] = [
 ];
 
 describe('ConfigItemsTable', () => {
-  it('renders all item rows', () => {
+  it('renders the first page of item rows and paginates', () => {
     render(<ConfigItemsTable items={MOCK_ITEMS} />);
+    // Default page size is 5 of 10 mock items.
     expect(screen.getByText('OneDrive')).toBeInTheDocument();
     expect(screen.getByText('Steam')).toBeInTheDocument();
     expect(screen.getByText('Windows Update')).toBeInTheDocument();
@@ -116,6 +117,8 @@ describe('ConfigItemsTable', () => {
     expect(
       screen.getByText('\\Microsoft\\Windows\\Defrag\\ScheduledDefrag'),
     ).toBeInTheDocument();
+    expect(screen.queryByText('Chrome: React Developer Tools')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
     expect(screen.getByText('Chrome: React Developer Tools')).toBeInTheDocument();
     expect(screen.getByText('Git')).toBeInTheDocument();
     expect(screen.getByText('CPU')).toBeInTheDocument();
@@ -157,14 +160,29 @@ describe('ConfigItemsTable', () => {
     const networkCells = kindCells.filter((td) =>
       td?.textContent?.trim() === 'Network',
     );
-    expect(startupCells).toHaveLength(2);
-    expect(serviceCells).toHaveLength(2);
-    expect(scheduledCells).toHaveLength(1);
-    expect(browserCells).toHaveLength(1);
-    expect(devToolCells).toHaveLength(1);
-    expect(hardwareCells).toHaveLength(1);
-    expect(powerCells).toHaveLength(1);
-    expect(networkCells).toHaveLength(1);
+    // Default page size is 5 — only the first page of "All" is rendered.
+    // Kind filter buttons still expose every kind; row counts reflect the page.
+    expect(startupCells.length + serviceCells.length).toBeGreaterThan(0);
+    expect(
+      startupCells.length +
+        serviceCells.length +
+        scheduledCells.length +
+        browserCells.length +
+        devToolCells.length +
+        hardwareCells.length +
+        powerCells.length +
+        networkCells.length,
+    ).toBe(5);
+
+    // Filtering by kind shows the full set for that kind (within page size).
+    fireEvent.click(screen.getByRole('button', { name: 'Startup' }));
+    expect(
+      screen.getAllByRole('cell').filter((td) => td.textContent?.trim() === 'Startup'),
+    ).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Hardware' }));
+    expect(
+      screen.getAllByRole('cell').filter((td) => td.textContent?.trim() === 'Hardware'),
+    ).toHaveLength(1);
   });
 
   it('shows "No configuration items found" when items array is empty', () => {

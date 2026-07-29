@@ -37,7 +37,7 @@ describe('ResourceUsageBars', () => {
     render(<ResourceUsageBars sample={SAMPLE} />);
     expect(screen.getByText('Most constrained disk')).toBeInTheDocument();
     expect(screen.getByTestId('usage-detail-disk')).toHaveTextContent(
-      'highest usage across 2 disks',
+      /Highest usage across 2 disks/i,
     );
   });
 

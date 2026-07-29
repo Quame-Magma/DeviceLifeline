@@ -146,7 +146,8 @@ mod tests {
         let result = execute_safe_cleanup(&conn, true).expect("ok");
         // Live temp/cache scan may delete zero or many files depending on the machine.
         assert!(result.deleted_count >= 0);
-        assert_eq!(result.action.action_type, "safe_cleanup_execute");
+        // Safe cleanup passes an explicit category list (not None), so action type is cleanup_execute.
+        assert_eq!(result.action.action_type, "cleanup_execute");
         assert!(
             result.action.status == "completed"
                 || result.action.status == "completed_with_errors"
