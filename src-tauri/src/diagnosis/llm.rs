@@ -170,9 +170,7 @@ fn free_bytes_for_path(path: &Path) -> u64 {
     let mut best: Option<(usize, u64)> = None;
     for disk in disks.list() {
         let mount = disk.mount_point().to_string_lossy().to_ascii_lowercase();
-        if target.starts_with(mount.trim_end_matches('\\'))
-            || target.starts_with(mount.as_str())
-        {
+        if target.starts_with(mount.trim_end_matches('\\')) || target.starts_with(mount.as_str()) {
             let len = mount.len();
             if best.map(|(l, _)| len > l).unwrap_or(true) {
                 best = Some((len, disk.available_space()));
@@ -225,7 +223,8 @@ pub fn start_local_qwen_install() -> Result<(), String> {
 }
 
 fn run_local_qwen_install() -> Result<(), String> {
-    let ai_dir = user_ai_dir().ok_or_else(|| "Could not resolve app data directory.".to_string())?;
+    let ai_dir =
+        user_ai_dir().ok_or_else(|| "Could not resolve app data directory.".to_string())?;
     fs::create_dir_all(&ai_dir).map_err(|e| format!("create ai dir: {e}"))?;
 
     let free = free_bytes_for_path(&ai_dir);
@@ -314,7 +313,8 @@ fn run_local_qwen_install() -> Result<(), String> {
     }
 
     // 2) Model GGUF
-    if !model_path.is_file() || fs::metadata(&model_path).map(|m| m.len()).unwrap_or(0) < 1_000_000 {
+    if !model_path.is_file() || fs::metadata(&model_path).map(|m| m.len()).unwrap_or(0) < 1_000_000
+    {
         let _ = fs::remove_file(&model_path);
         set_install_progress(
             "downloading_model",
@@ -379,9 +379,7 @@ fn runtime_is_usable(runtime_path: &Path) -> bool {
 
 fn scrub_broken_runtime_files(ai_dir: &Path, runtime_name: &str) {
     let runtime = ai_dir.join(runtime_name);
-    if runtime.is_file()
-        && fs::metadata(&runtime).map(|m| m.len()).unwrap_or(0) == 0
-    {
+    if runtime.is_file() && fs::metadata(&runtime).map(|m| m.len()).unwrap_or(0) == 0 {
         let _ = fs::remove_file(&runtime);
     }
     // Zero-byte DLLs left by a failed Expand-Archive on a full disk.
@@ -408,9 +406,8 @@ fn promote_runtime_from_extract(
     ai_dir: &Path,
     runtime_name: &str,
 ) -> Result<(), String> {
-    let found = find_file_named(extract_dir, runtime_name).ok_or_else(|| {
-        format!("archive did not contain {runtime_name}")
-    })?;
+    let found = find_file_named(extract_dir, runtime_name)
+        .ok_or_else(|| format!("archive did not contain {runtime_name}"))?;
     let src_dir = found
         .parent()
         .ok_or_else(|| "runtime path has no parent".to_string())?;
@@ -529,7 +526,12 @@ fn download_file(url: &str, dest: &Path, pct_start: u8, pct_end: u8) -> Result<(
     }
     drop(file);
     let digest = format!("{:x}", hasher.finalize());
-    log::info!("download complete path={} sha256={} bytes={}", dest.display(), digest, done);
+    log::info!(
+        "download complete path={} sha256={} bytes={}",
+        dest.display(),
+        digest,
+        done
+    );
 
     // Optional pin: DEVICELIFELINE_EXPECT_SHA256_<suffix> or generic env for model/runtime.
     if let Some(expected) = expected_sha256_for(dest) {
@@ -887,9 +889,7 @@ impl LlmProvider {
             crate::diagnosis::provider::QueryIntent::Cpu => {
                 "FOCUS: CPU load only. Do not mention disk or memory unless asked."
             }
-            crate::diagnosis::provider::QueryIntent::Crash => {
-                "FOCUS: crashes / stability only."
-            }
+            crate::diagnosis::provider::QueryIntent::Crash => "FOCUS: crashes / stability only.",
             crate::diagnosis::provider::QueryIntent::Startup => {
                 "FOCUS: startup / boot / login only."
             }
@@ -908,7 +908,12 @@ impl LlmProvider {
         })
         .to_string();
 
-        let content = self.chat_completion(FINDINGS_SYSTEM_PROMPT, &format!("{user}\n/no_think"), 0.15, 900)?;
+        let content = self.chat_completion(
+            FINDINGS_SYSTEM_PROMPT,
+            &format!("{user}\n/no_think"),
+            0.15,
+            900,
+        )?;
         parse_findings_json(&content)
     }
 
@@ -1264,6 +1269,8 @@ mod tests {
         // Without model files, providers list is empty (heuristic mode).
         // This test only asserts cloud slugs never appear.
         let providers = configured_providers();
-        assert!(!providers.iter().any(|p| *p == "xai" || *p == "openai" || *p == "gemini"));
+        assert!(!providers
+            .iter()
+            .any(|p| *p == "xai" || *p == "openai" || *p == "gemini"));
     }
 }

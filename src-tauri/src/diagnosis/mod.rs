@@ -169,12 +169,7 @@ fn chat_reply(query: &str, context: &DiagnosisContext) -> String {
 
     let opener = pick(
         &format!("{q}|{health}|{disk}"),
-        &[
-            "Hey",
-            "Hi there",
-            "Hello",
-            "Good to see you",
-        ],
+        &["Hey", "Hi there", "Hello", "Good to see you"],
     );
     let body = if context.disk_pct.unwrap_or(0.0) >= 90.0 {
         format!(
@@ -402,14 +397,17 @@ fn compose_reply(
             ],
         ).to_string());
     } else {
-        parts.push(pick(
-            &seed,
-            &[
-                "Here's the grounded detail from the sample:",
-                "What the on-device rules and sample actually support:",
-                "Breaking down the evidence I trust on this machine:",
-            ],
-        ).to_string());
+        parts.push(
+            pick(
+                &seed,
+                &[
+                    "Here's the grounded detail from the sample:",
+                    "What the on-device rules and sample actually support:",
+                    "Breaking down the evidence I trust on this machine:",
+                ],
+            )
+            .to_string(),
+        );
         for (i, f) in meaningful.iter().take(4).enumerate() {
             parts.push(format!(
                 "{}. {} - {} Evidence: {} Suggested: {}",
@@ -537,8 +535,7 @@ mod tests {
         let mut conn = memory_db();
         let snapshot = capture_snapshot(&mut conn).expect("capture snapshot");
 
-        let session =
-            run_diagnosis(&mut conn, "why is my pc slow?", None).expect("run diagnosis");
+        let session = run_diagnosis(&mut conn, "why is my pc slow?", None).expect("run diagnosis");
         assert_eq!(session.query, "why is my pc slow?");
         assert!(session.finding_count >= 1);
         assert!(!session.summary.is_empty());

@@ -229,7 +229,10 @@ fn best_temp_sensor(sensors: &[SensorReading], name_hints: &[&str]) -> Option<f6
             s.source.to_ascii_lowercase()
         );
         // Skip disk temps when promoting CPU/GPU.
-        if hay.contains("disk") || hay.contains("ssd") || hay.contains("hdd") || hay.contains("nvme")
+        if hay.contains("disk")
+            || hay.contains("ssd")
+            || hay.contains("hdd")
+            || hay.contains("nvme")
         {
             if !name_hints.iter().any(|h| *h == "disk") {
                 continue;
@@ -248,10 +251,8 @@ fn best_temp_sensor(sensors: &[SensorReading], name_hints: &[&str]) -> Option<f6
 }
 
 fn is_celsius_unit(unit: &str) -> bool {
-    matches!(
-        unit.trim(),
-        "°C" | "°c" | "C" | "c" | "Celsius" | "celsius"
-    ) || unit.trim().eq_ignore_ascii_case("degc")
+    matches!(unit.trim(), "°C" | "°c" | "C" | "c" | "Celsius" | "celsius")
+        || unit.trim().eq_ignore_ascii_case("degc")
 }
 
 fn ensure_sensor(
@@ -354,7 +355,10 @@ foreach ($z in @(Get-CimInstance Win32_PerfFormattedData_Counters_ThermalZoneInf
   sensors = @($sensors)
 } | ConvertTo-Json -Compress -Depth 4
 "#;
-    parse_windows_sensor_json(&run_powershell_json_timeout(script, std::time::Duration::from_secs(3)))
+    parse_windows_sensor_json(&run_powershell_json_timeout(
+        script,
+        std::time::Duration::from_secs(3),
+    ))
 }
 
 /// Lightweight thermal probe — runs first so Performance tiles get a value even
@@ -1020,10 +1024,8 @@ fn windows_smart_via_powershell(depth: SampleDepth) -> Vec<SmartReading> {
             &script_str,
         ]);
         // Reliability counters can hang for a long time without elevation.
-        let output = crate::process_win::run_silent_timeout(
-            cmd,
-            std::time::Duration::from_secs(12),
-        );
+        let output =
+            crate::process_win::run_silent_timeout(cmd, std::time::Duration::from_secs(12));
         if let Some(ref o) = output {
             if !o.status.success() {
                 log::warn!(
@@ -1067,10 +1069,8 @@ fn windows_smart_via_powershell(depth: SampleDepth) -> Vec<SmartReading> {
                 .as_ref()
                 .and_then(|j| serde_json::from_str::<serde_json::Value>(j).ok())
                 .and_then(|v| {
-                    v.get("deviceId").and_then(|x| {
-                        x.as_u64()
-                            .or_else(|| x.as_i64().map(|i| i as u64))
-                    })
+                    v.get("deviceId")
+                        .and_then(|x| x.as_u64().or_else(|| x.as_i64().map(|i| i as u64)))
                 })
             {
                 if let Some(t) = ioctl_temps.get(&(id as u32)) {
@@ -1179,7 +1179,10 @@ fn parse_smart_json(text: &str) -> Vec<SmartReading> {
     let value: serde_json::Value = match serde_json::from_str(json_slice) {
         Ok(v) => v,
         Err(e) => {
-            log::warn!("smart json parse failed: {e}; head={:?}", &json_slice.chars().take(120).collect::<String>());
+            log::warn!(
+                "smart json parse failed: {e}; head={:?}",
+                &json_slice.chars().take(120).collect::<String>()
+            );
             return Vec::new();
         }
     };
@@ -1264,7 +1267,10 @@ fn enrich_smart_from_attributes(reading: &mut SmartReading) {
             reading.power_on_hours = Some(num as i64);
         }
         if reading.wear_pct.is_none()
-            && (name == "wear" || name.contains("wear") || name.contains("percentused") || name.contains("percent_used"))
+            && (name == "wear"
+                || name.contains("wear")
+                || name.contains("percentused")
+                || name.contains("percent_used"))
             && num >= 0.0
             && num <= 100.0
         {
@@ -1276,9 +1282,7 @@ fn enrich_smart_from_attributes(reading: &mut SmartReading) {
 /// Query drive temperature via IOCTL_STORAGE_QUERY_PROPERTY / Temperature property.
 /// Works for many NVMe/SATA devices without StorageReliabilityCounter elevation.
 #[cfg(windows)]
-fn windows_physical_drive_temperatures(
-    max_drives: u32,
-) -> std::collections::HashMap<u32, f64> {
+fn windows_physical_drive_temperatures(max_drives: u32) -> std::collections::HashMap<u32, f64> {
     use std::collections::HashMap;
     use std::os::windows::fs::OpenOptionsExt;
     use std::os::windows::io::AsRawHandle;
@@ -1306,9 +1310,7 @@ fn windows_physical_drive_temperatures(
 }
 
 #[cfg(windows)]
-fn storage_device_temperature_c(
-    handle: std::os::windows::io::RawHandle,
-) -> Option<f64> {
+fn storage_device_temperature_c(handle: std::os::windows::io::RawHandle) -> Option<f64> {
     use windows_sys::Win32::Foundation::HANDLE;
     use windows_sys::Win32::System::IO::DeviceIoControl;
 
@@ -1601,11 +1603,14 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn windows_smart_lists_physical_disks() {
-        let smart = windows_smart_via_powershell();
+        let smart = windows_smart_via_powershell(SampleDepth::Full);
         eprintln!(
             "smart disks: count={} names={:?}",
             smart.len(),
-            smart.iter().map(|s| s.disk_name.as_str()).collect::<Vec<_>>()
+            smart
+                .iter()
+                .map(|s| s.disk_name.as_str())
+                .collect::<Vec<_>>()
         );
         for s in &smart {
             eprintln!(

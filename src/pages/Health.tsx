@@ -19,7 +19,7 @@ import {
 } from '../components/health/insights';
 import { PageShell } from '../components/layout/PageShell';
 import type { View } from '../components/layout/Sidebar';
-import type { HealthSample } from '../types/device.types';
+import type { HealthAlert, HealthSample } from '../types/device.types';
 
 interface HealthProps {
   onNavigate?: (view: View) => void;
@@ -164,11 +164,9 @@ function HealthBody({
   cpuSeries: number[];
   memSeries: number[];
   diskSeries: number[];
-  alerts: import('../types/device.types').HealthAlert[];
-  pageAlerts: import('../types/device.types').HealthAlert[];
-  alertPages: ReturnType<
-    typeof usePaginatedItems<import('../types/device.types').HealthAlert>
-  >['pagination'];
+  alerts: HealthAlert[];
+  pageAlerts: HealthAlert[];
+  alertPages: ReturnType<typeof usePaginatedItems<HealthAlert>>['pagination'];
   acknowledge: (id: string) => void | Promise<void>;
   onNavigate?: (view: View) => void;
 }) {

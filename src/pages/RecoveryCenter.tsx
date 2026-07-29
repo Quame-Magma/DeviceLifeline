@@ -298,7 +298,9 @@ export function RecoveryCenter() {
                     variant="primary"
                     size="sm"
                     loading={running}
-                    onClick={handleRunRestore}
+                    onClick={() => {
+                      void handleRunRestore();
+                    }}
                     disabled={!canRunRestore}
                   >
                     {running

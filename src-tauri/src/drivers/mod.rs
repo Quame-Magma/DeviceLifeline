@@ -7,8 +7,8 @@ use crate::dna::snapshot::now_rfc3339;
 use crate::elevation;
 use crate::error::CoreError;
 use crate::models::{
-    DriverInfo, DriverUpdate, DriverUpdateFailure, DriverUpdateInstallResult, DriverUpdateScanResult,
-    GpuCleanPlan, GpuCleanResult, GpuCleanTarget,
+    DriverInfo, DriverUpdate, DriverUpdateFailure, DriverUpdateInstallResult,
+    DriverUpdateScanResult, GpuCleanPlan, GpuCleanResult, GpuCleanTarget,
 };
 use crate::storage::{device_repo, driver_repo, vault_repo};
 use crate::vault;

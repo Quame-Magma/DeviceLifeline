@@ -334,9 +334,7 @@ fn failed_shadow(detail: Option<&str>) -> (String, Option<String>, String, Strin
         format!("{{{}}}", uuid::Uuid::new_v4()),
         None,
         "failed".into(),
-        detail
-            .unwrap_or("Volume shadow create failed")
-            .into(),
+        detail.unwrap_or("Volume shadow create failed").into(),
     )
 }
 

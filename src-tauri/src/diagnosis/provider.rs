@@ -119,18 +119,8 @@ pub fn is_chat_query(query: &str) -> bool {
         if !contains_any(
             &t,
             &[
-                "slow",
-                "crash",
-                "disk",
-                "memory",
-                "cpu",
-                "startup",
-                "boot",
-                "storage",
-                "why",
-                "fix",
-                "broken",
-                "error",
+                "slow", "crash", "disk", "memory", "cpu", "startup", "boot", "storage", "why",
+                "fix", "broken", "error",
             ],
         ) {
             return true;
@@ -142,42 +132,11 @@ pub fn is_chat_query(query: &str) -> bool {
         && !contains_any(
             &t,
             &[
-                "slow",
-                "crash",
-                "disk",
-                "space",
-                "memory",
-                "ram",
-                "cpu",
-                "startup",
-                "boot",
-                "storage",
-                "why",
-                "what is",
-                "what's",
-                "how do",
-                "fix",
-                "broken",
-                "error",
-                "lag",
-                "freeze",
-                "full",
-                "network",
-                "wifi",
-                "wi-fi",
-                "internet",
-                "offline",
-                "latency",
-                "dns",
-                "ethernet",
-                "process",
-                "driver",
-                "update",
-                "clean",
-                "temp",
-                "recycle",
-                "bsod",
-                "hang",
+                "slow", "crash", "disk", "space", "memory", "ram", "cpu", "startup", "boot",
+                "storage", "why", "what is", "what's", "how do", "fix", "broken", "error", "lag",
+                "freeze", "full", "network", "wifi", "wi-fi", "internet", "offline", "latency",
+                "dns", "ethernet", "process", "driver", "update", "clean", "temp", "recycle",
+                "bsod", "hang",
             ],
         )
     {
@@ -273,31 +232,25 @@ pub fn finding_matches_intent(finding: &FindingDraft, intent: QueryIntent) -> bo
         QueryIntent::Disk => contains_any(
             &hay,
             &[
-                "disk",
-                "storage",
-                "space",
-                "drive",
-                "volume",
-                "temp",
-                "cleanup",
-                "full",
-                "gb",
-                "free",
-                "ssd",
-                "hdd",
-                "recycle",
-                "cache",
+                "disk", "storage", "space", "drive", "volume", "temp", "cleanup", "full", "gb",
+                "free", "ssd", "hdd", "recycle", "cache",
             ],
         ),
         QueryIntent::Memory => {
             contains_any(&hay, &["memory", "ram", "paging", "swap", "working set"])
         }
-        QueryIntent::Cpu => {
-            contains_any(&hay, &["cpu", "processor", "thermal", "core", "compute"])
-        }
+        QueryIntent::Cpu => contains_any(&hay, &["cpu", "processor", "thermal", "core", "compute"]),
         QueryIntent::Crash => contains_any(
             &hay,
-            &["crash", "bsod", "blue screen", "hang", "frozen", "kernel", "fault"],
+            &[
+                "crash",
+                "bsod",
+                "blue screen",
+                "hang",
+                "frozen",
+                "kernel",
+                "fault",
+            ],
         ),
         QueryIntent::Startup => {
             contains_any(&hay, &["startup", "boot", "login", "logon", "autorun"])
@@ -581,8 +534,7 @@ impl DiagnosisProvider for HeuristicProvider {
 
         let disk_pct = context.disk_pct.unwrap_or(0.0);
         let disk_relevant = matches!(intent, QueryIntent::Disk | QueryIntent::Slow);
-        if disk_relevant
-            && (disk_pct >= 85.0 || has(&context.active_alert_kinds, "disk_low_space"))
+        if disk_relevant && (disk_pct >= 85.0 || has(&context.active_alert_kinds, "disk_low_space"))
         {
             let filled = disk_pct.round() as i64;
             let confidence = intent_boost(
@@ -746,7 +698,8 @@ impl DiagnosisProvider for HeuristicProvider {
                     finding.confidence = intent_boost(finding.confidence, true);
                     finding.title = "Recent startup-related change".to_string();
                 }
-                if intent == QueryIntent::Network && finding.title.to_lowercase().contains("network")
+                if intent == QueryIntent::Network
+                    && finding.title.to_lowercase().contains("network")
                 {
                     finding.confidence = intent_boost(finding.confidence, true);
                 }
@@ -815,16 +768,10 @@ impl DiagnosisProvider for HeuristicProvider {
                 ));
             }
             if context.memory_pct.unwrap_or(0.0) >= 90.0 {
-                tips.push(format!(
-                    "memory ~{:.0}%",
-                    context.memory_pct.unwrap_or(0.0)
-                ));
+                tips.push(format!("memory ~{:.0}%", context.memory_pct.unwrap_or(0.0)));
             }
             if context.cpu_usage.unwrap_or(0.0) >= 90.0 {
-                tips.push(format!(
-                    "CPU ~{:.0}%",
-                    context.cpu_usage.unwrap_or(0.0)
-                ));
+                tips.push(format!("CPU ~{:.0}%", context.cpu_usage.unwrap_or(0.0)));
             }
             if !tips.is_empty() {
                 findings.push(FindingDraft {

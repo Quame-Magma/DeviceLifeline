@@ -101,8 +101,7 @@ pub fn get_copilot_status() -> Result<serde_json::Value, CoreError> {
 /// Starts in-app download of llama-server + Qwen3 into the user app-data folder.
 #[tauri::command]
 pub fn start_local_qwen_install() -> Result<serde_json::Value, CoreError> {
-    crate::diagnosis::llm::start_local_qwen_install()
-        .map_err(CoreError::Internal)?;
+    crate::diagnosis::llm::start_local_qwen_install().map_err(CoreError::Internal)?;
     let p = crate::diagnosis::llm::local_qwen_install_progress();
     Ok(serde_json::to_value(p).unwrap_or_else(|_| serde_json::json!({})))
 }
