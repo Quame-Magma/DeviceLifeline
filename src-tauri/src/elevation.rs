@@ -54,10 +54,11 @@ pub fn ensure_elevated() {
             return;
         }
         // Opt-in auto-elevate for environments that still want full admin UI.
-        if std::env::var_os("DEVICELIFELINE_FORCE_ELEVATE").is_some() && !cfg!(debug_assertions) {
-            if relaunch_elevated() {
-                std::process::exit(0);
-            }
+        if std::env::var_os("DEVICELIFELINE_FORCE_ELEVATE").is_some()
+            && !cfg!(debug_assertions)
+            && relaunch_elevated()
+        {
+            std::process::exit(0);
         }
         log::info!(
             "DeviceLifeline running as standard user. Use Elevate for driver install, VSS, GPU clean, and deep process tools."

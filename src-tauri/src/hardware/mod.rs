@@ -229,14 +229,13 @@ fn best_temp_sensor(sensors: &[SensorReading], name_hints: &[&str]) -> Option<f6
             s.source.to_ascii_lowercase()
         );
         // Skip disk temps when promoting CPU/GPU.
-        if hay.contains("disk")
+        if (hay.contains("disk")
             || hay.contains("ssd")
             || hay.contains("hdd")
-            || hay.contains("nvme")
+            || hay.contains("nvme"))
+            && !name_hints.contains(&"disk")
         {
-            if !name_hints.iter().any(|h| *h == "disk") {
-                continue;
-            }
+            continue;
         }
         let matched = name_hints.iter().any(|h| hay.contains(h));
         if !matched {
@@ -1271,8 +1270,7 @@ fn enrich_smart_from_attributes(reading: &mut SmartReading) {
                 || name.contains("wear")
                 || name.contains("percentused")
                 || name.contains("percent_used"))
-            && num >= 0.0
-            && num <= 100.0
+            && (0.0..=100.0).contains(&num)
         {
             reading.wear_pct = Some(num);
         }

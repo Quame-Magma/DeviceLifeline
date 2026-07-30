@@ -164,7 +164,8 @@ fn validate_image_source(src: &Path) -> Result<(), CoreError> {
                 .into(),
         ));
     }
-    // Prefer paths under the user profile when available.
+    // Prefer paths under the user profile when available; other fixed-drive
+    // non-system folders (e.g. D:\Projects) are allowed if not blocked above.
     if let Some(home) = dirs::home_dir() {
         let home_s = home
             .canonicalize()
@@ -172,12 +173,10 @@ fn validate_image_source(src: &Path) -> Result<(), CoreError> {
             .to_string_lossy()
             .to_ascii_lowercase()
             .replace('/', "\\");
-        // Allow home, or other fixed-drive non-system folders (e.g. D:\Projects).
         if s.starts_with(&home_s) {
             return Ok(());
         }
     }
-    // Non-home paths allowed only if not blocked above (e.g. D:\Work).
     Ok(())
 }
 

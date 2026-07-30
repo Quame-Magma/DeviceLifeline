@@ -101,7 +101,7 @@ pub fn apply_updates(
 fn collect_upgrades(device_id: &str, scanned_at: &str) -> Vec<SoftwareUpdate> {
     #[cfg(windows)]
     {
-        return winget_upgrade_list(device_id, scanned_at);
+        winget_upgrade_list(device_id, scanned_at)
     }
     #[cfg(not(windows))]
     {

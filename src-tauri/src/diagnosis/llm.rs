@@ -154,13 +154,8 @@ fn windows_fixed_drive_roots() -> Vec<PathBuf> {
         })
         .collect();
     // Prefer more free space first.
-    roots.sort_by(|a, b| b.0.cmp(&a.0));
+    roots.sort_by_key(|(space, _)| std::cmp::Reverse(*space));
     roots.into_iter().map(|(_, p)| p).collect()
-}
-
-#[cfg(not(windows))]
-fn windows_fixed_drive_roots() -> Vec<PathBuf> {
-    Vec::new()
 }
 
 fn free_bytes_for_path(path: &Path) -> u64 {
@@ -498,8 +493,9 @@ fn download_file(url: &str, dest: &Path, pct_start: u8, pct_end: u8) -> Result<(
             .map_err(|e| format!("write download: {e}"))?;
         hasher.update(&buf[..n]);
         done += n as u64;
-        let pct = if total > 0 {
-            pct_start.saturating_add((((done.min(total) * span) / total) as u8).min(span as u8))
+        let pct = if let Some(total) = std::num::NonZeroU64::new(total) {
+            let progressed = (done.min(total.get()) * span) / total.get();
+            pct_start.saturating_add((progressed as u8).min(span as u8))
         } else {
             pct_start.saturating_add((span / 2) as u8)
         };
@@ -573,17 +569,13 @@ fn verify_download_magic(partial: &Path, dest: &Path) -> Result<(), String> {
     let mut head = [0u8; 8];
     let n = f.read(&mut head).map_err(|e| format!("read magic: {e}"))?;
     let name = dest.file_name().and_then(|s| s.to_str()).unwrap_or("");
-    if name.ends_with(".zip") || name.contains("runtime") {
-        if n < 4 || &head[..2] != b"PK" {
-            let _ = fs::remove_file(partial);
-            return Err("Runtime download is not a valid ZIP (bad magic).".into());
-        }
+    if (name.ends_with(".zip") || name.contains("runtime")) && (n < 4 || &head[..2] != b"PK") {
+        let _ = fs::remove_file(partial);
+        return Err("Runtime download is not a valid ZIP (bad magic).".into());
     }
-    if name.ends_with(".gguf") {
-        if n < 4 || &head[..4] != b"GGUF" {
-            let _ = fs::remove_file(partial);
-            return Err("Model download is not a valid GGUF file (bad magic).".into());
-        }
+    if name.ends_with(".gguf") && (n < 4 || &head[..4] != b"GGUF") {
+        let _ = fs::remove_file(partial);
+        return Err("Model download is not a valid GGUF file (bad magic).".into());
     }
     Ok(())
 }
@@ -807,12 +799,10 @@ impl DiagnosisProvider for LlmProvider {
                 | QueryIntent::Crash
                 | QueryIntent::Startup
                 | QueryIntent::Network
-        ) {
-            if !grounded.is_empty()
-                && !(grounded.len() == 1 && grounded[0].title == "No major issues detected")
-            {
-                return grounded;
-            }
+        ) && !grounded.is_empty()
+            && !(grounded.len() == 1 && grounded[0].title == "No major issues detected")
+        {
+            return grounded;
         }
 
         match self.call_local(query, context, intent) {

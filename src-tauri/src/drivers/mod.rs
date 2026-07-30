@@ -6,9 +6,11 @@ use crate::actions::{self, RISK_DESTRUCTIVE, RISK_PRIVILEGED, RISK_SAFE};
 use crate::dna::snapshot::now_rfc3339;
 use crate::elevation;
 use crate::error::CoreError;
+#[cfg(windows)]
+use crate::models::DriverUpdate;
 use crate::models::{
-    DriverInfo, DriverUpdate, DriverUpdateFailure, DriverUpdateInstallResult,
-    DriverUpdateScanResult, GpuCleanPlan, GpuCleanResult, GpuCleanTarget,
+    DriverInfo, DriverUpdateFailure, DriverUpdateInstallResult, DriverUpdateScanResult,
+    GpuCleanPlan, GpuCleanResult, GpuCleanTarget,
 };
 use crate::storage::{device_repo, driver_repo, vault_repo};
 use crate::vault;
@@ -124,13 +126,13 @@ pub fn scan_driver_updates(conn: &Connection) -> Result<DriverUpdateScanResult, 
             "completed",
             None,
         );
-        return Ok(DriverUpdateScanResult {
+        Ok(DriverUpdateScanResult {
             scanned_at,
             updates,
             total_count,
             total_bytes,
             warnings,
-        });
+        })
     }
 
     #[cfg(not(windows))]
@@ -203,7 +205,7 @@ pub fn install_driver_updates(
         );
         // Refresh inventory after install so versions/dates update.
         let _ = scan_drivers(conn);
-        return Ok(result);
+        Ok(result)
     }
 
     #[cfg(not(windows))]
@@ -408,7 +410,7 @@ try {
         })
         .collect();
 
-    updates.sort_by(|a, b| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
+    updates.sort_by_key(|a| a.title.to_lowercase());
     (updates, warnings)
 }
 
@@ -671,24 +673,22 @@ try {{
         .and_then(|v| v.as_array())
         .map(|a| {
             a.iter()
-                .filter_map(|x| {
-                    Some(DriverUpdateFailure {
-                        id: x
-                            .get("id")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("unknown")
-                            .to_string(),
-                        title: x
-                            .get("title")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("Update")
-                            .to_string(),
-                        message: x
-                            .get("message")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("failed")
-                            .to_string(),
-                    })
+                .map(|x| DriverUpdateFailure {
+                    id: x
+                        .get("id")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown")
+                        .to_string(),
+                    title: x
+                        .get("title")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Update")
+                        .to_string(),
+                    message: x
+                        .get("message")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("failed")
+                        .to_string(),
                 })
                 .collect()
         })
