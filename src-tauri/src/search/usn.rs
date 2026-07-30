@@ -18,7 +18,7 @@ pub fn rebuild_usn_index(
     #[cfg(not(windows))]
     {
         let _ = volume;
-        return file_index::rebuild_file_index(conn);
+        file_index::rebuild_file_index(conn)
     }
 
     #[cfg(windows)]
